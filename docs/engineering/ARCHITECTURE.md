@@ -146,7 +146,7 @@ flora 用进程边界强制：web 只展示，api 只编排账本与任务，wor
 | --- | --- | --- |
 | `web/` | 已存在 | 前端 fork |
 | `api/` | 未入仓 | Spring Boot 业务 API，WP1 |
-| `worker/` | 未入仓 | 瘦 worker，WP1/WP4 |
+| `worker/` | 未入仓 | 瘦 worker，WP1/WP5 |
 | `docs/engineering/` | 本树 | 工程真相源 |
 | `docs/content/` | 已存在 | 公开用户文档，勿改作工程站 |
 

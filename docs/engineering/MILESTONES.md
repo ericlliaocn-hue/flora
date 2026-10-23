@@ -9,10 +9,10 @@
 | 里程碑 | 主题 | 主要工作包 | 用户能感知的结果 |
 | --- | --- | --- | --- |
 | M0 | 身份与工程纪律 | WP0 + 本文档树 | 产品叫 flora；大改动必须先有 brief |
-| M1 | 平台骨架 | WP1–WP4 | 登录后能提交任务；worker 只处理 `job_id` |
-| M2 | 付费出图闭环 | WP5–WP8 | 预付费生图成功扣费、失败退冻；错误友好 |
-| M3 | C 端最小产品 | WP9 | 画布/素材/生成记录能跟账号走 |
-| M4 | 运维面 | WP10 | 运营能配置与排障，而不是多一个创作产品 |
+| M1 | 平台骨架 | WP1–WP5 | 登录后能提交任务；worker 只处理 `job_id` |
+| M2 | 付费出图闭环 | WP6–WP9 | 预付费生图成功扣费、失败退冻；错误友好 |
+| M3 | C 端最小产品 | WP10 | 画布/素材/生成记录能跟账号走 |
+| M4 | 运维面 | WP11 | 运营能配置与排障，而不是多一个创作产品 |
 
 ## M0 — 身份与工程纪律
 
@@ -43,7 +43,7 @@
 **必须完成**
 
 - Java 21 + Spring Boot 3 业务 API；Sa-Token 登录。
-- Postgres / Redis 落地；job / job_step / outbox / idempotency 概念表存在。
+- Postgres / Redis 落地；job / job_step / outbox / idempotency 表存在，字段级见 [data-model](./data-model/)（WP2 已锁定）。
 - RabbitMQ 作为第一期队列；消息体只有 `job_id`。
 - Worker 按 [ADR 0004](./adr/0004-thin-worker-no-god-classes.md) 保持瘦：不拉画布、不编排创作、不持有钱包。
 - 只通过 Anytoken 访问模型；禁止 NewAPI fork 与双账本。

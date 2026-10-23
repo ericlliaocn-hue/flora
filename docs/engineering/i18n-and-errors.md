@@ -17,14 +17,15 @@
 - 运营可改的公告、模型下架说明、充值提示
 - 任何不发前端版也想改的句子
 
-概念字段（列类型 TBD，WP8 brief 定）：
+列级 schema 已由 [WP2 brief](./feature-briefs/2026-10-24-wp2-phase1-schema.md) 锁定，见 [data-model/errors.md](./data-model/errors.md#i18n_message-列级-schema)：
 
-| 字段 | 说明 |
-| --- | --- |
-| `key` | 稳定键，常与 `error_code` 相同或取其前缀 |
-| `locale` | `zh` / `en`（stage-1 先这两种） |
-| `template` | 短句，插值用有限占位符 |
-| `updated_at` | 审计 |
+| 字段 | 类型 | 空 | 约束 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | UUID | NO | PK | |
+| `key` | TEXT | NO | UNIQUE (`key`, `locale`) | 稳定键，常与 `error_code` 相同 |
+| `locale` | TEXT | NO | CHECK ∈ `zh` \| `en` | stage-1 先这两种 |
+| `template` | TEXT | NO | | 短句，插值用有限占位符 |
+| `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | 审计 |
 
 不要为每种语言建一张表，不要在 Java 里 `if ("zh")` 拼错误。
 
@@ -38,7 +39,7 @@ C 端默认永远是：
 | `message` | 用户 | 当前 locale 的友好短句 |
 | 日志 / `provider_task.raw_body` | 运营 | 上游原文 |
 
-建议预留码（WP8 可改名，但语义要在）：
+预留码由 [WP2 brief](./feature-briefs/2026-10-24-wp2-phase1-schema.md) 锁死名称，完整注册表见 [data-model/errors.md](./data-model/errors.md)：
 
 | code | 何时 |
 | --- | --- |
@@ -49,6 +50,7 @@ C 端默认永远是：
 | `PROVIDER_UNAVAILABLE` | Anytoken 或上游不可用 / 未识别 |
 | `IDEMPOTENCY_CONFLICT` | 同一 key 不同 body |
 | `UNAUTHORIZED` | 无会话 |
+| `VALIDATION_ERROR` | 请求字段不合法 |
 
 未识别的上游错误 → 泛化码 + 原文入库，禁止把 `e.getMessage()` 当 `message`。
 
