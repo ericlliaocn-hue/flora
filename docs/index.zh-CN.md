@@ -1,5 +1,7 @@
 # 无限画布文档索引
 
+flora 工程文档（架构 / 里程碑 / ADR / feature brief）见仓库内 [`docs/engineering/`](./engineering/README.md)，与本公开文档站分开维护。
+
 ## 项目介绍
 
 - [快速开始](/zh-CN/docs/overview/quick-start)

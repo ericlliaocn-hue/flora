@@ -2,6 +2,16 @@
 
 本文档用于约束本项目中的 AI / 自动化开发行为。开发时优先遵循本文件，其次遵循用户当前消息。
 
+## flora 工程文档（必读）
+
+本仓库产品品牌是 **flora**（infinite-canvas 的白标 fork）。架构、里程碑、冻结技术栈、ADR 与协作流程以 **`docs/engineering/`** 为准，不要只根据当前「前端直连供应商」的代码现状倒推目标架构。
+
+- 入口：[docs/engineering/README.md](docs/engineering/README.md)
+- 大改动（新表、新 API、新进程、改任务/计费/品牌/错误合同、改栈）**必须先写** [feature brief](docs/engineering/feature-briefs/_TEMPLATE.md)，再实现、再开 PR；禁止直接开写或只凭聊天记录扩范围。
+- PR 对照 brief 验收，并遵守 [CONTRIBUTING.md](docs/engineering/CONTRIBUTING.md) 清单。
+- 硬约束：模型网关只用 Anytoken（不 fork NewAPI/qfzy-api、不做双账本）；Worker 保持瘦（MQ 只有 `job_id`）；C 端错误友好且带稳定 `error_code`；Admin 在 C 端最小闭环之后，且只做运维/配置。
+- **不要**把工程文档写进 `docs/content/`，也 **不要** 掏空或重写 Fumadocs 公开文档站（`docs/app/`、`docs/Dockerfile` 等），除非任务明确要求。
+
 ## 基本原则
 
 - 先读现有代码，再动手修改，优先沿用项目已有结构和写法。
