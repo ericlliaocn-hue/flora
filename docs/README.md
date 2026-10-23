@@ -1,5 +1,7 @@
 # docs
 
+flora 工程文档（架构、里程碑、ADR、feature brief）在 [`docs/engineering/`](./engineering/README.md)，不是本 Fumadocs 站点。
+
 This is a Next.js application generated with
 [Create Fumadocs](https://github.com/fuma-nama/fumadocs).
 
