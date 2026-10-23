@@ -9,7 +9,7 @@
 1. 先读 [VISION.md](./VISION.md) 和 [MILESTONES.md](./MILESTONES.md)，确认当前工作落在哪个里程碑。
 2. 改架构或技术选型前，先读 [ARCHITECTURE.md](./ARCHITECTURE.md)、[TECH_STACK.md](./TECH_STACK.md) 和 [adr/](./adr/README.md)。
 3. 任何超过「改文案 / 修明显 bug」的功能，先按 [feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md) 写 brief，再交给 Minimax 或人实现。流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
-4. 实现对照 [DEVELOPMENT.md](./DEVELOPMENT.md) 的工作包（WP0–WP10），PR 对照 brief 验收，而不是对照聊天记录。
+4. 实现对照 [DEVELOPMENT.md](./DEVELOPMENT.md) 的工作包（WP0–WP11），PR 对照 brief 验收，而不是对照聊天记录。
 
 ## 文档地图
 
@@ -17,7 +17,7 @@
 | --- | --- |
 | [VISION.md](./VISION.md) | 产品定位、竞品、非目标 |
 | [MILESTONES.md](./MILESTONES.md) | M0–M4 目标与退出标准 |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | WP0–WP10 详细计划与协作流程 |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | WP0–WP11 详细计划与协作流程 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 进程、分层、Anytoken hop、时序 |
 | [TECH_STACK.md](./TECH_STACK.md) | 第一阶段冻结技术栈 |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | brief → PR → review |

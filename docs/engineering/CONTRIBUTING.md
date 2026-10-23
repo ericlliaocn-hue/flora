@@ -32,7 +32,7 @@ Brief 模板：[feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md)。�
 ## 分支与 PR
 
 - 从最新默认分支拉功能分支。
-- 一个 PR 对应 brief 里的一条可验收切片，不要「顺手把 WP3–WP7 做完」。
+- 一个 PR 对应 brief 里的一条可验收切片，不要「顺手把 WP4–WP8 做完」。
 - PR 描述最少包括：
   - 对应 brief 路径
   - 做了什么

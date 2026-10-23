@@ -11,7 +11,7 @@ cd flora/web
 # 或：pnpm install && pnpm dev
 ```
 
-默认端口见 `web/package.json` 的 Vite 脚本（当前为 3000）。打开后仍是「浏览器里填 OpenAI 兼容 Base URL / Key」的上游行为，直到 WP6。
+默认端口见 `web/package.json` 的 Vite 脚本（当前为 3000）。打开后仍是「浏览器里填 OpenAI 兼容 Base URL / Key」的上游行为，直到 WP7。
 
 Docker 只构建/运行现有前端镜像时，同样 **不是** flora 业务栈。
 
@@ -84,9 +84,9 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | 问题 | 现在 | 目标 |
 | --- | --- | --- |
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP3+ 接任务链路 |
-| 如何登录 flora 账号？ | 无 | WP2 |
-| 如何提交托管任务？ | 无，前端直连供应商 | WP3–WP6 |
-| 如何看 RabbitMQ 死信？ | 无 | WP3 + 以后的 runbook |
-| 如何加测试余额？ | 无 | WP5 脚本 / M4 admin |
+| 如何登录 flora 账号？ | 无 | WP3 |
+| 如何提交托管任务？ | 无，前端直连供应商 | WP4–WP7 |
+| 如何看 RabbitMQ 死信？ | 无 | WP4 + 以后的 runbook |
+| 如何加测试余额？ | 无 | WP6 脚本 / M4 admin |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。
