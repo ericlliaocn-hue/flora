@@ -44,6 +44,7 @@ export default function CanvasPage() {
             const projectFile = zip.get("projects.json");
             if (!projectFile) throw new Error("missing projects.json");
             const data = JSON.parse(await projectFile.text()) as CanvasExportFile;
+            if (data.app !== "flora") throw new Error("invalid canvas package");
             await Promise.all(
                 data.projects.flatMap((project) =>
                     project.files.map(async (item) => {
