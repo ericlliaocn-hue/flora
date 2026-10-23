@@ -14,5 +14,6 @@ Brief 是 flora 的需求源。Minimax 与人实现都从这里粘贴，不从�
 | 文件 | WP | 状态 |
 | --- | --- | --- |
 | [2026-10-24-wp0-white-label-flora.md](./2026-10-24-wp0-white-label-flora.md) | WP0 | 可粘贴给 Minimax |
+| [2026-10-24-wp1-api-worker-skeleton.md](./2026-10-24-wp1-api-worker-skeleton.md) | WP1 | 已实现，待验收 |
 
 后续 WP1–WP10 在开工当天按模板新增，不要提前写空 brief。

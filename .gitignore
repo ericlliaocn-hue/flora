@@ -15,3 +15,11 @@ web/public/plugins
 plugins/canvas/*/dist
 plugins/canvas/*/node_modules
 web/public/plugins
+
+# Java / Spring Boot
+target/
+api/config/
+worker/config/
+**/application-*.secret.yml
+*.jks
+*.keystore

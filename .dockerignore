@@ -12,3 +12,4 @@ web/out
 *.log
 .env*
 !.env.example
+target

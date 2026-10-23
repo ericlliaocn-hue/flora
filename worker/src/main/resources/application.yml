@@ -1,0 +1,15 @@
+server:
+  port: ${FLORA_WORKER_PORT:8081}
+
+spring:
+  application:
+    name: flora-worker
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# WP3 起接入 RabbitMQ。WP1 阶段刻意不引入 amqp 依赖：
+# 消费者落地前不需要 broker 在线，也避免 rabbit 健康探针在无 broker 时把进程判成 DOWN。
