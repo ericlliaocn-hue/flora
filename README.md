@@ -3,7 +3,7 @@
 >
 > 工程文档（愿景、里程碑、架构、ADR、feature brief）见 **[docs/engineering](docs/engineering/README.md)**。大改动先写 brief，再交给 Minimax 或人实现。
 >
-> 下方仍保留上游 infinite-canvas 的功能说明与快速开始，便于对照。用户可见品牌将在 WP0 换成 flora；当前 `web/` 仍可能显示「无限画布」。
+> 下方仍保留上游 infinite-canvas 的功能说明与快速开始，便于对照。用户可见品牌已在 WP0 换成 flora；`web/` 中的本地存储键、导出文件标识与版本检查地址也一并改为 flora，旧的本地上游数据不做迁移。
 
 <p align="center">
   <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">
