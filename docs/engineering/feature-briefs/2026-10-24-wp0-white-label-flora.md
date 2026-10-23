@@ -3,7 +3,7 @@
 - 日期：2026-10-24
 - 作者：flora engineering
 - 对应 WP / 里程碑：WP0 / M0
-- 状态：已确认（可直接粘贴给 Minimax）
+- 状态：已实现（待验收）
 
 把本文件从「# Feature brief」起到文末 **整份粘贴** 给 Minimax。不要摘要。实现仓库是 https://github.com/ericlliaocn-hue/flora ，品牌是 **flora**（小写）。本任务只做白标，不做后端。
 
