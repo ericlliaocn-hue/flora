@@ -10,7 +10,7 @@
 
 | 表 | 所属 | 首次落地 | 字段级 | 说明 |
 | --- | --- | --- | --- | --- |
-| `users` | 账号 | WP3 | [下方预留](#users仅字段预留实现-wp3) | 登录主体；Sa-Token 会话指向 `user_id` |
+| `users` | 账号 | WP3 | [下方字段](#userswp3-已落地) | 登录主体；Sa-Token 会话指向 `user_id` |
 | `wallet` / `wallet_hold` / `wallet_ledger` | 计费 | WP6 | [billing.md](./billing.md) | 余额 + 冻结单 + 流水；单账本 |
 | `job` | 任务 | WP4 | [jobs.md](./jobs.md) | 状态机权威行 |
 | `job_step` | 任务 | WP4 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
@@ -36,16 +36,18 @@
 - TOS：字节，不把对象当行存储。
 - MQ：不是存储。丢了靠 outbox + DB 状态恢复。
 
-## `users`（仅字段预留，实现 WP3）
+## `users`（WP3 已落地）
 
-认证在 WP3 落地。本页只留最少列，**不** 设计社交登录、角色矩阵。
+WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)。表由 `api/src/main/resources/db/migration/V1__create_users.sql` 建。
+
+列定义 **不** 在本页改：仍以本页为准，WP3 照抄实现。**不** 设计社交登录、角色矩阵。
 
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
-| `id` | UUID | NO | PK | |
-| `username` | TEXT | NO | UNIQUE | |
-| `password_hash` | TEXT | NO | | Sa-Token 登录用；哈希算法由 WP3 brief 定 |
-| `locale` | TEXT | YES | | `zh` / `en` 偏好 |
+| `id` | UUID | NO | PK | 默认 `gen_random_uuid()`；也是 Sa-Token 的 `loginId` |
+| `username` | TEXT | NO | UNIQUE | 登录名 |
+| `password_hash` | TEXT | NO | | BCrypt 哈希（strength 10） |
+| `locale` | TEXT | YES | | `zh` / `en` 偏好；空则回退 Accept-Language / zh |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 
