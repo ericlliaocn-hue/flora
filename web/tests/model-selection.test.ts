@@ -18,7 +18,7 @@ afterAll(() => {
     else Reflect.deleteProperty(globalThis, "localStorage");
 });
 
-const { defaultConfig, resolveModelForCapability, useConfigStore } = await import("../src/stores/use-config-store");
+const { defaultConfig, resolveModelForCapability, useConfigStore, FLORA_REMOTE_IMAGE_MODELS } = await import("../src/stores/use-config-store");
 const { buildGenerationConfig } = await import("../src/lib/canvas/canvas-generation-helpers");
 const { CanvasNodeType } = await import("../src/types/canvas");
 
@@ -97,4 +97,24 @@ test("unavailable explicit selections are preserved for every generation capabil
     for (const capability of ["image", "video", "text", "audio"] as ModelCapability[]) {
         expect(resolveModelForCapability(config, `removed::${capability}`, capability)).toBe(`removed::${capability}`);
     }
+});
+
+test("the managed cloud mode needs no local provider key for the built-in image models", () => {
+    const managed: AiConfig = { ...defaultConfig, channelMode: "remote", imageModel: "gpt-image-1", model: "gpt-image-1", channels: [] };
+    for (const model of FLORA_REMOTE_IMAGE_MODELS) {
+        expect(ready(managed, model.name)).toBe(true);
+    }
+});
+
+test("the managed cloud mode still rejects prefixed models and the local mode needs a provider", () => {
+    const managed: AiConfig = { ...defaultConfig, channelMode: "remote", channels: [] };
+    expect(ready(managed, "replacement::image-a")).toBe(false);
+    const local: AiConfig = { ...defaultConfig, channelMode: "local", channels: [] };
+    expect(ready(local, "gpt-image-1")).toBe(false);
+});
+
+test("the managed cloud mode resolves an image capability to a built-in cloud model", () => {
+    const managed: AiConfig = { ...defaultConfig, channelMode: "remote", imageModel: "gpt-image-2", channels: [] };
+    expect(resolveModelForCapability(managed, "gpt-image-2", "image")).toBe("gpt-image-1");
+    expect(resolveModelForCapability(managed, "dall-e-3", "image")).toBe("dall-e-3");
 });

@@ -79,8 +79,15 @@ const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
 export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
 
+/** 托管云端模式内置的生图模型：走 flora 后端网关，浏览器不需要配供应商 Key。 */
+export const FLORA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
+    { name: "gpt-image-1", capability: "image" },
+    { name: "dall-e-3", capability: "image" },
+    { name: "flux-1-schnell", capability: "image" },
+];
+
 export const defaultConfig: AiConfig = {
-    channelMode: "local",
+    channelMode: "remote",
     baseUrl: OPENAI_BASE_URL,
     apiKey: "",
     apiFormat: "openai",
@@ -99,8 +106,8 @@ export const defaultConfig: AiConfig = {
             ],
         },
     ],
-    model: "default::gpt-image-2",
-    imageModel: "default::gpt-image-2",
+    model: "gpt-image-1",
+    imageModel: "gpt-image-1",
     videoModel: "default::grok-imagine-video",
     textModel: "default::gpt-5.5",
     audioModel: "default::gpt-4o-mini-tts",
@@ -187,7 +194,26 @@ export function modelMatchesCapability(config: AiConfig, value: string, capabili
 export function resolveModelForCapability(config: AiConfig, currentModel: string | undefined, capability: ModelCapability) {
     const defaultModel = capability === "image" ? config.imageModel : capability === "video" ? config.videoModel : capability === "audio" ? config.audioModel : config.textModel;
     const fallbackModel = capability === "image" ? defaultConfig.imageModel : capability === "video" ? defaultConfig.videoModel : capability === "audio" ? defaultConfig.audioModel : defaultConfig.textModel;
-    for (const model of [currentModel, defaultModel]) {
+
+    // 显式选了某个渠道的模型（channelId::modelName）：沿用原语义，渠道没了也原样返回，
+    // 交给就绪校验去拦，绝不悄悄换成默认模型。
+    if (currentModel && decodeChannelModel(currentModel)) {
+        return pickConfiguredModel(config, capability, [currentModel, defaultModel], fallbackModel);
+    }
+
+    // 托管云端模式：生图直接用云端内置模型，浏览器不需要配置供应商 API Key。
+    if (config.channelMode === "remote" && capability === "image") {
+        if (currentModel && isRemoteImageModel(currentModel)) return currentModel;
+        const configured = (config.imageModel || "").trim();
+        if (isRemoteImageModel(configured)) return configured;
+        return FLORA_REMOTE_IMAGE_MODELS[0].name;
+    }
+
+    return pickConfiguredModel(config, capability, [currentModel, defaultModel], fallbackModel);
+}
+
+function pickConfiguredModel(config: AiConfig, capability: ModelCapability, candidates: Array<string | undefined>, fallbackModel: string) {
+    for (const model of candidates) {
         if (!model) continue;
         const configuredCapability = modelCapabilityOf(config, model);
         // Keep unavailable selections visible so the readiness check blocks the
@@ -198,8 +224,18 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
 }
 
 export function selectableModelsByCapability(config: AiConfig, capability?: ModelCapability) {
-    if (!capability) return config.models;
-    return config.channels.flatMap((channel) => channel.models.filter((model) => model.capability === capability).map((model) => encodeChannelModel(channel.id, model.name)));
+    const local = capability
+        ? config.channels.flatMap((channel) => channel.models.filter((model) => model.capability === capability).map((model) => encodeChannelModel(channel.id, model.name)))
+        : config.models;
+    if (config.channelMode !== "remote" || (capability && capability !== "image")) return local;
+    // 托管云端模式：云端内置生图模型排在最前，用户不配任何渠道也能直接选。
+    return uniqueModelOptions([...FLORA_REMOTE_IMAGE_MODELS.map((model) => model.name), ...local]);
+}
+
+/** 云端内置生图模型名（不带渠道前缀）。 */
+export function isRemoteImageModel(value: string) {
+    const model = value.trim();
+    return FLORA_REMOTE_IMAGE_MODELS.some((item) => item.name === model);
 }
 
 /** The user script (if any) attached to a model; empty string means use the system default call. */
@@ -208,6 +244,13 @@ export function resolveModelScript(config: AiConfig, value: string) {
 }
 
 function isAiConfigReady(config: AiConfig, model: string) {
+    // 带渠道前缀的模型：严格校验本地渠道的 baseUrl 与 apiKey。
+    if (decodeChannelModel(model)) {
+        const match = findChannelModel(config, model);
+        return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
+    }
+    // 托管云端模式：云端内置生图模型不需要浏览器里配供应商 API Key。
+    if (config.channelMode === "remote" && isRemoteImageModel(model)) return true;
     const match = findChannelModel(config, model);
     return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
 }
@@ -253,6 +296,8 @@ export const useConfigStore = create<ConfigStore>()(
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
                 const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
                 const config = { ...defaultConfig, ...persistedConfig };
+                // 保留用户已保存的渠道模式；没保存过就是托管云端模式。
+                const channelMode: AiConfig["channelMode"] = persistedConfig.channelMode === "local" ? "local" : "remote";
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
@@ -261,11 +306,12 @@ export const useConfigStore = create<ConfigStore>()(
                     webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config: {
                         ...config,
-                        channelMode: "local",
+                        channelMode,
                         apiFormat: normalizeApiFormat(config.apiFormat),
                         channels,
                         models,
-                        imageModel: normalizeModelOptionValue(config.imageModel || config.model, channels),
+                        model: channelMode === "remote" ? remoteImageModel(config.model) : config.model,
+                        imageModel: channelMode === "remote" ? remoteImageModel(config.imageModel || config.model) : normalizeModelOptionValue(config.imageModel || config.model, channels),
                         videoModel: normalizeModelOptionValue(config.videoModel, channels),
                         textModel: normalizeModelOptionValue(config.textModel || config.model, channels),
                         audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
@@ -293,7 +339,13 @@ export const useConfigStore = create<ConfigStore>()(
 
 export function useEffectiveConfig() {
     const config = useConfigStore((state) => state.config);
-    return useMemo(() => ({ ...config, channelMode: "local" as const }), [config]);
+    return useMemo(() => ({ ...config, channelMode: config.channelMode || ("remote" as const) }), [config]);
+}
+
+/** 托管云端模式下的生图模型：云端内置模型或默认的第一个。 */
+function remoteImageModel(value: string | undefined) {
+    const model = (value || "").trim();
+    return isRemoteImageModel(model) ? model : FLORA_REMOTE_IMAGE_MODELS[0].name;
 }
 
 /** Normalize a mixed list of raw model names or model objects into deduped ChannelModel entries. */

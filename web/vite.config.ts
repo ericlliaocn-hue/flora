@@ -41,6 +41,15 @@ function localPluginsManifest(): Plugin {
 export default defineConfig({
     base: process.env.VITE_BASE || "/",
     plugins: [react(), localPluginsManifest()],
+    // flora 后端网关：开发时把 /api 转发到本地 api，避免跨域与硬编码后端地址。
+    server: {
+        proxy: {
+            "/api": {
+                target: process.env.VITE_API_PROXY_TARGET || "http://localhost:8080",
+                changeOrigin: true,
+            },
+        },
+    },
     resolve: {
         alias: {
             "@": resolve(webDir, "src"),

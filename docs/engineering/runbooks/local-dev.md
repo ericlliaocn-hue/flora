@@ -11,7 +11,15 @@ cd flora/web
 # 或：pnpm install && pnpm dev
 ```
 
-默认端口见 `web/package.json` 的 Vite 脚本（当前为 3000）。打开后仍是「浏览器里填 OpenAI 兼容 Base URL / Key」的上游行为，直到 WP7。
+默认端口见 `web/package.json` 的 Vite 脚本（当前为 3000）。
+
+WP7 起前端默认是 **托管云端模式**（`channelMode: "remote"`）：生图不再直连任何模型供应商，
+而是走 flora 自己的 `api`（登录 → 钱包 → `submit` → 轮询 → `result`）。本地联调要同时起 `api`、
+`worker` 与本地 TOS 文件桶，见第 11 节。想退回上游那种「浏览器里填 Base URL / Key」的老行为，
+在「配置 → 渠道」里把模式切回 **本地直连**。
+
+Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（用 `VITE_API_PROXY_TARGET` 可改）；
+前端要打到别处时设 `VITE_API_BASE_URL`（例如 `http://127.0.0.1:8080`）。
 
 Docker 只构建/运行现有前端镜像时，同样 **不是** flora 业务栈。
 
@@ -560,7 +568,105 @@ ON CONFLICT (key, locale) DO NOTHING;"
 psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
 ```
 
-### 11. WP5 / WP6 / WP8 / WP9 的边界（不要误以为已经能用）
+### 11. WP7 前端联调（登录 + 钱包 + 生图闭环）
+
+WP7 起前端默认走 **托管云端模式**：浏览器只跟 flora 的 `api` 说话，不碰模型供应商，
+也不在浏览器里放任何供应商 API Key（ADR 0001）。生图按 ADR 0003 走
+`submit → 轮询 query → result`，取消调 `POST /api/v1/jobs/{jobId}/cancel`。
+
+#### 11.1 一起要起的东西
+
+| 进程 | 端口 | 备注 |
+| --- | --- | --- |
+| `api` | 8080 | 见第 3 节 |
+| `worker` | 8081 | 见第 3 节，不起 worker job 不会被消费 |
+| 本地 TOS 文件桶 | 18080 | stub 模式的落盘目录 `/tmp/flora-tos` |
+| Vite dev server | 3000 | `web/` 下 `bun run dev` |
+
+本地桶要带 CORS 头，否则浏览器 `fetch` 签名地址会被拦（前端会退化成直链渲染，
+但拿不到 base64 字节）：
+
+```bash
+python3 -c "
+import http.server, os
+os.chdir('/tmp/flora-tos')
+class H(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        super().end_headers()
+http.server.HTTPServer(('127.0.0.1', 18080), H).serve_forever()
+"
+```
+
+`api` 的 TOS 端点指到它：`FLORA_TOS_MODE=stub`、`FLORA_TOS_ENDPOINT=http://127.0.0.1:18080`、
+`FLORA_TOS_BUCKET=flora-dev`、`FLORA_TOS_LOCAL_DIR=/tmp/flora-tos`（默认值即可）。
+
+前端：
+
+```bash
+cd flora/web
+bun install
+bun run dev        # http://localhost:3000
+```
+
+Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（`VITE_API_PROXY_TARGET` 可改），
+所以浏览器里不用配任何地址。
+
+#### 11.2 走一遍
+
+1. 打开 <http://localhost:3000>，右上角点「登录 / 注册」→ 注册一个账号
+   （用户名 `^[a-zA-Z0-9_]{3,32}$`，密码 ≥ 8 位）。成功后顶栏出现 **钱包余额** 与用户名。
+   令牌存 localStorage 的 `flora:auth_token`，请求头名是 `flora-token`。
+2. 余额不够时生图会被拦：报错是后端返回的本地化短句「账户余额不足，请先充值。」，
+   `error_code` 是 `WALLET_INSUFFICIENT`，**不入队也不冻结**。本地加余额只能用第 7 节的运维 SQL。
+3. 余额够时点「开始生成」：前端 `POST /api/v1/jobs/submit` → 每 800ms 轮询
+   `GET /api/v1/jobs/{jobId}` → 成功后 `GET /api/v1/jobs/{jobId}/result` 取 `outputs[].url`
+   （api 现签的 TOS 预签名地址）→ 浏览器取字节渲染。
+4. 钱对得上：提交瞬间 `available` 减、`frozen` 加；成功后冻结转实扣（`frozen` 回 0）；
+   失败或取消则整笔退回。
+5. 取消：生成中点停止 → `POST /api/v1/jobs/{jobId}/cancel` → 任务收敛成 `cancelled`
+   （`error_code=JOB_CANCELLED`），冻结额退回。
+6. 没登录就点生成：后端返 `UNAUTHORIZED`，前端弹出登录框。
+
+本地实测（api + worker + 本地桶 + Vite，浏览器真实跑过两轮）：
+
+```
+未登录 → error_code=UNAUTHORIZED message="请先登录后再试。"（并弹出登录框）
+登录 → 顶栏显示余额与用户名；余额 180
+生图 → 847ms 返回 1 张，mimeType=image/png，bytes=67，dataUrl 为 base64
+余额 180 → 170（单次扣 10 credit，FLORA_BILLING_DEFAULT_JOB_COST）
+取消 → submit 得到 queued/hold_id → 取消前 query=running → cancel → 之后 query=cancelled（JOB_CANCELLED）→ 余额回到 170，frozen=0
+余额不足 → error_code=WALLET_INSUFFICIENT message="账户余额不足，请先充值。"，余额与冻结额都没变
+```
+
+#### 11.3 等价的 curl 验收
+
+前端把令牌放在 localStorage（`flora:auth_token`），请求头是 `flora-token`。
+用 curl 走同一条链路：
+
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
+  -d '{"username":"wp7demo","password":"password1","locale":"zh"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 钱包余额（顶栏显示的就是它）
+curl -s $API/wallet -H "flora-token: $TOKEN"
+
+# submit（params 只放已物化参数：不要塞整张画布或参考图 base64）
+JOB=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp7-1","capability":"image.generate","model":"gpt-image-1","params":{"prompt":"a quiet garden","size":"auto","quality":"auto"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+
+# 轮询 query → result
+curl -s $API/jobs/$JOB -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB/result -H "flora-token: $TOKEN"
+
+# 取消
+curl -s -X POST $API/jobs/$JOB/cancel -H "flora-token: $TOKEN"
+```
+
+### 12. WP5 / WP6 / WP7 / WP8 / WP9 的边界（不要误以为已经能用）
 
 - **没有钱包充值入口**：WP6 不提供 C 端自助充值接口（没有 `POST /api/v1/wallet/topup`），
   充值只能走运维 SQL、`FLORA_BILLING_INITIAL_CREDITS`，或未来 WP11 Admin 的受控加额。
@@ -579,6 +685,12 @@ psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, l
   Admin CRUD 留给 WP11。
 - **C 端静态 UI 文案不在库里**：`i18n_message` 只放服务端错误模板与运营可改的动态提示；
   按钮、导航栏、设置项文案仍在 `web/src/i18n/locales/`（两层 i18n 不混用）。
+- **前端托管模式只覆盖生图**：WP7 只把 **图片生成** 接到 flora API；
+  视频、音频、文本仍然走原来的本地直连渠道。
+- **画布还没有云端持久化**：画布与「我的素材」仍只存在浏览器本地，
+  换设备看不到（属 WP10）。不要在文档里写成已支持云同步。
+- **前端托管模式没有充值入口**：WP7 只读余额，余额只能靠运维 SQL 补。
+- **签名 URL 过期要重新取**：默认 900 秒；过期后前端重新调 `result` 拿新地址。
 
 ## TBD：flora 业务进程（WP5 之后）
 
@@ -587,7 +699,7 @@ psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, l
 - 火山 TOS 的 STS 临时凭证与回调（WP8 只做了存储与签名读地址）
 - Anytoken 的真实付费调用方式（WP5 只有适配器边界 + 本地 stub）
 - 支付渠道与充值订单（钱包在 WP6，但「钱怎么进来」要到 M4 / WP11 Admin）
-- 前端改打 flora API（WP7）
+- 画布云端持久化（WP10；WP7 只把生图接进 flora API）
 
 ## TBD：一键编排
 
@@ -598,12 +710,13 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | 问题 | 现在 | 目标 |
 | --- | --- | --- |
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP4+ 接任务链路 |
-| 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis | WP7 前端登录页 |
-| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游** | WP4–WP7 |
+| 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis；**WP7 前端已有登录/注册弹窗，顶栏显示登录态** | WP7 前端登录页 |
+| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游**；WP7 前端生图按钮已接上这条链路 | WP4–WP7 |
 | 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `flora.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
-| 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release | WP7 前端余额展示 |
+| 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release；**WP7 顶栏显示余额，生成后自动刷新** | WP7 前端余额展示 |
 | 如何加测试余额？ | WP6：运维 psql 充值 SQL（必须同时写 topup 流水）或 `FLORA_BILLING_INITIAL_CREDITS`；**没有 C 端自助充值接口** | M4 / WP11 admin |
-| 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`** | WP7 前端直接用 url 展示图片 |
+| 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`**；WP7 前端直接用这个 url 取字节渲染 | WP7 前端直接用 url 展示图片 |
 | 错误文案在哪改？ | WP9：C 端 `message` 按 locale 查 `i18n_message` 表，运维 psql 改词条即时生效；**没有 Admin 界面**（WP11） | WP11 运营后台 |
+| 前端生图走哪条路？ | WP7：默认 **托管云端模式**，生图走 flora `api`（不直连供应商、不在浏览器存供应商 Key）；「配置 → 渠道」可切回本地直连 | 全能力托管 |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。
