@@ -20,7 +20,7 @@
 | `i18n_message` | 文案 | WP9 已落地 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
-| 模型展示配置 | 运营 | WP11 | 待 WP11 brief 定 | 不是渠道账本 |
+| 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
 
 不建的表（非目标）：
 
@@ -50,6 +50,7 @@ WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)�
 | `locale` | TEXT | YES | | `zh` / `en` 偏好；空则回退 Accept-Language / zh |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
+| `role` | TEXT | NO | DEFAULT `'user'`，CHECK ∈ `user` \| `admin` | 角色；**WP11 `V7` 新增**。命中 `flora.admin.bootstrap-usernames` 的用户名在注册或登录时自动升为 `admin` |
 
 ## Job 四表（WP4 已落地）
 
@@ -83,6 +84,26 @@ WP6 已实现：见 [WP6 brief](../feature-briefs/2026-10-24-wp6-prepaid-wallet.
 方向由流水 `type` 决定）。
 
 账本只写在 api 进程；worker 不碰这三张表（ADR 0004）。
+
+## `model_display_config`（WP11 已落地）
+
+WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md)。表由
+`api/src/main/resources/db/migration/V7__create_admin_ops.sql` 建。
+
+这张表只管 **前端展示与上下架**：它既不存供应商 API Key，也不是额度账本
+（ADR 0001：Anytoken 是唯一模型网关，额度只有 `wallet` 一套账本）。
+`V7` 预置 4 条真实生图模型种子（`ON CONFLICT (model) DO NOTHING`）：
+`gpt-image-2` / `gpt-image-2.5-flare` / `gpt-image-2.5-sunburst` / `image2`。
+
+| 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | UUID | NO | PK | 默认 `gen_random_uuid()` |
+| `model` | TEXT | NO | UNIQUE (`model`) | flora 内部模型标识；唯一键 |
+| `capability` | TEXT | NO | DEFAULT `'image.generate'` | 能力名 |
+| `display_name` | TEXT | NO | | 前端展示名 |
+| `enabled` | BOOLEAN | NO | DEFAULT true | 是否上架；`GET /api/v1/models` 只返回上架的 |
+| `sort_order` | INT | NO | DEFAULT 0 | 排序位；小的排前面 |
+| `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | 最后一次改动时间 |
 
 ## 通用约定
 

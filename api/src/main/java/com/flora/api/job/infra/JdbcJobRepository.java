@@ -126,6 +126,15 @@ public class JdbcJobRepository implements JobRepository {
                 MAPPER, userId, limit);
     }
 
+    @Override
+    public boolean requeueForAdmin(UUID jobId, boolean clearHoldId) {
+        String sql = "UPDATE job SET status = 'queued', error_code = NULL, cancel_requested_at = NULL, "
+                + "max_attempts = GREATEST(max_attempts, attempt) + 1, updated_at = now() "
+                + (clearHoldId ? ", hold_id = NULL " : " ")
+                + "WHERE id = ? AND status IN ('dead', 'failed')";
+        return jdbc.update(sql, jobId) > 0;
+    }
+
     private static Instant toInstant(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant();
     }

@@ -31,6 +31,6 @@ public class GetCurrentUser {
             throw AuthException.unauthorized();
         }
         User user = users.findById(userId).orElseThrow(AuthException::unauthorized);
-        return new CurrentUser(user.id(), user.username(), user.locale());
+        return new CurrentUser(user.id(), user.username(), user.locale(), user.role());
     }
 }

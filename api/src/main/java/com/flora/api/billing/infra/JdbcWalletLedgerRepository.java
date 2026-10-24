@@ -65,6 +65,12 @@ public class JdbcWalletLedgerRepository implements WalletLedgerRepository {
                 MAPPER, userId);
     }
 
+    @Override
+    public List<WalletLedgerEntry> findRecentByUserId(UUID userId, int limit) {
+        return jdbc.query("SELECT " + COLUMNS + " FROM wallet_ledger WHERE user_id = ? "
+                + "ORDER BY created_at DESC, id DESC LIMIT ?", MAPPER, userId, limit);
+    }
+
     private static void setNullableUuid(java.sql.PreparedStatement ps, int index, UUID value) throws java.sql.SQLException {
         if (value == null) {
             ps.setNull(index, Types.OTHER);

@@ -7,3 +7,4 @@ export * from "./api/flora-client";
 export * from "./api/flora-auth";
 export * from "./api/flora-jobs";
 export * from "./api/flora-cloud";
+export * from "./api/flora-admin";

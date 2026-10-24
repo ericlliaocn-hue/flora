@@ -58,6 +58,9 @@ public final class I18nDefaultCatalog {
             Map.entry(ErrorCodes.ASSET_NOT_FOUND, Map.of(
                     "zh", "素材不存在。",
                     "en", "The asset does not exist.")),
+            Map.entry(ErrorCodes.FORBIDDEN, Map.of(
+                    "zh", "无权访问管理后台。",
+                    "en", "You do not have permission to access the admin console.")),
             Map.entry(KEY_JOB_FAILED_RETRY, Map.of(
                     "zh", "生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。",
                     "en", "Generation issue, retrying ({attempt}/{max_attempts}).")));

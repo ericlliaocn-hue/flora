@@ -25,6 +25,7 @@ C 端默认响应 **只** 含 `error_code` + `message`。原文只在 M4 / WP11 
 | `PROVIDER_UNAVAILABLE` | Anytoken / 上游不可用或未识别 | 未识别上游错误的默认落点 |
 | `IDEMPOTENCY_CONFLICT` | 同一 key 不同 body | 不静默复用旧 `job_id` |
 | `UNAUTHORIZED` | 无会话 | 未登录调用 C 端接口 |
+| `FORBIDDEN` | 已登录但不是管理员 | 访问 `/api/v1/admin/**` 被拒（WP11）；普通用户看到的稳定码 |
 | `VALIDATION_ERROR` | 请求字段不合法 | 参数缺失 / 类型错 / 取值越界 |
 | `PROJECT_NOT_FOUND` | 云端项目不存在或非本人 | 查别人的项目也返回此码，不泄露存在性（WP10） |
 | `ASSET_NOT_FOUND` | 云端素材不存在或非本人 | 同上（WP10） |
@@ -44,6 +45,9 @@ C 端默认响应 **只** 含 `error_code` + `message`。原文只在 M4 / WP11 
 | 缺词条回退 | 请求语言 → `zh` → `error_code` 本身（最后手段，仍不回退到上游英文堆栈） |
 
 `i18n_message` 同时承载非错误的动态运营文案（公告、模型下架说明、充值提示）。**不要**为每种语言建一张表，也不要在 Java 里 `if ("zh")` 拼错误。
+
+WP11 起，`FORBIDDEN` 同时以 `FORBIDDEN` 与 `error.FORBIDDEN` 两个 key 落种子（中英各一条），
+兼容「码名直接当 key」与「`error.` 前缀」两种取法。
 
 ### `i18n_message` 列级 schema
 

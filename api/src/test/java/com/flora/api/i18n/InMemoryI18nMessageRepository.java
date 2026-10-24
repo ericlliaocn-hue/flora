@@ -2,6 +2,7 @@ package com.flora.api.i18n;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,17 @@ public class InMemoryI18nMessageRepository implements I18nMessageRepository {
     /** 删掉一条，模拟运维误删词条后的回退路径。 */
     public void delete(String key, String locale) {
         rows.remove(index(key, locale));
+    }
+
+    @Override
+    public List<I18nMessage> search(String query) {
+        String keyword = query == null ? "" : query.trim().toLowerCase();
+        return rows.values().stream()
+                .filter(row -> keyword.isEmpty()
+                        || row.key().toLowerCase().contains(keyword)
+                        || row.template().toLowerCase().contains(keyword))
+                .sorted(Comparator.comparing(I18nMessage::key).thenComparing(I18nMessage::locale))
+                .toList();
     }
 
     private String index(String key, String locale) {

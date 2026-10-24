@@ -20,4 +20,11 @@ public interface WalletLedgerRepository {
 
     /** 某个用户的全部流水，按记账时间排序（对账与测试用）。 */
     List<WalletLedgerEntry> findLedgerByUserId(UUID userId);
+
+    /**
+     * 某个用户最近的流水，按记账时间倒序（WP11 运维排查用）。
+     *
+     * @param limit 单页上限
+     */
+    List<WalletLedgerEntry> findRecentByUserId(UUID userId, int limit);
 }

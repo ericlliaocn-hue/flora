@@ -18,7 +18,7 @@ public class AuthSessionService {
      */
     public AuthSession start(User user) {
         StpUtil.login(user.id().toString());
-        return new AuthSession(user.id(), user.username(), user.locale(), StpUtil.getTokenValue());
+        return new AuthSession(user.id(), user.username(), user.locale(), StpUtil.getTokenValue(), user.role());
     }
 
     /**

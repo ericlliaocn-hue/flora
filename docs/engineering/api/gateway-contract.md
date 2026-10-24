@@ -249,6 +249,146 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 
 响应：当前状态。已终态：幂等返回当前状态。运行中：置 `cancel_requested_at`；最终 `cancelled` 并 release。用户得到 `JOB_CANCELLED` 或成功取消的友好句，而不是上游 cancel 原文。
 
+## Models（`/api/v1/models`）
+
+**用途**：C 端读取当前上架的托管模型展示项。需登录（`AuthPathPolicy` 覆盖 `/api/v1/**`）。
+
+请求：`GET /api/v1/models`，无参数。
+
+响应：`model_display_config` 里 `enabled = true` 的行，按 `sort_order ASC, model ASC` 排序。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string (uuid) | |
+| `model` | string | flora 内部模型标识 |
+| `capability` | string | 如 `image.generate` |
+| `display_name` | string | 前端展示名 |
+| `enabled` | boolean | 是否上架；本接口只返回上架的，恒为 `true` |
+| `sort_order` | integer | 排序位 |
+| `updated_at` | string (ISO 8601) | |
+
+这张表只管展示与上下架，**不含任何供应商 API Key**，也**不是**额度账本（ADR 0001）。
+
+## Admin（`/api/v1/admin/**`）
+
+**用途**：运维与配置后台（M4）：查用户与钱包、手工加额、查任务与上游留痕、重投死信、在线改文案、模型上下架。**不是**第二个创作台。
+
+### 权限闸门
+
+| 场景 | 结果 |
+| --- | --- |
+| 未登录 | `ok=false, error_code="UNAUTHORIZED"`（`AuthPathPolicy` 覆盖整个 `/api/v1/**`） |
+| 已登录但 `users.role != 'admin'` | `ok=false, error_code="FORBIDDEN"`，HTTP 仍为 200 |
+| 管理员 | 正常返回 `data` |
+
+目标用户只能来自 **路径参数或查询参数**；接口不接受请求体里的 `user_id` 作为身份来源。
+
+### `GET /api/v1/admin/users?q=&limit=50`
+
+`q` 按 `username` 模糊匹配（`ILIKE`），为空则列全部；`limit` 缺省 50，收敛到 1..200；按 `created_at DESC` 排序。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `user_id` | string (uuid) | |
+| `username` | string | |
+| `role` | string | `user` \| `admin` |
+| `locale` | string \| null | |
+| `available` | integer | 来自 `wallet.available`；用户还没有 `wallet` 行时为 0 |
+| `frozen` | integer | 来自 `wallet.frozen`；同上为 0 |
+| `created_at` / `updated_at` | string (ISO 8601) | |
+
+### `POST /api/v1/admin/wallets/{userId}/topup`
+
+请求体：`{"amount": 100}`。`amount` 必须为正整数；`userId` 对应的用户不存在时返回 `VALIDATION_ERROR`。
+
+响应：钱包快照（字段同 [Wallet](#wallet)）。
+
+**单账本红线（ADR 0001）**：加额 **必须** 走既有 `TopUpWallet.topUp`，
+在同一事务里加 `wallet.available` 并写一条 `type='topup'` 的 `wallet_ledger`。
+禁止绕过账本直接 `UPDATE wallet`。
+
+### `GET /api/v1/admin/wallets/{userId}/ledger?limit=50`
+
+`limit` 缺省 50，收敛到 1..200；按 `created_at DESC` 排序。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string (uuid) | |
+| `user_id` | string (uuid) | |
+| `type` | string | `topup` \| `freeze` \| `confirm` \| `release` |
+| `amount` | integer | 恒为正整数，方向由 `type` 决定 |
+| `hold_id` | string (uuid) \| null | 关联冻结单 |
+| `job_id` | string (uuid) \| null | 关联任务 |
+| `created_at` | string (ISO 8601) | |
+
+### `GET /api/v1/admin/jobs?status=&user_id=&limit=50`
+
+`status` 过滤 `job.status`，取值必须是合法状态（`created` / `queued` / `running` / `succeeded` / `failed` / `cancelled` / `dead`），非法值返回 `VALIDATION_ERROR`；
+`user_id` 按用户过滤；`limit` 缺省 50，收敛到 1..200；按 `created_at DESC` 排序。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `job_id` | string (uuid) | |
+| `user_id` | string (uuid) | |
+| `username` | string | 关联 `users.username` |
+| `status` | string | 状态机枚举 |
+| `capability` | string | 如 `image.generate` |
+| `model` | string | |
+| `prompt` | string | 从 `job.params` 提取；缺失为空串 |
+| `attempt` / `max_attempts` | integer | |
+| `hold_id` | string (uuid) \| null | |
+| `hold_status` | string \| null | 关联 `wallet_hold.status`：`frozen` \| `confirmed` \| `released` |
+| `error_code` | string \| null | |
+| `created_at` / `updated_at` | string (ISO 8601) | |
+| `steps` | array | 该任务的全部 `job_step`，按 `attempt ASC`；元素含 `step_id`、`attempt`、`status`、`error_code`、`provider_task_id`、`started_at`、`ended_at` |
+| `provider_tasks` | array | 该任务的全部 `provider_task`，按 `created_at ASC`；元素含 `id`、`job_step_id`、`upstream_request_id`、`raw_status`、`raw_body`、`created_at` |
+
+**安全边界（ADR 0005）**：`raw_status` 与 `raw_body` **只允许**出现在 `/api/v1/admin/**` 的响应里。
+C 端 `/api/v1/jobs/**`（`query` / `result` / `history`）严禁包含这两个字段。
+
+### `POST /api/v1/admin/jobs/{jobId}/retry`
+
+把 `dead` 或 `failed` 的任务重新入队。任务不存在 → `JOB_NOT_FOUND`；当前状态不是 `dead` / `failed` → `VALIDATION_ERROR`。
+
+响应：更新后的任务视图（此时 `status = "queued"`）。
+
+重投必须守住的三点：
+
+1. **保留 `attempt` 与历史 `job_step`**（`job_step` 有 `UNIQUE (job_id, attempt)`，且 claim 会做 `attempt + 1`）；`max_attempts` 改成 `GREATEST(max_attempts, attempt) + 1`；`error_code` 与 `cancel_requested_at` 清空。
+2. **冻结单已结清就解绑**：原 `wallet_hold.status` 不再是 `frozen` 时，把 `job.hold_id` 置为 `null`，避免二次结算同一张冻结单；仍是 `frozen` 则保留。
+3. **同事务写 outbox**：`insertPending(eventId, "job", jobId, {"job_id":"...","event_id":"..."})`，由既有 dispatcher 投递给 worker（消息体只有 `job_id`，ADR 0003）。
+
+### `GET /api/v1/admin/i18n-messages?q=`
+
+按 `key ASC, locale ASC` 排序；`q` 非空时按 `key` 或 `template` 包含该关键字过滤。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string (uuid) | |
+| `key` | string | 稳定键，常与 `error_code` 相同 |
+| `locale` | string | `zh` \| `en` |
+| `template` | string | 短句模板 |
+| `updated_at` | string (ISO 8601) | |
+
+### `PUT /api/v1/admin/i18n-messages`
+
+请求体：`{"key": "WALLET_INSUFFICIENT", "locale": "zh", "template": "余额不足，请联系管理员充值。"}`。
+
+`key` 去空白后长度 1..128，`locale` 只能是 `zh` / `en`，`template` 去空白后长度 1..1000；不合法一律 `VALIDATION_ERROR`。
+
+响应：更新后的词条。写入 **即刻生效**：`I18nMessageService` 每次解析都查表，不需要重启 api。
+
+### `GET /api/v1/admin/models`
+
+返回 `model_display_config` 全部行（含已下架的），按 `sort_order ASC, model ASC` 排序。字段同 [Models](#modelsapi-v1models)。
+
+### `PUT /api/v1/admin/models/{model}`
+
+请求体：`{"display_name": "GPT Image 2", "capability": "image.generate", "enabled": false, "sort_order": 10}`。
+
+`display_name` 与 `{model}` 为空时返回 `VALIDATION_ERROR`；`{model}` 不存在则 upsert 插入一行。
+`capability` / `enabled` / `sort_order` 不传时沿用已有值。响应：更新后的展示配置。
+
 ## 规范化规则
 
 1. **flora 内部字段名 ≠ Anytoken 字段名。** 映射只发生在 gateway 适配层（Worker 侧），C 端合同永远用 flora 自己的名字。

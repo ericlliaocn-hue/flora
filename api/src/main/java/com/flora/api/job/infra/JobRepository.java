@@ -55,4 +55,21 @@ public interface JobRepository {
      * <p>WP10 起用于 C 端生图历史：换浏览器登录也能看到自己的任务。
      */
     List<Job> findByUserOrderByCreatedAtDesc(UUID userId, int limit);
+
+    /**
+     * 运维重投：把 dead / failed 拉回 queued，重新入队执行。
+     *
+     * <p>三个关键点（WP11）：
+     * <ul>
+     *   <li>保留 {@code attempt} 与历史 {@code job_step}（唯一约束 UNIQUE(job_id, attempt)，
+     *       且 claim 会做 attempt+1）；</li>
+     *   <li>{@code max_attempts} 变成 {@code GREATEST(max_attempts, attempt) + 1}；</li>
+     *   <li>{@code cancel_requested_at} 与 {@code error_code} 清空。</li>
+     * </ul>
+     *
+     * @param clearHoldId 原冻结单已结清（非 frozen）时置 {@code hold_id = NULL}，
+     *                    避免二次结算同一张冻结单
+     * @return 是否真的重投了（任务不存在或状态不是 dead/failed 时返回 false）
+     */
+    boolean requeueForAdmin(UUID jobId, boolean clearHoldId);
 }

@@ -56,4 +56,14 @@ public class JdbcI18nMessageRepository implements I18nMessageRepository {
                 MAPPER, key, locale, template);
         return rows.get(0);
     }
+
+    @Override
+    public List<I18nMessage> search(String query) {
+        String keyword = query == null ? "" : query.trim();
+        if (keyword.isEmpty()) {
+            return jdbc.query("SELECT " + COLUMNS + " FROM i18n_message ORDER BY key, locale", MAPPER);
+        }
+        return jdbc.query("SELECT " + COLUMNS + " FROM i18n_message WHERE key ILIKE ? OR template ILIKE ? "
+                + "ORDER BY key, locale", MAPPER, "%" + keyword + "%", "%" + keyword + "%");
+    }
 }

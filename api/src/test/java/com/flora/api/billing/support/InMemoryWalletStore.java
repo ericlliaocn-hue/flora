@@ -195,6 +195,15 @@ public class InMemoryWalletStore implements WalletRepository, WalletHoldReposito
         return ledger.stream().filter(entry -> entry.userId().equals(userId)).toList();
     }
 
+    @Override
+    public List<WalletLedgerEntry> findRecentByUserId(UUID userId, int limit) {
+        return ledger.stream()
+                .filter(entry -> entry.userId().equals(userId))
+                .sorted(Comparator.comparing(WalletLedgerEntry::createdAt).reversed())
+                .limit(limit)
+                .toList();
+    }
+
     // ----- 测试辅助 -----
 
     /** 所有流水，按记账顺序。 */

@@ -4,6 +4,8 @@ export type FloraUser = {
     user_id: string;
     username: string;
     locale: string | null;
+    /** 角色：普通用户或运维管理员；顶栏据此决定是否展示后台入口。 */
+    role?: "user" | "admin";
 };
 
 export type FloraAuthSession = FloraUser & {
