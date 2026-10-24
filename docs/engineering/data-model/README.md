@@ -95,6 +95,19 @@ WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md
 `V7` 预置 4 条真实生图模型种子（`ON CONFLICT (model) DO NOTHING`）：
 `gpt-image-2` / `gpt-image-2.5-flare` / `gpt-image-2.5-sunburst` / `image2`。
 
+**WP12 `V8`（`V8__seed_seedance_video_models.sql`）再幂等补 4 条视频模型种子**
+（`capability = 'video.generate'`，`ON CONFLICT (model) DO NOTHING`）：
+
+| model | capability | display_name | enabled | sort_order |
+| --- | --- | --- | --- | --- |
+| `seedance2` | `video.generate` | Seedance 2 | true | 50 |
+| `seedance2.5` | `video.generate` | Seedance 2.5 | true | 60 |
+| `seedance-fast` | `video.generate` | Seedance Fast | true | 70 |
+| `seedance-mini` | `video.generate` | Seedance Mini | true | 80 |
+
+`V8` 只做种子插入，**不改表结构**（列定义仍以本页为准）。`capability` 列放的是
+`image.generate` / `video.generate` 这类能力名，不是渠道名，也不是额度键。
+
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | UUID | NO | PK | 默认 `gen_random_uuid()` |

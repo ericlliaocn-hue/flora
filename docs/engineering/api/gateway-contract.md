@@ -66,6 +66,54 @@
 
 HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`** 重新提交。
 
+### 视频任务（WP12）
+
+**用途**：提交一个托管视频生成任务。能力名 `video.generate`，与 `image.generate` 走同一套
+冻结 / 队列 / 结算链路，只是 worker 侧换成 Anytoken 的视频协议。
+
+请求（`POST /api/v1/jobs/submit`）：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `idempotency_key` | string | 是 | 与生图同一套幂等语义 |
+| `capability` | string | 是 | 固定 `video.generate` |
+| `model` | string | 是 | `seedance2` / `seedance2.5` / `seedance-fast` / `seedance-mini`（`model_display_config` 里 `capability = 'video.generate'` 的行） |
+| `params` | object | 是 | 已物化参数，见下表 |
+
+`params` 字段（**只允许已物化参数**：严禁塞画布文档、Base64 图片或浏览器里的 API Key）：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `prompt` | string | 是 | 提示词 |
+| `size` | string | 否 | 画面比例串（如 `16:9`）或像素串（如 `1280x720`）；worker 两种都认 |
+| `seconds` | string | 否 | 时长（秒） |
+| `duration` | number | 否 | 时长（秒），与 `seconds` 等价，`seconds` 缺失时用它 |
+| `resolution` | string | 否 | 如 `720p` / `1080p` |
+| `aspect_ratio` | string | 否 | 显式比例，优先于 `size` 的推导 |
+| `reference_images` | array | 否 | 参考图对象键列表 |
+| `reference_videos` | array | 否 | 参考视频对象键列表 |
+
+示例：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "job_id": "3f2b9a10-7c4d-4a6e-9b21-0d5e8c1a4f77",
+    "status": "queued",
+    "hold_id": "90d6bf80-1234-4567-89ab-cdef01234567",
+    "error_code": null,
+    "message": null
+  },
+  "error_code": null,
+  "message": null
+}
+```
+
+失败时的 `error_code` 见 [data-model/errors.md](../data-model/errors.md)：视频专有码有
+`GATEWAY_TIMEOUT`（轮询超限，可重试）、`GATEWAY_INVALID_RESPONSE`（上游没给任务 id，不可重试）、
+`UPSTREAM_VIDEO_FAILED`（上游失败终态，不可重试）。
+
 ## Wallet
 
 **用途**：查当前登录用户的钱包余额快照。需登录（`AuthPathPolicy` 覆盖 `/api/v1/**`）。
@@ -224,14 +272,14 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 | --- | --- | --- |
 | `job_id` | string (uuid) | 回显 |
 | `status` | string | 必须先看状态，再读 outputs |
-| `outputs` | array | 成功时：`[{ "type": "image", "object_key": "...", "url": "短期读地址" }]` |
+| `outputs` | array | 成功时：`[{ "type": "image", "object_key": "...", "url": "短期读地址" }]`；视频任务是 `{ "type": "video", "object_key": "...", "url": "短期读地址" }` |
 | `error_code` / `message` | string | 非成功 |
 
 `outputs[]` 元素：
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `type` | string | 是 | 如 `image` |
+| `type` | string | 是 | `image` 或 `video`（WP12 起：`job.capability` 以 `video` 开头，或产物对象键以 `.mp4` 结尾时返回 `video`） |
 | `object_key` | string | 是 | TOS 对象键 |
 | `url` | string | 否 | api 用 TOS 签名的短期读地址 |
 
@@ -410,6 +458,32 @@ C 端 `/api/v1/jobs/**`（`query` / `result` / `history`）严禁包含这两个
 可加传输层 `event_id`。**禁止**塞 `params` / 图片 / 钱包额。
 
 Worker 调 Anytoken 的请求 / 响应 **不** 定义为本合同的一部分。映射发生在基础设施层：上游失败 → `error_code` + `provider_task.raw_body`。
+
+### Seedance 视频三步协议（WP12）
+
+`capability` 以 `video` 开头时，worker 走 Anytoken 的 **视频** 端点（与生图的
+`/v1/images/generations` 分开），用 `FLORA_GATEWAY_VIDEO_API_KEY` 认证：
+
+| 步 | 请求 | 用途 |
+| --- | --- | --- |
+| 1 | `POST /v1/videos/generations` | 提交异步视频任务；请求头带 `Idempotency-Key: <jobId>:<attempt>`；body 含 `model` / `prompt` / `aspect_ratio` / `duration` /（可选）`resolution` /（可选）`reference_images` /（可选）`reference_videos`。响应里取任务 id（`id` → `request_id` → `data.id`）与初始 `status` |
+| 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `flora.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制 |
+| 3 | `GET /v1/videos/{taskId}/content` | 下载视频字节；拿不到字节时回退到响应里的直链字段（`url` / `video_url` / `data.url` / `data[0].url` / `output.video_url`） |
+
+产物对象键固定为 `anytoken/vid/{jobId}/{attempt}.mp4`，以 `video/mp4` 写入火山 TOS；
+worker 只写 `object_key`，读地址仍由 api 现签（同 `Result` 章节）。
+
+错误落点：
+
+| 情况 | `error_code` | 可重试 |
+| --- | --- | --- |
+| 提交 / 轮询返回 429 或 5xx | `PROVIDER_UNAVAILABLE` | 是 |
+| 提交 / 轮询返回其他 4xx | `JOB_FAILED` | 否 |
+| 上游进入失败终态 | `UPSTREAM_VIDEO_FAILED` | 否 |
+| 轮询达到上限仍未进终态 | `GATEWAY_TIMEOUT` | 是 |
+| 上游没给任务 id | `GATEWAY_INVALID_RESPONSE` | 否 |
+
+上游原文一律进 `provider_task.raw_status` / `raw_body`（仅 Admin 可见），**不**进 C 端 `message`。
 
 ## 画布侧怎么用
 

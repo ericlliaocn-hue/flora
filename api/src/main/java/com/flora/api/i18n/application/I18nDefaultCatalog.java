@@ -61,6 +61,15 @@ public final class I18nDefaultCatalog {
             Map.entry(ErrorCodes.FORBIDDEN, Map.of(
                     "zh", "无权访问管理后台。",
                     "en", "You do not have permission to access the admin console.")),
+            Map.entry(ErrorCodes.GATEWAY_TIMEOUT, Map.of(
+                    "zh", "视频生成超时，请稍后重试。",
+                    "en", "The video generation timed out. Please try again later.")),
+            Map.entry(ErrorCodes.GATEWAY_INVALID_RESPONSE, Map.of(
+                    "zh", "生成服务返回了无法识别的结果。",
+                    "en", "The generation service returned an unrecognized result.")),
+            Map.entry(ErrorCodes.UPSTREAM_VIDEO_FAILED, Map.of(
+                    "zh", "视频生成失败，请调整提示词后重试。",
+                    "en", "The video generation failed. Please adjust the prompt and try again.")),
             Map.entry(KEY_JOB_FAILED_RETRY, Map.of(
                     "zh", "生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。",
                     "en", "Generation issue, retrying ({attempt}/{max_attempts}).")));

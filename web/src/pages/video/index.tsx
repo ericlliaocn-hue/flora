@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, LoaderCircle, Plus, SlidersHorizontal, Sparkles, Trash2, Upload, VideoIcon } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
 import { App, Button, Checkbox, Drawer, Empty, Input, Modal, Tag, Typography } from "antd";
 import localforage from "localforage";
 import { nanoid } from "nanoid";
@@ -16,7 +16,9 @@ import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
 import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUrlFor, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
+import { listFloraJobHistory, type FloraJobHistoryItem } from "@/services/api/flora-cloud";
 import { useAssetStore } from "@/stores/use-asset-store";
+import { useAuthStore } from "@/stores/use-auth-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import { boolConfig, modelOptionLabel, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -84,6 +86,7 @@ export default function VideoPage() {
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [results, setResults] = useState<GenerationResult[]>([]);
     const [logs, setLogs] = useState<GenerationLog[]>([]);
+    const [cloudLogs, setCloudLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -104,6 +107,7 @@ export default function VideoPage() {
 
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
+    const token = useAuthStore((state) => state.token);
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -114,6 +118,26 @@ export default function VideoPage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    // WP12：云端视频任务历史（跨浏览器可见）。拉不到不影响本地记录。
+    const syncCloudHistory = async () => {
+        if (!token) {
+            setCloudLogs([]);
+            return;
+        }
+        try {
+            const items = await listFloraJobHistory({ limit: 50 });
+            setCloudLogs(items.filter((item) => item.capability === "video.generate").map(cloudHistoryToLog));
+        } catch {
+            // 云端历史拉不到不影响本地记录，静默忽略。
+        }
+    };
+
+    useEffect(() => {
+        void syncCloudHistory();
+    }, [token]);
+
+    const mergedLogs = useMemo(() => [...logs, ...cloudLogs].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)), [cloudLogs, logs]);
 
     const addReferences = async (files?: FileList | null) => {
         const selectedFiles = Array.from(files || []);
@@ -333,6 +357,7 @@ export default function VideoPage() {
                     if (agentTaskId) updateAgentTask(agentTaskId, { status: "succeeded", successCount: 1, failCount: 0, error: undefined });
                     await saveLog({ ...log, status: "success", durationMs: nextVideo.durationMs, video: nextVideo, error: undefined });
                     message.success(t("videoWorkbench.generated"));
+                    void syncCloudHistory();
                     return;
                 }
                 if (state.status === "failed") throw new Error(state.error);
@@ -345,6 +370,7 @@ export default function VideoPage() {
             if (agentTaskId) updateAgentTask(agentTaskId, { status: "failed", successCount: 0, failCount: 1, error: errorMessage });
             await saveLog({ ...log, status: "failed", durationMs: Date.now() - log.createdAt, error: errorMessage });
             message.error(errorMessage);
+            void syncCloudHistory();
         } finally {
             activeLogIdsRef.current.delete(log.id);
             if (!activeLogIdsRef.current.size) {
@@ -373,7 +399,7 @@ export default function VideoPage() {
         <div className="flex h-full flex-col overflow-hidden bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
             <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
-                    <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
+                    <LogPanel logs={mergedLogs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
                 </aside>
 
                 <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
@@ -493,7 +519,7 @@ export default function VideoPage() {
                 }}
             />
             <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
-                <LogPanel logs={logs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
+                <LogPanel logs={mergedLogs} selectedLogIds={selectedLogIds} activeLogId={previewLog?.id} onSelectedLogIdsChange={setSelectedLogIds} onCreateSession={createSession} onDeleteSelected={() => setDeleteConfirmOpen(true)} onPreviewLog={previewGenerationLog} />
             </Drawer>
             <Drawer title={t("workbench.settings")} placement="bottom" height="82vh" open={settingsOpen} onClose={() => setSettingsOpen(false)}>
                 <div className="grid grid-cols-2 gap-3 pb-4">
@@ -767,6 +793,30 @@ function buildLog({ prompt, model, config, references, durationMs, status, task,
         task,
         video,
         error,
+    };
+}
+
+/** 云端视频任务历史 → 本地生成记录形状。result_urls 是后端现签的 TOS 读地址。 */
+function cloudHistoryToLog(item: FloraJobHistoryItem): GenerationLog {
+    const createdAt = Date.parse(item.created_at) || Date.now();
+    const succeeded = item.status === "succeeded";
+    const resultUrl = item.result_urls?.[0];
+    return {
+        id: `cloud:${item.job_id}`,
+        createdAt,
+        title: item.prompt || item.model,
+        prompt: item.prompt,
+        time: new Date(createdAt).toLocaleString(i18n.resolvedLanguage, { hour12: false }),
+        model: item.model,
+        config: { model: item.model, videoModel: item.model, size: "", vquality: "", videoSeconds: "", videoGenerateAudio: "", videoWatermark: "", videoMode: "frames" },
+        references: [],
+        durationMs: 0,
+        size: "",
+        resolution: "",
+        seconds: "",
+        status: succeeded ? "success" : item.status === "running" || item.status === "queued" ? "pending" : "failed",
+        error: succeeded ? undefined : item.message || item.error_code || undefined,
+        video: succeeded && resultUrl ? { id: `cloud:${item.job_id}`, url: resultUrl, storageKey: "", durationMs: 0, width: 0, height: 0, bytes: 0, mimeType: "video/mp4" } : undefined,
     };
 }
 

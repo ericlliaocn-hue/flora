@@ -8,11 +8,13 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
+import com.flora.worker.storage.MinimalMp4;
 import com.flora.worker.storage.MinimalPng;
 import com.flora.worker.storage.TosObjectStorage;
 import com.flora.worker.storage.TosObjectStorageAdapter;
@@ -405,21 +407,26 @@ class AnytokenGatewayAdapterTest {
         }
     }
 
-    /** 视频能力用独立的 video key。 */
+    /** 视频能力用独立的 video key（WP12 起视频走 Seedance 的三步协议，不再打生图端点）。 */
     @Test
     void videoCapabilityUsesTheVideoApiKey() throws IOException {
         AtomicReference<String> authorization = new AtomicReference<>();
-        HttpServer server = server(exchange -> {
+        HttpServer server = videoServer(exchange -> {
             authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
-            respond(exchange, 200, "{\"id\":\"upstream-1\"}");
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"upstream-1\",\"status\":\"completed\"}");
+                return;
+            }
+            if (exchange.getRequestURI().getPath().endsWith("/content")) {
+                respondBytes(exchange, 200, MinimalMp4.BYTES);
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"completed\"}");
         });
         try {
-            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
-                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, "video-secret",
-                            5000, "/v1/generations"),
-                    mapper, tosStorage());
+            AnytokenGatewayAdapter adapter = videoAdapter(server, "video-secret");
 
-            adapter.execute(new AnytokenRequest(UUID.randomUUID(), 1, "video.generate", "seedance2", "{}"));
+            adapter.execute(videoRequest(UUID.randomUUID(), 1, "{}"));
 
             assertThat(authorization.get()).isEqualTo("Bearer video-secret");
         } finally {
@@ -518,6 +525,214 @@ class AnytokenGatewayAdapterTest {
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream out = exchange.getResponseBody()) {
             out.write(bytes);
+        }
+    }
+
+    private void respondBytes(HttpExchange exchange, int status, byte[] bytes) throws IOException {
+        exchange.getResponseHeaders().add("Content-Type", "video/mp4");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write(bytes);
+        }
+    }
+
+    // ------------------------------------------------------- Seedance 视频协议
+
+    /**
+     * Seedance 三步协议的桩：提交、轮询、内容下载都挂在 {@code /v1/videos} 前缀下，
+     * 具体分支由处理函数按路径与请求方法自己分。
+     */
+    private HttpServer videoServer(Responder responder) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/videos", exchange -> responder.respond(exchange));
+        server.start();
+        return server;
+    }
+
+    private AnytokenGatewayAdapter videoAdapter(HttpServer server, String videoKey) {
+        String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+        return new AnytokenGatewayAdapter(
+                new AnytokenProperties("http", baseUrl, API_KEY, videoKey, 5000, "/v1/images/generations",
+                        "/v1/videos/generations", "/v1/videos", 1L, 5),
+                mapper, tosStorage());
+    }
+
+    private AnytokenRequest videoRequest(UUID jobId, int attempt, String paramsJson) {
+        return new AnytokenRequest(jobId, attempt, "video.generate", "seedance2", paramsJson);
+    }
+
+    /** WP12：stub 模式下视频任务写入 .mp4 对象键与 video/mp4 内容类型。 */
+    @Test
+    void stubVideoStoresTheMp4BytesInTos() throws IOException {
+        UUID jobId = UUID.randomUUID();
+
+        AnytokenAttemptResult result = stubAdapter().execute(videoRequest(jobId, 1, "{}"));
+
+        assertThat(result.succeeded()).isTrue();
+        assertThat(result.outputObjectKeys()).containsExactly("anytoken/vid/" + jobId + "/1.mp4");
+        java.nio.file.Path stored = tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/1.mp4");
+        assertThat(stored).exists();
+        assertThat(java.nio.file.Files.readAllBytes(stored)).isEqualTo(MinimalMp4.BYTES);
+    }
+
+    /** WP12：提交 → 轮询（processing → completed）→ 下载内容入桶。 */
+    @Test
+    void httpVideoSubmitsPollsAndStoresTheContent() throws IOException {
+        AtomicReference<String> submitted = new AtomicReference<>();
+        AtomicReference<String> authorization = new AtomicReference<>();
+        AtomicInteger polls = new AtomicInteger();
+        HttpServer server = videoServer(exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            if ("POST".equals(exchange.getRequestMethod()) && path.endsWith("/generations")) {
+                submitted.set(readBody(exchange));
+                respond(exchange, 200, "{\"id\":\"task-1\",\"status\":\"processing\"}");
+                return;
+            }
+            if (path.endsWith("/content")) {
+                respondBytes(exchange, 200, MinimalMp4.BYTES);
+                return;
+            }
+            polls.incrementAndGet();
+            respond(exchange, 200, polls.get() == 1
+                    ? "{\"status\":\"processing\"}"
+                    : "{\"status\":\"completed\",\"data\":{\"status\":\"completed\"}}");
+        });
+        try {
+            UUID jobId = UUID.randomUUID();
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(jobId, 2, "{\"prompt\":\"a cat\",\"size\":\"1280x720\",\"duration\":\"8\",\"resolution\":\"1080p\"}"));
+
+            assertThat(result.succeeded()).isTrue();
+            assertThat(result.upstreamRequestId()).isEqualTo("task-1");
+            assertThat(result.outputObjectKeys()).containsExactly("anytoken/vid/" + jobId + "/2.mp4");
+            assertThat(polls.get()).isEqualTo(2);
+            assertThat(authorization.get()).isEqualTo("Bearer video-secret");
+
+            // 提交体：比例、时长、清晰度都按协议映射
+            JsonNode body = readJson(submitted.get());
+            assertThat(body.get("model").asText()).isEqualTo("seedance2");
+            assertThat(body.get("prompt").asText()).isEqualTo("a cat");
+            assertThat(body.get("aspect_ratio").asText()).isEqualTo("16:9");
+            assertThat(body.get("duration").asInt()).isEqualTo(8);
+            assertThat(body.get("resolution").asText()).isEqualTo("1080p");
+
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/2.mp4")))
+                    .isEqualTo(MinimalMp4.BYTES);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** WP12：竖版尺寸映射成 9:16；没传 size 时默认 16:9。 */
+    @Test
+    void httpVideoMapsTheVerticalSizeToNineBySixteen() throws IOException {
+        AtomicReference<String> submitted = new AtomicReference<>();
+        HttpServer server = videoServer(exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                submitted.set(readBody(exchange));
+                respond(exchange, 200, "{\"id\":\"task-2\",\"status\":\"completed\"}");
+                return;
+            }
+            if (exchange.getRequestURI().getPath().endsWith("/content")) {
+                respondBytes(exchange, 200, MinimalMp4.BYTES);
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"completed\"}");
+        });
+        try {
+            videoAdapter(server, "video-secret").execute(videoRequest(UUID.randomUUID(), 1, "{\"size\":\"720x1280\"}"));
+            assertThat(readJson(submitted.get()).get("aspect_ratio").asText()).isEqualTo("9:16");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** WP12：上游视频任务进失败终态 → 不可重试。 */
+    @Test
+    void httpVideoFailedTerminalIsNotRetryable() throws IOException {
+        HttpServer server = videoServer(exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"task-3\",\"status\":\"processing\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"failed\",\"error\":{\"message\":\"content policy\"}}");
+        });
+        try {
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(result.succeeded()).isFalse();
+            assertThat(result.retryable()).isFalse();
+            assertThat(result.errorCode()).isEqualTo("UPSTREAM_VIDEO_FAILED");
+            assertThat(result.rawStatus()).isEqualTo("failed");
+            assertThat(result.outputObjectKeys()).isEmpty();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** WP12：轮询到上限仍未完成 → 可重试的 GATEWAY_TIMEOUT。 */
+    @Test
+    void httpVideoTimesOutAndStaysRetryable() throws IOException {
+        HttpServer server = videoServer(exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"task-4\",\"status\":\"processing\"}");
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"processing\"}");
+        });
+        try {
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(result.succeeded()).isFalse();
+            assertThat(result.retryable()).isTrue();
+            assertThat(result.errorCode()).isEqualTo("GATEWAY_TIMEOUT");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** WP12：上游没给任务 id → 不可重试的 GATEWAY_INVALID_RESPONSE。 */
+    @Test
+    void httpVideoWithoutATaskIdIsInvalid() throws IOException {
+        HttpServer server = videoServer(exchange -> respond(exchange, 200, "{\"status\":\"processing\"}"));
+        try {
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(result.succeeded()).isFalse();
+            assertThat(result.retryable()).isFalse();
+            assertThat(result.errorCode()).isEqualTo("GATEWAY_INVALID_RESPONSE");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** WP12：拿不到真实视频字节时宁可失败，也不写假 MP4。 */
+    @Test
+    void httpVideoWithoutContentIsRetryableInsteadOfFakingAFile() throws IOException {
+        HttpServer server = videoServer(exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"task-5\",\"status\":\"completed\"}");
+                return;
+            }
+            if (exchange.getRequestURI().getPath().endsWith("/content")) {
+                respondBytes(exchange, 404, new byte[0]);
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"completed\"}");
+        });
+        try {
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(result.succeeded()).isFalse();
+            assertThat(result.retryable()).isTrue();
+            assertThat(result.outputObjectKeys()).isEmpty();
+        } finally {
+            server.stop(0);
         }
     }
 }

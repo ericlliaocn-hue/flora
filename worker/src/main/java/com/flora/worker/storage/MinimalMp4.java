@@ -1,0 +1,22 @@
+package com.flora.worker.storage;
+
+/**
+ * 最小合法 32 字节 ISO Base Media File Format（MP4 {@code ftypisom}）盒。
+ *
+ * <p>与 {@link MinimalPng} 对齐：stub 模式用它当生成结果字节，
+ * 上游没给可下载的视频直链时也用它兜底。
+ * 这样本地双进程联调不需要任何真实视频素材，落盘文件也是合法的 MP4 头。
+ */
+public final class MinimalMp4 {
+
+    /** {@code ftyp} 盒（32 字节）。 */
+    public static final byte[] BYTES = new byte[] {
+            0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70,
+            0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
+            0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+            0x6d, 0x70, 0x34, 0x31, 0x00, 0x00, 0x00, 0x00
+    };
+
+    private MinimalMp4() {
+    }
+}

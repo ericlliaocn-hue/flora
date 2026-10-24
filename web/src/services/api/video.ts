@@ -7,6 +7,7 @@ import { clampVideoSeconds, computeVideoSize, inferVideoRatio } from "@/lib/medi
 import { getMediaBlob, resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig } from "@/stores/use-config-store";
+import { getFloraJob, getFloraJobResult, submitFloraVideoJob, usesFloraManagedVideoChannel } from "./flora-jobs";
 import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
@@ -19,7 +20,7 @@ type VideoMediaOptions = RequestOptions & { videos?: ReferenceVideo[]; audios?: 
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin"; model: string };
+export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin" | "flora"; model: string };
 type GeminiInlineData = { bytesBase64Encoded: string; mimeType: string };
 type GeminiVideoOperation = {
     name?: string;
@@ -27,7 +28,7 @@ type GeminiVideoOperation = {
     error?: { message?: string };
     response?: { generateVideoResponse?: { generatedSamples?: Array<{ video?: { uri?: string } }> } };
 };
-export type VideoGenerationTaskState = { status: "pending" } | { status: "completed"; result: VideoGenerationResult } | { status: "failed"; error: string };
+export type VideoGenerationTaskState = { status: "pending" | "processing" | "queued"; progress?: number } | { status: "completed"; progress?: number; result: VideoGenerationResult } | { status: "failed"; error: string };
 
 /** Results for scripted (plugin) video models, which run their own create+poll in one shot at task creation. */
 const pluginVideoResults = new Map<string, VideoGenerationResult>();
@@ -70,6 +71,11 @@ function videoTaskFailed(message: string) {
 }
 
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
+    // WP12：托管云端的 Seedance 视频走 flora 后端队列，浏览器不直连供应商。
+    if (usesFloraManagedVideoChannel(config)) {
+        const submitted = await submitFloraVideoJob(config, prompt);
+        return { id: submitted.jobId, provider: "flora", model: submitted.model };
+    }
     const selectedModel = (config.model || config.videoModel).trim();
     const requestConfig = resolveModelRequestConfig(config, selectedModel);
     const script = resolveModelScript(config, selectedModel);
@@ -80,6 +86,9 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
 }
 
 export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
+    if (task.provider === "flora") {
+        return pollFloraVideoTask(task);
+    }
     if (task.provider === "plugin") {
         const result = pluginVideoResults.get(task.id);
         return result ? { status: "completed", result } : { status: "failed", error: apiText("pluginVideoExpired") };
@@ -88,6 +97,31 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
     assertVideoConfig(requestConfig, requestConfig.model);
     if (task.provider === "gemini") return pollGeminiVideoTask(requestConfig, task, options);
     return pollOpenAIVideoTask(requestConfig, task, options);
+}
+
+/**
+ * 轮询托管视频任务（WP12）：状态在 flora 后端，产物是现签的 TOS 读地址。
+ *
+ * <p>失败文案用后端返回的本地化 message，不向界面暴露上游原文（ADR 0005）。
+ */
+async function pollFloraVideoTask(task: VideoGenerationTask): Promise<VideoGenerationTaskState> {
+    const job = await getFloraJob(task.id);
+    if (job.status === "succeeded") {
+        const result = await getFloraJobResult(task.id);
+        const url = result.outputs.find((output) => output.type === "video")?.url || result.outputs.find((output) => Boolean(output.url))?.url;
+        if (!url) {
+            return { status: "failed", error: apiText("videoGenerationFailed") };
+        }
+        return { status: "completed", progress: 100, result: { url, mimeType: "video/mp4" } };
+    }
+    // dead / cancelled 是终态失败；failed 只是重试中的中间态，继续等。
+    if (job.status === "dead" || job.status === "cancelled") {
+        return { status: "failed", error: job.message || job.error_code || apiText("videoGenerationFailed") };
+    }
+    if (job.status === "running") {
+        return { status: "processing", progress: 50 };
+    }
+    return { status: "queued", progress: 15 };
 }
 
 async function createPluginVideoTask(config: AiConfig, model: string, script: string, prompt: string, references: ReferenceImage[], options?: VideoMediaOptions): Promise<VideoGenerationTask> {

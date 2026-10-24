@@ -12,6 +12,12 @@ public final class WorkerErrorCodes {
     public static final String JOB_CANCELLED = "JOB_CANCELLED";
     public static final String JOB_FAILED = "JOB_FAILED";
     public static final String PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE";
+    /** WP12：视频轮询到上限仍未进入成功终态（可重试）。 */
+    public static final String GATEWAY_TIMEOUT = "GATEWAY_TIMEOUT";
+    /** WP12：上游响应结构不合法，拿不到任务 id（不可重试）。 */
+    public static final String GATEWAY_INVALID_RESPONSE = "GATEWAY_INVALID_RESPONSE";
+    /** WP12：上游视频任务进入失败终态（不可重试）。 */
+    public static final String UPSTREAM_VIDEO_FAILED = "UPSTREAM_VIDEO_FAILED";
 
     private WorkerErrorCodes() {
     }

@@ -1,7 +1,7 @@
 import { floraRequest } from "./flora-client";
 import type { FloraJobStatus } from "./flora-jobs";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
-import type { ImageAsset } from "@/stores/use-asset-store";
+import type { ImageAsset, VideoAsset } from "@/stores/use-asset-store";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
@@ -135,9 +135,24 @@ export function fromCloudProjectDetail(detail: FloraProjectDetail): CanvasProjec
     };
 }
 
-/** 云端素材 → 本地图片素材。signed_url 由后端现签，失败时留空。 */
-export function fromCloudAssetToStoreAsset(item: FloraUserAsset): ImageAsset {
+/** 云端素材 → 本地素材。signed_url 由后端现签，失败时留空。 */
+export function fromCloudAssetToStoreAsset(item: FloraUserAsset): ImageAsset | VideoAsset {
     const url = item.signed_url || "";
+    // WP12：视频产物（.mp4 / video/*）映射成视频素材，不再当图片渲染。
+    const isVideo = item.mime_type?.startsWith("video/") || item.object_key.toLowerCase().endsWith(".mp4");
+    if (isVideo) {
+        return {
+            id: `cloud:${item.id}`,
+            kind: "video",
+            title: item.source === "generated" ? "cloud-generated" : "cloud-uploaded",
+            coverUrl: "",
+            tags: ["cloud", item.source],
+            source: `cloud/${item.source}`,
+            createdAt: item.created_at,
+            updatedAt: item.created_at,
+            data: { url, width: 1280, height: 720, bytes: 0, mimeType: item.mime_type || "video/mp4" },
+        };
+    }
     return {
         id: `cloud:${item.id}`,
         kind: "image",

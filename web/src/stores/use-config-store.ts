@@ -90,6 +90,30 @@ export const FLORA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
     { name: "flux-1-schnell", capability: "image" },
 ];
 
+/** 托管云端模式内置的视频模型（WP12：Anytoken Seedance）。 */
+export const FLORA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
+    { name: "seedance2", capability: "video" },
+    { name: "seedance2.5", capability: "video" },
+    { name: "seedance-fast", capability: "video" },
+    { name: "seedance-mini", capability: "video" },
+];
+
+/** 云端内置视频模型名（不带渠道前缀）。 */
+export function isRemoteVideoModel(model: string | undefined): boolean {
+    const trimmed = model?.trim();
+    if (!trimmed) return false;
+    return FLORA_REMOTE_VIDEO_MODELS.some((item) => item.name === trimmed);
+}
+
+/** 取一个可用的托管视频模型：优先用偏好值，否则回落到第一个。 */
+export function remoteVideoModel(preferred?: string): string {
+    const trimmed = preferred?.trim();
+    if (trimmed && isRemoteVideoModel(trimmed)) {
+        return trimmed;
+    }
+    return FLORA_REMOTE_VIDEO_MODELS[0].name;
+}
+
 export const defaultConfig: AiConfig = {
     channelMode: "remote",
     baseUrl: OPENAI_BASE_URL,
@@ -112,7 +136,7 @@ export const defaultConfig: AiConfig = {
     ],
     model: "gpt-image-2",
     imageModel: "gpt-image-2",
-    videoModel: "default::grok-imagine-video",
+    videoModel: "seedance2",
     textModel: "default::gpt-5.5",
     audioModel: "default::gpt-4o-mini-tts",
     audioVoice: "alloy",
@@ -161,7 +185,7 @@ type ConfigStore = {
     clearPromptContinue: () => void;
 };
 
-const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo"];
+const VIDEO_KEYWORDS = ["video", "sora", "veo", "kling", "wan", "hailuo", "seedance"];
 
 export function boolConfig(value: string, fallback: boolean) {
     return value ? value === "true" : fallback;
@@ -213,6 +237,15 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
         return FLORA_REMOTE_IMAGE_MODELS[0].name;
     }
 
+    // WP12：托管云端模式：视频用云端内置的 Seedance 模型，同样不需要供应商 API Key。
+    if (config.channelMode === "remote" && capability === "video") {
+        if (currentModel && isRemoteVideoModel(currentModel)) return currentModel.trim();
+        const configured = (config.videoModel || "").trim();
+        // 配置里显式选了某个渠道的视频模型：沿用原语义，绝不悄悄换成云端内置模型。
+        if (decodeChannelModel(configured)) return pickConfiguredModel(config, capability, [currentModel, defaultModel], fallbackModel);
+        return remoteVideoModel(configured);
+    }
+
     return pickConfiguredModel(config, capability, [currentModel, defaultModel], fallbackModel);
 }
 
@@ -231,9 +264,14 @@ export function selectableModelsByCapability(config: AiConfig, capability?: Mode
     const local = capability
         ? config.channels.flatMap((channel) => channel.models.filter((model) => model.capability === capability).map((model) => encodeChannelModel(channel.id, model.name)))
         : config.models;
-    if (config.channelMode !== "remote" || (capability && capability !== "image")) return local;
-    // 托管云端模式：云端内置生图模型排在最前，用户不配任何渠道也能直接选。
-    return uniqueModelOptions([...FLORA_REMOTE_IMAGE_MODELS.map((model) => model.name), ...local]);
+    if (config.channelMode !== "remote") return local;
+    const remoteImage = !capability || capability === "image" ? FLORA_REMOTE_IMAGE_MODELS.map((model) => model.name) : [];
+    const remoteVideo = !capability || capability === "video" ? FLORA_REMOTE_VIDEO_MODELS.map((model) => model.name) : [];
+    if (!remoteImage.length && !remoteVideo.length) return local;
+    // 托管云端模式：云端内置模型排在本地同能力模型前面，用户不配任何渠道也能直接选。
+    const localVideo = local.filter((name) => modelCapabilityOf(config, name) === "video");
+    const localOther = local.filter((name) => modelCapabilityOf(config, name) !== "video");
+    return uniqueModelOptions([...remoteImage, ...localOther, ...remoteVideo, ...localVideo]);
 }
 
 /** 云端内置生图模型名（不带渠道前缀）。 */
@@ -253,8 +291,8 @@ function isAiConfigReady(config: AiConfig, model: string) {
         const match = findChannelModel(config, model);
         return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
     }
-    // 托管云端模式：云端内置生图模型不需要浏览器里配供应商 API Key。
-    if (config.channelMode === "remote" && isRemoteImageModel(model)) return true;
+    // 托管云端模式：云端内置生图 / 视频模型不需要浏览器里配供应商 API Key。
+    if (config.channelMode === "remote" && (isRemoteImageModel(model) || isRemoteVideoModel(model))) return true;
     const match = findChannelModel(config, model);
     return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
 }
