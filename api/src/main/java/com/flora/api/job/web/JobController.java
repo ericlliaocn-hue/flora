@@ -1,5 +1,6 @@
 package com.flora.api.job.web;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -11,8 +12,10 @@ import com.flora.api.i18n.application.RequestLocaleResolver;
 import com.flora.api.job.application.CancelJob;
 import com.flora.api.job.application.GetJob;
 import com.flora.api.job.application.GetJobResult;
+import com.flora.api.job.application.JobHistoryItemView;
 import com.flora.api.job.application.JobResultView;
 import com.flora.api.job.application.JobView;
+import com.flora.api.job.application.ListUserJobs;
 import com.flora.api.job.application.SubmitJob;
 import com.flora.api.job.application.SubmitJobView;
 import com.flora.api.job.infra.JobException;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,15 +47,17 @@ public class JobController {
     private final GetJob getJob;
     private final GetJobResult getJobResult;
     private final CancelJob cancelJob;
+    private final ListUserJobs listUserJobs;
     private final ObjectProvider<RequestLocaleResolver> localeResolvers;
 
     public JobController(AuthSessionService sessions, SubmitJob submitJob, GetJob getJob, GetJobResult getJobResult,
-            CancelJob cancelJob, ObjectProvider<RequestLocaleResolver> localeResolvers) {
+            CancelJob cancelJob, ListUserJobs listUserJobs, ObjectProvider<RequestLocaleResolver> localeResolvers) {
         this.sessions = sessions;
         this.submitJob = submitJob;
         this.getJob = getJob;
         this.getJobResult = getJobResult;
         this.cancelJob = cancelJob;
+        this.listUserJobs = listUserJobs;
         this.localeResolvers = localeResolvers;
     }
 
@@ -85,6 +91,19 @@ public class JobController {
                                         @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
         UUID userId = currentUserId();
         return ApiResponse.ok(cancelJob.cancel(userId, jobIdOf(jobId), locale(userId, acceptLanguage)));
+    }
+
+    /**
+     * WP10：本人近期的生图任务历史（跨设备可见）。
+     *
+     * <p>同时匹配 {@code /api/v1/jobs/history} 与 {@code /api/v1/jobs}。
+     */
+    @GetMapping({"/history", ""})
+    public ApiResponse<List<JobHistoryItemView>> history(
+            @RequestParam(value = "limit", defaultValue = "50") int limit,
+            @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
+        UUID userId = currentUserId();
+        return ApiResponse.ok(listUserJobs.list(userId, limit, locale(userId, acceptLanguage)));
     }
 
     private UUID currentUserId() {

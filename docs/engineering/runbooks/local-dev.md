@@ -126,6 +126,32 @@ export FLORA_TOS_TIMEOUT_MS=15000
 export FLORA_TOS_LOCAL_DIR=/tmp/flora-tos   # stub 模式的落盘根目录
 ```
 
+WP10：真实火山引擎 **华南区** 公网 TOS。公网 endpoint 强制 **Virtual-Host 虚拟主机风格**
+（`https://<bucket>.tos-cn-guangzhou.volces.com/<object_key>`），路径风格会拿到 `403 InvalidPathAccess`；
+`api` 与 `worker` 都已按「回环地址走 Path-Style、真实域名走 Virtual-Host」自动判定。
+
+```bash
+export FLORA_TOS_MODE=http
+export FLORA_TOS_REGION=cn-guangzhou
+export FLORA_TOS_ENDPOINT=https://tos-cn-guangzhou.volces.com
+export FLORA_TOS_BUCKET=flora-media-test          # 生产桶换成 flora-media-prod
+export FLORA_TOS_ACCESS_KEY=<your-ak>             # 由环境变量注入，勿入库、勿写进文档
+export FLORA_TOS_SECRET_KEY=<your-sk>             # 由环境变量注入，勿入库、勿写进文档
+```
+
+WP10：真实 Anytoken 网关。`base-url` 结尾的 `/v1` 与 `generate-path` 开头的 `/v1/` 会自动去重，不会拼出 `/v1/v1`。
+
+```bash
+export FLORA_GATEWAY_MODE=http
+export FLORA_GATEWAY_BASE_URL=https://api.anytoken.work/v1
+export FLORA_GATEWAY_GENERATE_PATH=/v1/images/generations
+export FLORA_GATEWAY_API_KEY=<your-image-key>              # 生图分组 Key
+export FLORA_GATEWAY_VIDEO_API_KEY=<your-seedance-key>     # 视频分组 Key；留空回退 API_KEY
+```
+
+已开通的模型：**生图** `gpt-image-2`、`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`、`image2`
+（前端默认模型是 `gpt-image-2`）；**视频** `seedance2`、`seedance2.5`、`seedance-mini`、`seedance-fast`。
+
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
 
 ```bash
@@ -159,6 +185,7 @@ cd flora
 - `V3__create_provider_task.sql` —— 建 `provider_task`，并给 `job_step.provider_task_id` 补上物理外键
 - `V4__create_wallet_domain.sql` —— 建 `wallet` / `wallet_hold` / `wallet_ledger`，并给 `job.hold_id` 补上物理外键
 - `V5__create_i18n_message.sql` —— 建 `i18n_message`，并灌入 stage-1 全部已登记 error_code 与 `JOB_FAILED.RETRY` 的 zh / en 种子（18 行）
+- `V6__create_cloud_persistence.sql` —— 建 `canvas_project`（7 列）与 `user_asset`（8 列），并灌入 `PROJECT_NOT_FOUND` / `ASSET_NOT_FOUND`（含 `error.*` 别名）的 zh / en 种子
 
 迁移历史在 `flyway_schema_history` 表里。**迁移统一由 api 管理**，`worker` 不跑 Flyway（`spring.flyway.enabled: false`）。
 
@@ -666,7 +693,55 @@ curl -s $API/jobs/$JOB/result -H "flora-token: $TOKEN"
 curl -s -X POST $API/jobs/$JOB/cancel -H "flora-token: $TOKEN"
 ```
 
-### 12. WP5 / WP6 / WP7 / WP8 / WP9 的边界（不要误以为已经能用）
+### 12. WP10 跨会话 / 换浏览器云端持久化验证
+
+WP10 起，**画布项目、云端素材、生图任务历史**随账号存在服务端（浏览器本地只留图片字节）。
+验证顺序：建项目 → 存画布节点 → 生图成功 → 换浏览器登录同一账号 → 三个接口都能读到。
+
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"password1"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 1) 建云端画布项目
+PROJECT_ID=$(curl -s -X POST $API/projects -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"wp10 画布","canvas_data":{"nodes":[],"connections":[]}}' \
+  | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
+
+# 2) 存画布快照（每次成功更新 version +1）
+curl -s -X PUT $API/projects/$PROJECT_ID -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"wp10 画布","canvas_data":{"nodes":[{"id":"n1","type":"text","title":"hi","position":{"x":0,"y":0},"width":200,"height":100}],"connections":[]}}'
+# → data.version = 2
+
+# 3) 项目摘要列表：**不含** canvas_data
+curl -s $API/projects -H "flora-token: $TOKEN"
+
+# 4) 项目详情：含 canvas_data
+curl -s $API/projects/$PROJECT_ID -H "flora-token: $TOKEN"
+
+# 5) 云端素材：自动同步已 succeeded 任务的输出，并现签读地址
+curl -s "$API/assets?limit=100" -H "flora-token: $TOKEN"
+# → data[].object_key 是对象键，data[].signed_url 是现签地址（库里不落预签名 URL）
+
+# 6) 生图历史（含 prompt、cost_credits、result_urls 与本地化错误）
+curl -s "$API/jobs/history?limit=50" -H "flora-token: $TOKEN"
+
+# 7) 越权：另一个用户访问上面的 project_id → PROJECT_NOT_FOUND（不泄露存在性）
+curl -s $API/projects/$PROJECT_ID -H "flora-token: $OTHER_TOKEN"
+# → {"ok":false,"data":null,"error_code":"PROJECT_NOT_FOUND","message":"..."}
+```
+
+浏览器端：
+
+1. 登录后「画布」页显示「已开启账号云同步」；新建画布后地址里的 id 是 **UUID**（云端 id），不是本地 nanoid。
+2. 画布里加节点，约 1 秒后顶栏出现「已同步 v{version}」；点它可立即保存。
+3. 「我的资产」页点「同步云端素材」，能看到刚生成成功的图片（来源标记「云端生成」）。
+4. 「生图」页的生成历史里能看到云端任务记录（成功任务的签名图片、失败任务的友好错误）。
+5. **换浏览器或清空 localStorage 后登录同一账号** → `/canvas`、`/assets`、`/image` 立刻能看到上面这些内容。
+6. 未登录时显示「本地未同步」，内容只在本浏览器，界面不谎称已上云。
+
+### 13. WP5 / WP6 / WP7 / WP8 / WP9 / WP10 的边界（不要误以为已经能用）
 
 - **没有钱包充值入口**：WP6 不提供 C 端自助充值接口（没有 `POST /api/v1/wallet/topup`），
   充值只能走运维 SQL、`FLORA_BILLING_INITIAL_CREDITS`，或未来 WP11 Admin 的受控加额。
@@ -687,10 +762,13 @@ curl -s -X POST $API/jobs/$JOB/cancel -H "flora-token: $TOKEN"
   按钮、导航栏、设置项文案仍在 `web/src/i18n/locales/`（两层 i18n 不混用）。
 - **前端托管模式只覆盖生图**：WP7 只把 **图片生成** 接到 flora API；
   视频、音频、文本仍然走原来的本地直连渠道。
-- **画布还没有云端持久化**：画布与「我的素材」仍只存在浏览器本地，
-  换设备看不到（属 WP10）。不要在文档里写成已支持云同步。
+- **画布云端持久化只覆盖画布项目本身**：WP10 起画布项目、云端素材与生图历史随账号存服务端，
+  但**图片字节仍留在浏览器本地**（库里只存 TOS 对象键），所以「换个设备」看到的是云端项目结构与
+  云端素材，节点里的本地图片仍以本地存储为准。没有做多人实时协同（属非目标）。
+- **云端素材删除会被自动同步覆盖**：`GET /api/v1/assets` 会把已 `succeeded` 任务的输出幂等同步回
+  `user_asset`，所以删掉一条「生成」素材后，下次列表它会重新出现（V6 的 `user_asset` 没有删除墓碑列）。
 - **前端托管模式没有充值入口**：WP7 只读余额，余额只能靠运维 SQL 补。
-- **签名 URL 过期要重新取**：默认 900 秒；过期后前端重新调 `result` 拿新地址。
+- **签名 URL 过期要重新取**：默认 900 秒；过期后前端重新调 `result` / `assets` 拿新地址。
 
 ## TBD：flora 业务进程（WP5 之后）
 
@@ -699,7 +777,7 @@ curl -s -X POST $API/jobs/$JOB/cancel -H "flora-token: $TOKEN"
 - 火山 TOS 的 STS 临时凭证与回调（WP8 只做了存储与签名读地址）
 - Anytoken 的真实付费调用方式（WP5 只有适配器边界 + 本地 stub）
 - 支付渠道与充值订单（钱包在 WP6，但「钱怎么进来」要到 M4 / WP11 Admin）
-- 画布云端持久化（WP10；WP7 只把生图接进 flora API）
+- 多人实时协同画布与前端直传 TOS（WP10 只做画布 JSON 快照上云 + 生成结果资产与历史持久化）
 
 ## TBD：一键编排
 
@@ -718,5 +796,6 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`**；WP7 前端直接用这个 url 取字节渲染 | WP7 前端直接用 url 展示图片 |
 | 错误文案在哪改？ | WP9：C 端 `message` 按 locale 查 `i18n_message` 表，运维 psql 改词条即时生效；**没有 Admin 界面**（WP11） | WP11 运营后台 |
 | 前端生图走哪条路？ | WP7：默认 **托管云端模式**，生图走 flora `api`（不直连供应商、不在浏览器存供应商 Key）；「配置 → 渠道」可切回本地直连 | 全能力托管 |
+| 画布 / 素材 / 生成历史存哪？ | WP10：已登录时画布项目、云端素材、生图历史走 `api` 的 `/api/v1/projects`、`/api/v1/assets`、`/api/v1/jobs/history`，换浏览器登录同一账号可见；**未登录时只存本地并标「本地未同步」**；图片字节仍留浏览器本地，库里只存 TOS 对象键 | WP10 云端持久化 |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。

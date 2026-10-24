@@ -24,6 +24,7 @@ import com.flora.api.job.application.GetJobResult;
 import com.flora.api.job.application.JobOutput;
 import com.flora.api.job.application.JobResultView;
 import com.flora.api.job.application.JobView;
+import com.flora.api.job.application.ListUserJobs;
 import com.flora.api.job.application.SubmitJob;
 import com.flora.api.job.application.SubmitJobView;
 import com.flora.api.job.infra.JobException;
@@ -67,6 +68,9 @@ class JobControllerSliceTest {
 
     @MockitoBean
     private CancelJob cancelJob;
+
+    @MockitoBean
+    private ListUserJobs listUserJobs;
 
     @Test
     void submitReturnsTheQueuedJob() throws Exception {

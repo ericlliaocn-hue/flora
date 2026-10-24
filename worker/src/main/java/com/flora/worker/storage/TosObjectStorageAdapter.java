@@ -73,13 +73,12 @@ public class TosObjectStorageAdapter implements TosObjectStorage {
     private void putToTos(String key, byte[] content, String contentType) {
         Instant now = Instant.now();
         String iso = TosV4Signer.formatBasicUtc(now);
-        String host = hostHeader();
-        String canonicalUri = "/" + properties.bucket() + "/" + TosV4Signer.uriEncodePath(key);
+        TosTarget target = resolveTarget(key);
         String contentSha256 = TosV4Signer.sha256Hex(content);
         String authorization = TosV4Signer.authorization(properties.accessKey(), properties.secretKey(),
-                properties.region(), canonicalUri, host, contentType, contentSha256, now);
+                properties.region(), target.canonicalUri(), target.hostHeader(), contentType, contentSha256, now);
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(endpointBase() + canonicalUri))
+        HttpRequest request = HttpRequest.newBuilder(target.targetUri())
                 .timeout(Duration.ofMillis(Math.max(1, properties.timeoutMs())))
                 .header("Content-Type", contentType)
                 .header("X-Tos-Date", iso)
@@ -101,6 +100,62 @@ public class TosObjectStorageAdapter implements TosObjectStorage {
             Thread.currentThread().interrupt();
             throw new TosStorageException(0, "TOS 上传被中断", e);
         }
+    }
+
+    /**
+     * 目标地址与参与签名的 host / canonical URI。
+     *
+     * <p>回环地址（本地 HttpServer）走 Path-Style；真实火山域名强制 Virtual-Host Style，
+     * 否则网关返回 403 InvalidPathAccess。规则与 api 侧 {@code TosUrlSigner} 完全一致。
+     */
+    TosTarget resolveTarget(String objectKey) {
+        String key = normalizeKey(objectKey);
+        URI uri = URI.create(endpointBase());
+        String scheme = uri.getScheme();
+        String rawHost = uri.getHost();
+        int port = uri.getPort();
+        if (scheme == null || rawHost == null || rawHost.isBlank()) {
+            throw new IllegalStateException("flora.storage.tos.endpoint 不是合法的 URI：" + properties.endpoint());
+        }
+
+        String host;
+        String canonicalUri;
+        if (isLoopbackHost(rawHost)) {
+            host = formatHostPort(rawHost, port);
+            canonicalUri = "/" + properties.bucket() + "/" + TosV4Signer.uriEncodePath(key);
+        } else {
+            String bucketPrefix = properties.bucket() + ".";
+            String virtualHost = rawHost.regionMatches(true, 0, bucketPrefix, 0, bucketPrefix.length())
+                    ? rawHost
+                    : bucketPrefix + rawHost;
+            host = formatHostPort(virtualHost, port);
+            canonicalUri = "/" + TosV4Signer.uriEncodePath(key);
+        }
+        return new TosTarget(URI.create(scheme + "://" + host + canonicalUri), host, canonicalUri);
+    }
+
+    /** 回环地址判定：本地单测的 HttpServer 只绑 127.0.0.1 / localhost，必须保持 Path-Style。 */
+    static boolean isLoopbackHost(String host) {
+        if (host == null) {
+            return false;
+        }
+        String lower = host.trim().toLowerCase(java.util.Locale.ROOT);
+        return "127.0.0.1".equals(lower)
+                || "localhost".equals(lower)
+                || "::1".equals(lower)
+                || "[::1]".equals(lower);
+    }
+
+    /** 参与签名的 host 头：非默认端口要带端口号。 */
+    private static String formatHostPort(String host, int port) {
+        if (port != -1 && port != 80 && port != 443) {
+            return host + ":" + port;
+        }
+        return host;
+    }
+
+    /** 目标 URI 与参与签名的 host / canonical URI。 */
+    record TosTarget(URI targetUri, String hostHeader, String canonicalUri) {
     }
 
     // ---------------------------------------------------------------- 工具
@@ -148,19 +203,5 @@ public class TosObjectStorageAdapter implements TosObjectStorage {
             endpoint = endpoint.substring(0, endpoint.length() - 1);
         }
         return endpoint;
-    }
-
-    /** 参与签名的 host 头：非默认端口要带端口号。 */
-    private String hostHeader() {
-        URI uri = URI.create(endpointBase());
-        String host = uri.getHost();
-        if (host == null || host.isBlank()) {
-            throw new IllegalStateException("flora.storage.tos.endpoint 不是合法的 URI：" + properties.endpoint());
-        }
-        int port = uri.getPort();
-        if (port != -1 && port != 80 && port != 443) {
-            return host + ":" + port;
-        }
-        return host;
     }
 }

@@ -104,6 +104,15 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
     }
 
     @Override
+    public List<Job> findByUserOrderByCreatedAtDesc(UUID userId, int limit) {
+        return jobs.values().stream()
+                .filter(job -> job.userId().equals(userId))
+                .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
     public JobStep start(UUID jobId, int attempt) {
         JobStep step = new JobStep(UUID.randomUUID(), jobId, attempt, JobStepStatus.RUNNING, null, null, Instant.now(), null);
         steps.put(step.id(), step);

@@ -57,8 +57,10 @@ flora:
     mode: ${FLORA_GATEWAY_MODE:stub}
     base-url: ${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
     api-key: ${FLORA_GATEWAY_API_KEY:}
+    # 视频分组（如 Seedance）可单独注入 Key；留空时回退 api-key。
+    video-api-key: ${FLORA_GATEWAY_VIDEO_API_KEY:}
     timeout-ms: ${FLORA_GATEWAY_TIMEOUT_MS:30000}
-    generate-path: ${FLORA_GATEWAY_GENERATE_PATH:/v1/generations}
+    generate-path: ${FLORA_GATEWAY_GENERATE_PATH:/v1/images/generations}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:

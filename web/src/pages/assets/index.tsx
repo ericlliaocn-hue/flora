@@ -1,5 +1,5 @@
 import { Copy, Download, PencilLine, Search, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { App, Button, Card, Drawer, Empty, Form, Image, Input, Modal, Pagination, Select, Space, Tag, Typography } from "antd";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
@@ -8,8 +8,10 @@ import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob, getImagePreviewRevision, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
+import { deleteCloudAsset, fromCloudAssetToStoreAsset, listCloudAssets } from "@/services/api/flora-cloud";
 import { cn } from "@/lib/utils";
 import { assetCoverUrl, useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
+import { useAuthStore } from "@/stores/use-auth-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 
 type AssetFormValues = {
@@ -38,6 +40,8 @@ export default function AssetsPage() {
     const addAsset = useAssetStore((state) => state.addAsset);
     const updateAsset = useAssetStore((state) => state.updateAsset);
     const removeAsset = useAssetStore((state) => state.removeAsset);
+    const token = useAuthStore((state) => state.token);
+    const [cloudAssets, setCloudAssets] = useState<ImageAsset[]>([]);
     const [keyword, setKeyword] = useState("");
     const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
     const [page, setPage] = useState(1);
@@ -52,7 +56,9 @@ export default function AssetsPage() {
     const title = Form.useWatch("title", form) || "";
     const tags = Form.useWatch("tags", form) || [];
     const content = Form.useWatch("content", form) || "";
-    const validAssets = useMemo(() => assets.filter((asset) => asset.kind === "text" || asset.kind === "image" || asset.kind === "video"), [assets]);
+    const localAssets = useMemo(() => assets.filter((asset) => asset.kind === "text" || asset.kind === "image" || asset.kind === "video"), [assets]);
+    // 云端素材是云状态的投影：签名地址每次现签，只在页面内存里，不落本地存储。
+    const validAssets = useMemo(() => [...cloudAssets, ...localAssets], [cloudAssets, localAssets]);
 
     const filteredAssets = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -160,12 +166,31 @@ export default function AssetsPage() {
     };
 
     const exportAllAssets = async () => {
-        if (!validAssets.length) {
+        if (!localAssets.length) {
             message.warning(t("assets.noneToExport"));
             return;
         }
-        await exportAssets(validAssets, t("assets.packageName"));
+        await exportAssets(localAssets, t("assets.packageName"));
     };
+
+    /** 云端素材：后端每次现签 TOS 读地址，这里只在页面内存里展示，不落本地存储。 */
+    const syncCloudAssets = useCallback(async () => {
+        if (!token) return;
+        try {
+            const items = await listCloudAssets({ limit: 100 });
+            setCloudAssets(items.map((item) => ({ ...fromCloudAssetToStoreAsset(item), title: item.source === "generated" ? t("assets.cloud.generated") : t("assets.cloud.uploaded") })));
+        } catch {
+            message.error(t("assets.cloud.syncFailed"));
+        }
+    }, [message, t, token]);
+
+    useEffect(() => {
+        if (!token) {
+            setCloudAssets([]);
+            return;
+        }
+        void syncCloudAssets();
+    }, [syncCloudAssets, token]);
 
     const importAssetZip = async (file?: File) => {
         if (!file) return;
@@ -188,8 +213,18 @@ export default function AssetsPage() {
 
     const confirmDelete = () => {
         if (!deletingAsset) return;
-        removeAsset(deletingAsset.id);
-        message.success(t("assets.deleted"));
+        const cloudId = deletingAsset.id.startsWith("cloud:") ? deletingAsset.id.slice("cloud:".length) : null;
+        if (cloudId) {
+            void deleteCloudAsset(cloudId)
+                .then(() => {
+                    setCloudAssets((value) => value.filter((asset) => asset.id !== deletingAsset.id));
+                    message.success(t("assets.cloud.deleted"));
+                })
+                .catch(() => message.error(t("assets.cloud.deleteFailed")));
+        } else {
+            removeAsset(deletingAsset.id);
+            message.success(t("assets.deleted"));
+        }
         setDeletingAsset(null);
     };
 
@@ -256,6 +291,15 @@ export default function AssetsPage() {
                                 >
                                     {t("assets.import")}
                                 </button>
+                                {token ? (
+                                    <button
+                                        type="button"
+                                        className="cursor-pointer text-sm font-medium text-stone-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline dark:text-stone-300"
+                                        onClick={() => void syncCloudAssets()}
+                                    >
+                                        {t("assets.cloud.sync")}
+                                    </button>
+                                ) : null}
                                 <button
                                     type="button"
                                     className="cursor-pointer text-sm font-medium text-stone-700 underline-offset-4 hover:underline focus-visible:outline-none focus-visible:underline dark:text-stone-300"
@@ -415,6 +459,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
     useSyncExternalStore(subscribeImagePreviews, getImagePreviewRevision);
     const cover = assetCoverUrl(asset);
     const summary = assetSummary(asset);
+    const isCloud = asset.id.startsWith("cloud:");
     return (
         <Card
             hoverable
@@ -436,7 +481,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
                         <div className="min-w-0">
                             <h2 className="line-clamp-1 text-sm font-semibold text-stone-950 dark:text-stone-100">{asset.title}</h2>
                             <Typography.Text type="secondary" className="mt-1 block text-xs">
-                                {asset.source || t("assets.unknownSource")}
+                                {asset.source?.startsWith("cloud/") ? t(`assets.cloud.source.${asset.source.slice("cloud/".length)}`) : asset.source || t("assets.unknownSource")}
                             </Typography.Text>
                         </div>
                         <Tag className="m-0 shrink-0 text-[11px]">{t(`assets.kinds.${asset.kind}`)}</Tag>
@@ -458,7 +503,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
                 <Button size="small" onClick={onOpen}>
                     {t("common.view")}
                 </Button>
-                {asset.kind !== "video" ? (
+                {asset.kind !== "video" && !isCloud ? (
                     <Button size="small" icon={<PencilLine className="size-3.5" />} onClick={onEdit}>
                         {t("common.edit")}
                     </Button>
@@ -557,6 +602,7 @@ async function readAssetMediaBlob(asset: Extract<Asset, { kind: "image" | "video
 
 function assetSummary(asset: Asset) {
     if (asset.kind === "text") return asset.data.content;
+    if (!asset.data.width) return asset.data.mimeType;
     return `${asset.data.width}x${asset.data.height} · ${formatBytes(asset.data.bytes)} · ${asset.data.mimeType}`;
 }
 

@@ -89,7 +89,7 @@ export function cancelFloraJob(jobId: string, options?: FloraJobCallOptions) {
  * 不向界面暴露堆栈或上游英文原文（ADR 0005）。
  */
 export async function runFloraImageJob(config: AiConfig, prompt: string, references?: ReferenceImage[], options?: RunFloraImageJobOptions): Promise<FloraGeneratedImage[]> {
-    const model = modelOptionName(config.model || config.imageModel || "gpt-image-1") || "gpt-image-1";
+    const model = modelOptionName(config.model || config.imageModel || "gpt-image-2") || "gpt-image-2";
     // 只传已物化参数：严禁把画布文档或参考图 Base64 塞进 params（ADR 0003）。
     const params: Record<string, unknown> = {
         prompt: prompt.trim(),

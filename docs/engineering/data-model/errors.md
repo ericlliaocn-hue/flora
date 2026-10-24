@@ -26,6 +26,8 @@ C 端默认响应 **只** 含 `error_code` + `message`。原文只在 M4 / WP11 
 | `IDEMPOTENCY_CONFLICT` | 同一 key 不同 body | 不静默复用旧 `job_id` |
 | `UNAUTHORIZED` | 无会话 | 未登录调用 C 端接口 |
 | `VALIDATION_ERROR` | 请求字段不合法 | 参数缺失 / 类型错 / 取值越界 |
+| `PROJECT_NOT_FOUND` | 云端项目不存在或非本人 | 查别人的项目也返回此码，不泄露存在性（WP10） |
+| `ASSET_NOT_FOUND` | 云端素材不存在或非本人 | 同上（WP10） |
 
 **未识别上游** → 落到 `PROVIDER_UNAVAILABLE` 或 `JOB_FAILED` 一类泛化码，原文入库。禁止把 `e.getMessage()` 填进 `message`。
 

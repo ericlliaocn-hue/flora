@@ -69,6 +69,53 @@ class TosUrlSignerTest {
                 .isEqualTo(signer(ENDPOINT).signGetUrl(OBJECT_KEY, SIGNING_TIME));
     }
 
+    /** 真实火山域名强制 Virtual-Host Style：路径风格会被网关以 403 InvalidPathAccess 拒绝。 */
+    @Test
+    void virtualHostStyleUsedForRealVolcesDomain() {
+        String virtualHost = "flora-media-test.tos-cn-guangzhou.volces.com";
+        String canonicalUri = "/anytoken/img/11111111-2222-3333-4444-555555555555/1.png";
+        String url = new TosUrlSigner(new TosProperties("http", "https://tos-cn-guangzhou.volces.com", "cn-guangzhou",
+                "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/flora-tos"))
+                .signGetUrl(OBJECT_KEY, SIGNING_TIME);
+
+        assertThat(url).startsWith("https://" + virtualHost + canonicalUri + "?");
+        assertThat(url).doesNotContain("/flora-media-test/anytoken/");
+
+        // 签名按 virtual host + 桶名无关的 canonicalUri 独立重算，必须逐字一致。
+        Map<String, String> query = new TreeMap<>();
+        query.put("X-Tos-Algorithm", TosV4Signer.ALGORITHM);
+        query.put("X-Tos-Credential", ACCESS_KEY + "/20261024/cn-guangzhou/tos/request");
+        query.put("X-Tos-Date", "20261024T043000Z");
+        query.put("X-Tos-Expires", "900");
+        query.put("X-Tos-SignedHeaders", "host");
+        String canonicalQueryString = query.entrySet().stream()
+                .map(entry -> TosV4Signer.uriEncode(entry.getKey()) + "=" + TosV4Signer.uriEncode(entry.getValue()))
+                .reduce((a, b) -> a + "&" + b)
+                .orElse("");
+        String canonicalRequest = "GET\n"
+                + canonicalUri + "\n"
+                + canonicalQueryString + "\n"
+                + "host:" + virtualHost + "\n"
+                + "\n"
+                + "host\n"
+                + TosV4Signer.UNSIGNED_PAYLOAD;
+        String expected = TosV4Signer.signature(SECRET_KEY, "cn-guangzhou", "20261024",
+                TosV4Signer.stringToSign("20261024T043000Z", "cn-guangzhou", canonicalRequest));
+
+        assertThat(url).endsWith("&X-Tos-Signature=" + expected);
+    }
+
+    /** endpoint 已经是虚拟主机域名时不再重复拼桶名前缀。 */
+    @Test
+    void virtualHostPrefixIsNotDuplicated() {
+        String url = new TosUrlSigner(new TosProperties("http", "https://flora-media-test.tos-cn-guangzhou.volces.com",
+                "cn-guangzhou", "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/flora-tos"))
+                .signGetUrl(OBJECT_KEY, SIGNING_TIME);
+
+        assertThat(url).startsWith("https://flora-media-test.tos-cn-guangzhou.volces.com/anytoken/img/");
+        assertThat(url).doesNotContain("flora-media-test.flora-media-test");
+    }
+
     @Test
     void emptyOrTraversalKeysAreRejected() {
         TosUrlSigner signer = signer(ENDPOINT);
