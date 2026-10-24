@@ -49,6 +49,24 @@ class AnytokenPropertiesBindingTest {
                 });
     }
 
+    /**
+     * 视频轮询默认值：5000ms × 120 次 = 600s 窗口。
+     *
+     * <p>对齐上游响应里的 {@code poll_after_ms: 5000}；实测真实 Seedance 出片要 170~200s，
+     * 原来的 2000ms × 90 次（180s）压线，超了就会以可重试的 GATEWAY_TIMEOUT 重投一次上游任务。
+     */
+    @Test
+    void fallsBackToTheVideoPollBudgetDefaults() {
+        runner.withPropertyValues("flora.gateway.mode=http", "flora.gateway.api-key=image-key")
+                .run(context -> {
+                    AnytokenProperties properties = context.getBean(AnytokenProperties.class);
+                    assertThat(properties.videoPollIntervalMs()).isEqualTo(5000L);
+                    assertThat(properties.videoMaxPollAttempts()).isEqualTo(120);
+                    assertThat(properties.videoGeneratePath()).isEqualTo("/v1/videos/generations");
+                    assertThat(properties.videoStatusPathPrefix()).isEqualTo("/v1/videos");
+                });
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(AnytokenProperties.class)
     static class GatewayPropertiesConfig {}

@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 /**
  * Redis 短锁：{@code SET job:lease:{job_id} {worker_id} NX EX {ttl}}。
  *
- * <p>TTL 默认 60 秒，可用 {@code FLORA_JOB_LEASE_TTL_SECONDS} 调。
+ * <p>TTL 默认 660 秒，可用 {@code FLORA_JOB_LEASE_TTL_SECONDS} 调。
+ * 默认值覆盖 600s 的视频轮询窗口：视频生成要跑 3~10 分钟，租约比它短就会中途过期。
  * 锁丢了但 DB 仍为 running 的孤儿回收属于运维策略，本 WP 不做（见 brief 的「不拍板」）。
  */
 @Component
@@ -28,7 +29,7 @@ public class RedisJobLease implements JobLease {
     private final StringRedisTemplate redis;
     private final long ttlSeconds;
 
-    public RedisJobLease(StringRedisTemplate redis, @Value("${flora.job.lease-ttl-seconds:60}") long ttlSeconds) {
+    public RedisJobLease(StringRedisTemplate redis, @Value("${flora.job.lease-ttl-seconds:660}") long ttlSeconds) {
         this.redis = redis;
         this.ttlSeconds = ttlSeconds;
     }

@@ -49,8 +49,8 @@ flora:
     routing-key: ${FLORA_JOB_ROUTING_KEY:job.execute}
     queue: ${FLORA_JOB_QUEUE:flora.jobs.execute}
     dead-letter-queue: ${FLORA_JOB_DEAD_LETTER_QUEUE:flora.jobs.execute.dlq}
-    # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑。
-    lease-ttl-seconds: ${FLORA_JOB_LEASE_TTL_SECONDS:60}
+    # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑；默认 660s 覆盖 600s 视频轮询窗口。
+    lease-ttl-seconds: ${FLORA_JOB_LEASE_TTL_SECONDS:660}
   # 唯一的模型供应商适配器（ADR 0001：只走 Anytoken，没有第二个适配器）。
   gateway:
     # stub = 本地确定性假上游（默认，无需真实密钥即可跑通）；http = 调真实 Anytoken HTTP 接口
@@ -64,8 +64,8 @@ flora:
     # WP12 的 Seedance 视频三步协议：提交 → 轮询状态 → 下载内容。
     video-generate-path: ${FLORA_GATEWAY_VIDEO_GENERATE_PATH:/v1/videos/generations}
     video-status-path-prefix: ${FLORA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:/v1/videos}
-    video-poll-interval-ms: ${FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS:2000}
-    video-max-poll-attempts: ${FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:90}
+    video-poll-interval-ms: ${FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS:5000}
+    video-max-poll-attempts: ${FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:120}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:
