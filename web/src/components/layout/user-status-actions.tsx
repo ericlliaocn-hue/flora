@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
+import { useEffect, useRef } from "react";
 import { Tooltip } from "antd";
-import { BookOpen, Keyboard, Puzzle, Settings2 } from "lucide-react";
+import { BookOpen, Keyboard, LogOut, Puzzle, Settings2, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
@@ -10,6 +11,7 @@ import { DOCS_URL } from "@/constant/env";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { useAuthStore } from "@/stores/use-auth-store";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
@@ -27,6 +29,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const canvasTheme = canvasThemes[theme];
     const naturalIconClass = "inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-stone-600 transition-colors hover:bg-black/5 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white [&_svg]:size-4";
+    const flatTextClass = "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-xs font-medium text-stone-600 transition-colors hover:bg-black/5 hover:text-stone-950 dark:text-stone-300 dark:hover:bg-white/10 dark:hover:text-white";
     const iconStyle: CSSProperties | undefined = variant === "canvas" ? { color: canvasTheme.node.text } : undefined;
     const versionStyle = iconStyle;
     const gitHubClassName = "size-7 text-base";
@@ -35,8 +38,49 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
     const nextLocale = locale === "zh-CN" ? "en-US" : "zh-CN";
     const languageLabel = t("topNav.switchLanguage", { language: t(nextLocale === "zh-CN" ? "locale.zhCN" : "locale.enUS") });
 
+    const user = useAuthStore((state) => state.user);
+    const wallet = useAuthStore((state) => state.wallet);
+    const initialize = useAuthStore((state) => state.initialize);
+    const refreshWallet = useAuthStore((state) => state.refreshWallet);
+    const logout = useAuthStore((state) => state.logout);
+    const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
+    const startedRef = useRef(false);
+
+    useEffect(() => {
+        if (startedRef.current) return;
+        startedRef.current = true;
+        void initialize();
+    }, [initialize]);
+
+    const walletLabel = wallet ? `${t("wallet.available")} ${wallet.available}${wallet.frozen > 0 ? ` · ${t("wallet.frozen")} ${wallet.frozen}` : ""}` : t("wallet.title");
+
     return (
         <div className="inline-flex shrink-0 items-center gap-1">
+            {user ? (
+                <>
+                    {wallet ? (
+                        <Tooltip title={walletLabel} mouseEnterDelay={0.2}>
+                            <button type="button" className={flatTextClass} style={iconStyle} onClick={() => void refreshWallet()} aria-label={walletLabel}>
+                                <Wallet className="size-3.5" />
+                                <span className="tabular-nums">{wallet.available}</span>
+                                {wallet.frozen > 0 ? <span className="tabular-nums opacity-60">/{wallet.frozen}</span> : null}
+                            </button>
+                        </Tooltip>
+                    ) : null}
+                    <span className="hidden max-w-24 truncate text-xs font-medium text-stone-600 sm:inline dark:text-stone-300" style={iconStyle}>
+                        {t("auth.signedInAs", { username: user.username })}
+                    </span>
+                    <Tooltip title={t("auth.logout")} mouseEnterDelay={0.2}>
+                        <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => void logout()} aria-label={t("auth.logout")}>
+                            <LogOut className="size-4" />
+                        </button>
+                    </Tooltip>
+                </>
+            ) : (
+                <button type="button" className={flatTextClass} style={iconStyle} onClick={() => setAuthModalOpen(true, "login")}>
+                    {t("auth.needLogin")}
+                </button>
+            )}
             {onOpenPlugins ? (
                 <button type="button" className={naturalIconClass} style={iconStyle} onClick={onOpenPlugins} aria-label={t("topNav.plugins")} title={t("topNav.plugins")}>
                     <Puzzle className="size-4" />

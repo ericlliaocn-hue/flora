@@ -188,30 +188,48 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.channels"),
                         children: (
                             <div>
-                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                    <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
-                                    <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
-                                        {t("config.channels.add")}
-                                    </Button>
+                                <div className="mb-4">
+                                    <div className="mb-2 text-sm font-semibold">{t("config.channels.mode")}</div>
+                                    <Radio.Group value={config.channelMode} onChange={(event) => updateConfig("channelMode", event.target.value)} className="flex flex-col gap-2">
+                                        <Radio value="remote">
+                                            <span className="block text-sm font-medium">{t("config.channels.modeRemote")}</span>
+                                            <span className="mt-0.5 block text-xs opacity-60">{t("config.channels.modeRemoteDescription")}</span>
+                                        </Radio>
+                                        <Radio value="local">
+                                            <span className="block text-sm font-medium">{t("config.channels.modeLocal")}</span>
+                                            <span className="mt-0.5 block text-xs opacity-60">{t("config.channels.modeLocalDescription")}</span>
+                                        </Radio>
+                                    </Radio.Group>
                                 </div>
-                                <div className="space-y-2">
-                                    {config.channels.map((channel) => (
-                                        <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
-                                            <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
-                                                <div className="mt-1 truncate text-xs text-stone-500">
-                                                    {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
-                                                </div>
-                                            </div>
-                                            <div className="flex shrink-0 gap-2">
-                                                <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
-                                                    {t("common.edit")}
-                                                </Button>
-                                                <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
-                                            </div>
+                                {config.channelMode === "local" ? (
+                                    <>
+                                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
+                                            <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
+                                                {t("config.channels.add")}
+                                            </Button>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="mb-3 text-xs text-stone-500">{t("config.channels.modeLocalOnly")}</div>
+                                        <div className="space-y-2">
+                                            {config.channels.map((channel) => (
+                                                <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
+                                                        <div className="mt-1 truncate text-xs text-stone-500">
+                                                            {apiFormatLabel(channel.apiFormat)} · {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex shrink-0 gap-2">
+                                                        <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => setEditingChannelId(channel.id)}>
+                                                            {t("common.edit")}
+                                                        </Button>
+                                                        <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : null}
                             </div>
                         ),
                     },

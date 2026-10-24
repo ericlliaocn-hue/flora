@@ -1,14 +1,15 @@
 import axios from "axios";
 
 import i18n from "@/i18n";
-import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
+import { buildApiUrl, decodeChannelModel, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig, type ModelChannel } from "@/stores/use-config-store";
 import { normalizePluginImages, runModelPlugin } from "./model-plugin";
 import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
+import { runFloraImageJob } from "./flora-jobs";
 import { imageToDataUrl } from "@/services/image-storage";
 import { imageSizePresets, inferMediaScale } from "@/lib/media-size";
-import type { ReferenceImage } from "@/types/image";
+import type { GeneratedImageItem, ReferenceImage } from "@/types/image";
 
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
@@ -312,6 +313,18 @@ function withSystemPrompt(config: AiConfig, prompt: string) {
 
 function aiApiUrl(config: AiConfig, path: string) {
     return buildApiUrl(config.baseUrl, path);
+}
+
+/**
+ * 是否走 flora 托管云端：remote 模式且没有显式选中某个本地渠道模型。
+ *
+ * <p>显式选了 channelId::modelName 就按本地直连处理（那是本地调试路径）。
+ */
+function usesFloraManagedChannel(config: AiConfig) {
+    if (config.channelMode !== "remote") return false;
+    const model = (config.model || config.imageModel || "").trim();
+    if (!model) return true;
+    return !decodeChannelModel(model);
 }
 
 function aiHeaders(config: AiConfig, contentType?: string) {
@@ -691,7 +704,9 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
     return images;
 }
 
-export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
+export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions): Promise<GeneratedImageItem[]> {
+    // 托管云端模式：走 flora 后端网关的异步任务合同（submit → query → result）。
+    if (usesFloraManagedChannel(config)) return await runFloraImageJob(config, prompt, undefined, options);
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -751,7 +766,9 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
     }
 }
 
-export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
+export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<GeneratedImageItem[]> {
+    // 托管云端模式：走 flora 后端网关的异步任务合同（submit → query → result）。
+    if (usesFloraManagedChannel(config)) return await runFloraImageJob(config, prompt, references, options);
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
