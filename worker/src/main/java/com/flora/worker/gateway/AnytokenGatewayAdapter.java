@@ -302,13 +302,18 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
         return AnytokenAttemptResult.success(List.of(objectKey), taskId, "200", lastRawBody);
     }
 
-    /** Seedance 提交体：模型、提示词、比例、时长、清晰度与可选参考素材。 */
+    /**
+     * Seedance 提交体：只带视频协议自己的字段。
+     *
+     * <p>**绝不**往上游报文里塞 {@code job_id} / {@code attempt} / {@code capability} 这类
+     * flora 内部字段：实测 Anytoken 看到 {@code capability} 会把请求路由到 xAI 上游，
+     * 直接返回 400（"xAI upstream returned status 400"）。任务身份靠
+     * {@code Idempotency-Key: {jobId}:{attempt}} 头带，权威记录在
+     * {@code job} / {@code job_step} / {@code provider_task} 表里。
+     */
     private String buildVideoPayload(AnytokenRequest request) {
         JsonNode params = readParams(request.paramsJson());
         ObjectNode node = mapper.createObjectNode();
-        node.put("job_id", request.jobId().toString());
-        node.put("attempt", request.attempt());
-        node.put("capability", request.capability());
         node.put("model", request.model() == null || request.model().isBlank() ? DEFAULT_VIDEO_MODEL : request.model().trim());
         node.put("prompt", params.path("prompt").asText(""));
         node.put("aspect_ratio", videoAspectRatio(params));
@@ -479,12 +484,20 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
         }
     }
 
-    /** 最后一次响应里可能的视频直链。 */
+    /**
+     * 最后一次响应里可能的视频直链。
+     *
+     * <p>实测 Anytoken Seedance 把成片直链放在 {@code result.url}（配合
+     * {@code result.mime_type}），{@code /v1/videos/{id}/content} 在本部署**不存在**
+     * （404 video not found），所以 {@code result.url} 这条兜底是真正生效的那条。
+     */
     private static String extractVideoUrl(JsonNode node) {
         if (node == null) {
             return null;
         }
         String[] candidates = {
+                node.path("result").path("url").asText(null),
+                node.path("result").path("video_url").asText(null),
                 node.path("url").asText(null),
                 node.path("video_url").asText(null),
                 node.path("data").path("url").asText(null),
