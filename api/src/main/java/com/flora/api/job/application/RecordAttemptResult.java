@@ -59,9 +59,24 @@ public class RecordAttemptResult {
             throw JobException.validation();
         }
 
-        JobStatus next = outcome.succeeded() ? succeed(job, outcome) : fail(job, outcome);
+        JobStatus next;
+        if (job.cancelRequestedAt() != null) {
+            // 取消意图优先：运行期间用户点了取消，即使上游恰好成功也收敛为 cancelled。
+            next = cancel(job);
+        } else if (outcome.succeeded()) {
+            next = succeed(job, outcome);
+        } else {
+            next = fail(job, outcome);
+        }
         lease.release(jobId, workerId);
         return new RecordResult(jobId.toString(), next.value(), job.attempt());
+    }
+
+    private JobStatus cancel(Job job) {
+        steps.end(job.id(), job.attempt(), JobStepStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
+        JobTransitions.requireCancellable(job.status());
+        jobs.updateStatus(job.id(), JobStatus.RUNNING, JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
+        return JobStatus.CANCELLED;
     }
 
     private JobStatus succeed(Job job, AttemptOutcome outcome) {
@@ -77,11 +92,6 @@ public class RecordAttemptResult {
         JobTransitions.requireFailed(job.status());
         jobs.updateStatus(job.id(), JobStatus.RUNNING, JobStatus.FAILED, outcome.errorCode());
 
-        if (job.cancelRequestedAt() != null) {
-            JobTransitions.requireCancellable(JobStatus.FAILED);
-            jobs.updateStatus(job.id(), JobStatus.FAILED, JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
-            return JobStatus.CANCELLED;
-        }
         if (outcome.retryable() && JobTransitions.canRetry(job.attempt(), job.maxAttempts())) {
             JobTransitions.requireRetry(JobStatus.FAILED);
             jobs.updateStatus(job.id(), JobStatus.FAILED, JobStatus.QUEUED, outcome.errorCode());

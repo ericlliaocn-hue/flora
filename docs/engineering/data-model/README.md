@@ -16,7 +16,7 @@
 | `job_step` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
 | `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
 | `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
-| `provider_task` | 网关痕迹 | WP5 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
+| `provider_task` | 网关痕迹 | WP5 已落地 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
 | `i18n_message` | 文案 | WP9 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | 画布 / 素材 / 生成记录 | C 端数据 | WP10 | 待 WP10 brief 定 | 只要求挂 `user_id` |
@@ -59,7 +59,18 @@ WP4 已实现：见 [WP4 brief](../feature-briefs/2026-10-24-wp4-job-outbox-rabb
 列定义 **不** 在本页改，仍以 [jobs.md](./jobs.md) 为准（WP4 照抄实现，没有加列，也没有加
 `queue_name` / `routing_key` / `amqp_*` 这类队列实现字段）。
 
-`provider_task` 仍是 WP5，`wallet*` 仍是 WP6，`job_lease` 永远不建（用 Redis 短锁）。
+`wallet*` 仍是 WP6，`job_lease` 永远不建（用 Redis 短锁）。
+
+## `provider_task`（WP5 已落地）
+
+WP5 已实现：见 [WP5 brief](../feature-briefs/2026-10-24-wp5-thin-worker-anytoken.md)。表由
+`api/src/main/resources/db/migration/V3__create_provider_task.sql` 建，同时给
+`job_step.provider_task_id` 补上了指向 `provider_task(id)` 的物理外键。
+
+列定义 **不** 在本页改，仍以 [jobs.md](./jobs.md) 为准（WP5 照抄实现，7 列，没加
+`provider` / `http_status` / `updated_at` 这类未登记列；结构化摘要统一放进 `raw_body` JSONB）。
+
+只有 worker 写这张表；C 端 `query` / `result` **绝不**返回它的任何字段。
 
 ## 通用约定
 

@@ -184,6 +184,24 @@ class JobLifecycleTest {
         assertThat(getJob.get(USER, jobId, "zh").errorCode()).isEqualTo("JOB_CANCELLED");
     }
 
+    /** WP5 收口项：运行期间用户取消，即使这次 attempt 成功也收敛为 cancelled。 */
+    @Test
+    void cancellingARunningJobOverridesASuccessfulAttempt() {
+        UUID jobId = submit("k1");
+        claimJob.claim(jobId, WORKER);
+
+        cancelJob.cancel(USER, jobId, "zh");
+
+        RecordResult record = recordAttemptResult.record(jobId, WORKER, AttemptOutcome.success(List.of("img/a.png")));
+        assertThat(record.status()).isEqualTo("cancelled");
+
+        JobView view = getJob.get(USER, jobId, "zh");
+        assertThat(view.status()).isEqualTo("cancelled");
+        assertThat(view.errorCode()).isEqualTo("JOB_CANCELLED");
+        // 取消的 attempt 不写结果
+        assertThat(getJobResult.result(USER, jobId, "zh").outputs()).isEmpty();
+    }
+
     @Test
     void illegalTransitionIsRejected() {
         UUID jobId = submit("k1");

@@ -29,6 +29,9 @@ public final class JobErrorMessages {
             ErrorCodes.VALIDATION_ERROR, Map.of(
                     "zh", "请求参数不合法。",
                     "en", "The request parameters are invalid."),
+            ErrorCodes.PROVIDER_UNAVAILABLE, Map.of(
+                    "zh", "生成服务暂时不可用，请稍后重试。",
+                    "en", "The generation service is temporarily unavailable. Please try again later."),
             ErrorCodes.UNAUTHORIZED, Map.of(
                     "zh", "请先登录后再试。",
                     "en", "Please sign in first."));
