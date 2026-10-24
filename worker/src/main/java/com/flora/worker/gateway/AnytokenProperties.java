@@ -36,10 +36,15 @@ public record AnytokenProperties(
     public static final String DEFAULT_VIDEO_GENERATE_PATH = "/v1/videos/generations";
     /** 视频状态 / 内容路径前缀的默认值。 */
     public static final String DEFAULT_VIDEO_STATUS_PATH_PREFIX = "/v1/videos";
-    /** 视频轮询间隔的默认值（毫秒）。 */
-    public static final long DEFAULT_VIDEO_POLL_INTERVAL_MS = 2000L;
-    /** 视频轮询次数上限的默认值。 */
-    public static final int DEFAULT_VIDEO_MAX_POLL_ATTEMPTS = 90;
+    /**
+     * 视频轮询间隔的默认值（毫秒）。
+     *
+     * <p>对齐上游响应里的 {@code poll_after_ms: 5000}：上游建议 5 秒轮询一次，
+     * 轮询太密只是多打请求，不会更快出片。
+     */
+    public static final long DEFAULT_VIDEO_POLL_INTERVAL_MS = 5000L;
+    /** 视频轮询次数上限的默认值：{@code 5000ms × 120 次 = 600s} 轮询窗口。 */
+    public static final int DEFAULT_VIDEO_MAX_POLL_ATTEMPTS = 120;
 
     /**
      * 主构造器：显式标注 {@link ConstructorBinding}，让 Spring 在存在多个构造器时

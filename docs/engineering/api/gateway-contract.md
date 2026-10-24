@@ -467,7 +467,7 @@ Worker 调 Anytoken 的请求 / 响应 **不** 定义为本合同的一部分。
 | 步 | 请求 | 用途 |
 | --- | --- | --- |
 | 1 | `POST /v1/videos/generations` | 提交异步视频任务；请求头带 `Idempotency-Key: <jobId>:<attempt>`；body **只含** `model` / `prompt` / `aspect_ratio` / `duration` /（可选）`resolution` /（可选）`reference_images` /（可选）`reference_videos`。响应里取任务 id（`id` → `task_id` → `request_id` → `data.id`）与初始 `status` |
-| 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `flora.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制 |
+| 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `flora.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制，**默认 `5000ms × 120 次 = 600s`**（对齐上游响应里的 `poll_after_ms: 5000`） |
 | 3 | `GET /v1/videos/{taskId}/content` → 回退到直链 | 优先试 `/content` 下载字节；**该端点在实测部署里不存在（404 `video not found`）**，必须回退到轮询响应里的成片直链 |
 
 **上游报文的两条硬约束（实测踩出来的，写下来免得再踩）：**
