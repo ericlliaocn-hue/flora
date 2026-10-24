@@ -69,3 +69,12 @@ flora:
       batch-size: ${FLORA_OUTBOX_BATCH_SIZE:50}
       # 同一条 outbox 连续投递失败多少次后停在 failed（不再自动重试）。
       max-attempts: ${FLORA_OUTBOX_MAX_ATTEMPTS:10}
+  # WP6 的预付费钱包。金额一律整数 credit（BIGINT）。
+  billing:
+    # 单次任务默认冻结 credit 数（正整数）。
+    default-job-cost: ${FLORA_BILLING_DEFAULT_JOB_COST:10}
+    # 新注册用户初始赠送 credit 数（默认 0；若 > 0 则注册时自动记一笔 topup 流水）。
+    initial-credits: ${FLORA_BILLING_INITIAL_CREDITS:0}
+    # 后台扫描 worker 已完成任务并自动 confirm/release 冻结单的间隔（毫秒）与批大小。
+    settle-poll-ms: ${FLORA_BILLING_SETTLE_POLL_MS:200}
+    settle-batch-size: ${FLORA_BILLING_SETTLE_BATCH_SIZE:50}

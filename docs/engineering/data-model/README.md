@@ -11,7 +11,7 @@
 | 表 | 所属 | 首次落地 | 字段级 | 说明 |
 | --- | --- | --- | --- | --- |
 | `users` | 账号 | WP3 | [下方字段](#userswp3-已落地) | 登录主体；Sa-Token 会话指向 `user_id` |
-| `wallet` / `wallet_hold` / `wallet_ledger` | 计费 | WP6 | [billing.md](./billing.md) | 余额 + 冻结单 + 流水；单账本 |
+| `wallet` / `wallet_hold` / `wallet_ledger` | 计费 | WP6 已落地 | [billing.md](./billing.md) | 余额 + 冻结单 + 流水；单账本 |
 | `job` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 状态机权威行 |
 | `job_step` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
 | `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
@@ -59,7 +59,7 @@ WP4 已实现：见 [WP4 brief](../feature-briefs/2026-10-24-wp4-job-outbox-rabb
 列定义 **不** 在本页改，仍以 [jobs.md](./jobs.md) 为准（WP4 照抄实现，没有加列，也没有加
 `queue_name` / `routing_key` / `amqp_*` 这类队列实现字段）。
 
-`wallet*` 仍是 WP6，`job_lease` 永远不建（用 Redis 短锁）。
+`wallet*` 已由 WP6 落地（见下节），`job_lease` 永远不建（用 Redis 短锁）。
 
 ## `provider_task`（WP5 已落地）
 
@@ -71,6 +71,18 @@ WP5 已实现：见 [WP5 brief](../feature-briefs/2026-10-24-wp5-thin-worker-any
 `provider` / `http_status` / `updated_at` 这类未登记列；结构化摘要统一放进 `raw_body` JSONB）。
 
 只有 worker 写这张表；C 端 `query` / `result` **绝不**返回它的任何字段。
+
+## 钱包三表（WP6 已落地）
+
+WP6 已实现：见 [WP6 brief](../feature-briefs/2026-10-24-wp6-prepaid-wallet.md)。三张表由
+`api/src/main/resources/db/migration/V4__create_wallet_domain.sql` 建，同时给
+`job.hold_id` 补上了指向 `wallet_hold(id)` 的物理外键。
+
+列定义 **不** 在本页改，仍以 [billing.md](./billing.md) 为准（WP6 照抄实现：
+`wallet` 5 列、`wallet_hold` 7 列、`wallet_ledger` 8 列，金额一律 BIGINT 正整数，
+方向由流水 `type` 决定）。
+
+账本只写在 api 进程；worker 不碰这三张表（ADR 0004）。
 
 ## 通用约定
 

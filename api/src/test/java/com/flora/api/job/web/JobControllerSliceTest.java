@@ -45,6 +45,7 @@ class JobControllerSliceTest {
 
     private static final UUID USER = UUID.randomUUID();
     private static final UUID JOB_ID = UUID.randomUUID();
+    private static final UUID HOLD_ID = UUID.randomUUID();
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,7 +69,7 @@ class JobControllerSliceTest {
     void submitReturnsTheQueuedJob() throws Exception {
         when(sessions.currentUserId()).thenReturn(USER.toString());
         when(submitJob.submit(eq(USER), eq("k1"), eq("image.generate"), eq("demo"), any(JsonNode.class), isNull()))
-                .thenReturn(new SubmitJobView(JOB_ID.toString(), "queued", null));
+                .thenReturn(new SubmitJobView(JOB_ID.toString(), "queued", HOLD_ID.toString()));
 
         mockMvc.perform(post("/api/v1/jobs/submit")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +80,24 @@ class JobControllerSliceTest {
                 .andExpect(jsonPath("$.error_code").doesNotExist())
                 .andExpect(jsonPath("$.data.job_id").value(JOB_ID.toString()))
                 .andExpect(jsonPath("$.data.status").value("queued"))
-                .andExpect(jsonPath("$.data.hold_id").doesNotExist());
+                .andExpect(jsonPath("$.data.hold_id").value(HOLD_ID.toString()));
+    }
+
+    @Test
+    void submitWithAnInsufficientWalletUsesTheEnvelope() throws Exception {
+        when(sessions.currentUserId()).thenReturn(USER.toString());
+        when(submitJob.submit(eq(USER), eq("k1"), any(), any(), any(JsonNode.class), any()))
+                .thenThrow(JobException.walletInsufficient());
+
+        mockMvc.perform(post("/api/v1/jobs/submit")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{}}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ok").value(false))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(jsonPath("$.error_code").value("WALLET_INSUFFICIENT"))
+                .andExpect(jsonPath("$.message").value("账户余额不足，请先充值。"));
     }
 
     @Test

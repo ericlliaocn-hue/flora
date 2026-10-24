@@ -32,6 +32,11 @@ public class JobException extends RuntimeException {
         return new JobException(ErrorCodes.VALIDATION_ERROR);
     }
 
+    /** 钱包冻结失败：余额不足。 */
+    public static JobException walletInsufficient() {
+        return new JobException(ErrorCodes.WALLET_INSUFFICIENT);
+    }
+
     public String errorCode() {
         return errorCode;
     }

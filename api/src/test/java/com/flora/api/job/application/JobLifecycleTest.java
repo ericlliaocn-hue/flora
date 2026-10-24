@@ -9,6 +9,15 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.flora.api.billing.application.JobCostPolicy;
+import com.flora.api.billing.application.WalletService;
+import com.flora.api.billing.domain.WalletHold;
+import com.flora.api.billing.domain.WalletHoldStatus;
+import com.flora.api.billing.domain.WalletLedgerEntry;
+import com.flora.api.billing.domain.WalletLedgerType;
+import com.flora.api.billing.infra.BillingProperties;
+import com.flora.api.billing.support.InMemoryWalletStore;
+import com.flora.api.billing.support.LedgerAssertions;
 import com.flora.api.job.domain.JobStatus;
 import com.flora.api.job.infra.JobException;
 import com.flora.api.job.infra.JobMessageTransport;
@@ -16,6 +25,7 @@ import com.flora.api.job.infra.FakeJobTransport;
 import com.flora.api.job.infra.JobRequestHasher;
 import com.flora.api.job.support.FakeJobLease;
 import com.flora.api.job.support.InMemoryJobStore;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -23,32 +33,48 @@ import org.junit.jupiter.api.Test;
  *
  * <p>用内存仓储 + FakeTransport 跑，不依赖 Postgres / Redis / RabbitMQ；
  * 仓储语义与 JDBC 实现一致（见 {@link InMemoryJobStore}）。
+ *
+ * <p>WP6 起任务与钱包联动：提交先冻结，succeeded 确认实扣，
+ * cancelled / dead 解冻退回，重试期间冻结保持不动。
  */
 class JobLifecycleTest {
 
     private static final UUID USER = UUID.randomUUID();
     private static final UUID OTHER_USER = UUID.randomUUID();
     private static final String WORKER = "worker-1";
+    private static final long COST = 10;
 
     private final InMemoryJobStore store = new InMemoryJobStore();
+    private final InMemoryWalletStore wallets = new InMemoryWalletStore(store::statusOf);
     private final FakeJobTransport transport = new FakeJobTransport();
     private final FakeJobLease lease = new FakeJobLease();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final BillingProperties billing = new BillingProperties(COST, 0, 200, 50);
 
-    private final SubmitJob submitJob = new SubmitJob(store, store, store, new JobRequestHasher());
-    private final GetJob getJob = new GetJob(store);
-    private final GetJobResult getJobResult = new GetJobResult(store, mapper);
-    private final CancelJob cancelJob = new CancelJob(store);
-    private final ClaimJob claimJob = new ClaimJob(store, store, lease);
-    private final RecordAttemptResult recordAttemptResult = new RecordAttemptResult(store, store, store, lease, mapper);
+    private final WalletService walletService = new WalletService(wallets, wallets, wallets);
+    private final HoldSettlement holdSettlement = new HoldSettlement(walletService);
+
+    private final SubmitJob submitJob = new SubmitJob(store, store, store, new JobRequestHasher(), walletService,
+            new JobCostPolicy(billing));
+    private final GetJob getJob = new GetJob(store, holdSettlement);
+    private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement);
+    private final CancelJob cancelJob = new CancelJob(store, holdSettlement);
+    private final ClaimJob claimJob = new ClaimJob(store, store, lease, holdSettlement);
+    private final RecordAttemptResult recordAttemptResult =
+            new RecordAttemptResult(store, store, store, lease, mapper, holdSettlement);
     private final OutboxDispatchTick dispatchTick = new OutboxDispatchTick(store, transport, 50, 10);
+
+    @BeforeEach
+    void topUpTheTestUser() {
+        walletService.credit(USER, 100);
+    }
 
     @Test
     void submitCreatesQueuedJobWithOutboxAndIdempotencyRecord() throws Exception {
         SubmitJobView view = submitJob.submit(USER, "k1", "image.generate", "demo", params("hi"), null);
 
         assertThat(view.status()).isEqualTo("queued");
-        assertThat(view.holdId()).isNull();
+        assertThat(view.holdId()).isNotBlank();
         assertThat(store.allJobs()).hasSize(1);
         assertThat(store.allOutbox()).hasSize(1);
         assertThat(store.findByUserAndKey(USER, "k1")).isPresent();
@@ -57,6 +83,41 @@ class JobLifecycleTest {
         assertThat(payload.get("job_id").asText()).isEqualTo(view.jobId());
         assertThat(payload.has("event_id")).isTrue();
         assertThat(payload.has("params")).isFalse();
+        // 队列消息里没有钱包金额与 hold_id（ADR 0003）。
+        assertThat(payload.has("hold_id")).isFalse();
+    }
+
+    @Test
+    void submitFreezesTheWallet() {
+        SubmitJobView view = submitJob.submit(USER, "k1", "image.generate", "demo", params("hi"), null);
+
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(90);
+        assertThat(wallets.walletOf(USER).frozen()).isEqualTo(COST);
+
+        WalletHold hold = wallets.allHolds().get(0);
+        assertThat(hold.id().toString()).isEqualTo(view.holdId());
+        assertThat(hold.status()).isEqualTo(WalletHoldStatus.FROZEN);
+        assertThat(hold.jobId().toString()).isEqualTo(view.jobId());
+
+        WalletLedgerEntry freeze = wallets.findLedgerByUserId(USER).get(1);
+        assertThat(freeze.type()).isEqualTo(WalletLedgerType.FREEZE);
+        assertThat(freeze.amount()).isEqualTo(COST);
+        LedgerAssertions.assertInvariants(wallets, USER);
+    }
+
+    @Test
+    void submitIsRejectedWhenTheBalanceIsNotEnough() {
+        assertThatThrownBy(() -> submitJob.submit(OTHER_USER, "k1", "image.generate", "demo", params("hi"), null))
+                .isInstanceOf(JobException.class)
+                .satisfies(e -> assertThat(((JobException) e).errorCode()).isEqualTo("WALLET_INSUFFICIENT"));
+
+        assertThat(store.allJobs()).isEmpty();
+        assertThat(store.allOutbox()).isEmpty();
+        assertThat(store.findByUserAndKey(OTHER_USER, "k1")).isEmpty();
+        assertThat(wallets.allHolds()).isEmpty();
+        assertThat(wallets.findLedgerByUserId(OTHER_USER)).isEmpty();
+        assertThat(wallets.walletOf(OTHER_USER).available()).isZero();
+        assertThat(wallets.walletOf(OTHER_USER).frozen()).isZero();
     }
 
     @Test
@@ -65,8 +126,14 @@ class JobLifecycleTest {
         SubmitJobView second = submitJob.submit(USER, "k1", "image.generate", "demo", params("hi"), null);
 
         assertThat(second.jobId()).isEqualTo(first.jobId());
+        assertThat(second.holdId()).isEqualTo(first.holdId());
         assertThat(store.allJobs()).hasSize(1);
         assertThat(store.allOutbox()).hasSize(1);
+        // 重放不二次冻结。
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(90);
+        assertThat(wallets.walletOf(USER).frozen()).isEqualTo(COST);
+        assertThat(wallets.allHolds()).hasSize(1);
+        assertThat(wallets.findLedgerByUserId(USER)).hasSize(2);
     }
 
     @Test
@@ -94,7 +161,7 @@ class JobLifecycleTest {
     }
 
     @Test
-    void claimThenSucceedMakesTheResultVisible() {
+    void claimThenSucceedMakesTheResultVisibleAndConfirmsTheHold() {
         UUID jobId = submit("k1");
 
         ClaimResult claim = claimJob.claim(jobId, WORKER);
@@ -115,6 +182,12 @@ class JobLifecycleTest {
         assertThat(result.outputs().get(0).objectKey()).isEqualTo("img/a.png");
         assertThat(result.outputs().get(0).url()).isNull();
         assertThat(lease.heldCount()).isZero();
+
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(90);
+        assertThat(wallets.walletOf(USER).frozen()).isZero();
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.CONFIRMED);
+        assertThat(wallets.findLedgerByUserId(USER).get(2).type()).isEqualTo(WalletLedgerType.CONFIRM);
+        LedgerAssertions.assertInvariants(wallets, USER);
     }
 
     @Test
@@ -137,7 +210,21 @@ class JobLifecycleTest {
     }
 
     @Test
-    void attemptsExhaustedBecomeDead() {
+    void retryKeepsTheHoldFrozen() {
+        UUID jobId = submit("k1");
+
+        claimJob.claim(jobId, WORKER);
+        recordAttemptResult.record(jobId, WORKER, AttemptOutcome.failure("JOB_FAILED", true));
+
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.FROZEN);
+        assertThat(wallets.walletOf(USER).frozen()).isEqualTo(COST);
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(90);
+        assertThat(wallets.findLedgerByUserId(USER)).hasSize(2);
+        LedgerAssertions.assertInvariants(wallets, USER);
+    }
+
+    @Test
+    void attemptsExhaustedBecomeDeadAndReleaseTheHold() {
         UUID jobId = submit("k1");
 
         claimJob.claim(jobId, WORKER);
@@ -155,6 +242,12 @@ class JobLifecycleTest {
         assertThat(view.attempt()).isEqualTo(3);
         assertThat(view.maxAttempts()).isEqualTo(3);
         assertThat(view.errorCode()).isEqualTo("JOB_FAILED");
+
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.RELEASED);
+        assertThat(wallets.walletOf(USER).frozen()).isZero();
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(100);
+        assertThat(wallets.findLedgerByUserId(USER).get(2).type()).isEqualTo(WalletLedgerType.RELEASE);
+        LedgerAssertions.assertInvariants(wallets, USER);
     }
 
     @Test
@@ -169,6 +262,13 @@ class JobLifecycleTest {
         JobView again = cancelJob.cancel(USER, jobId, "zh");
         assertThat(again.status()).isEqualTo("cancelled");
         assertThat(again.errorCode()).isEqualTo("JOB_CANCELLED");
+
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.RELEASED);
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(100);
+        assertThat(wallets.walletOf(USER).frozen()).isZero();
+        // 重放不写第二条 release 流水。
+        assertThat(wallets.findLedgerByUserId(USER)).hasSize(3);
+        LedgerAssertions.assertInvariants(wallets, USER);
     }
 
     @Test
@@ -182,6 +282,9 @@ class JobLifecycleTest {
         RecordResult record = recordAttemptResult.record(jobId, WORKER, AttemptOutcome.failure("JOB_FAILED", true));
         assertThat(record.status()).isEqualTo("cancelled");
         assertThat(getJob.get(USER, jobId, "zh").errorCode()).isEqualTo("JOB_CANCELLED");
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.RELEASED);
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(100);
+        LedgerAssertions.assertInvariants(wallets, USER);
     }
 
     /** WP5 收口项：运行期间用户取消，即使这次 attempt 成功也收敛为 cancelled。 */
@@ -200,6 +303,10 @@ class JobLifecycleTest {
         assertThat(view.errorCode()).isEqualTo("JOB_CANCELLED");
         // 取消的 attempt 不写结果
         assertThat(getJobResult.result(USER, jobId, "zh").outputs()).isEmpty();
+        // 取消走的是解冻，不是实扣。
+        assertThat(wallets.allHolds().get(0).status()).isEqualTo(WalletHoldStatus.RELEASED);
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(100);
+        LedgerAssertions.assertInvariants(wallets, USER);
     }
 
     @Test

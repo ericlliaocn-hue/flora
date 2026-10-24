@@ -42,13 +42,16 @@ public class RecordAttemptResult {
     private final OutboxRepository outbox;
     private final JobLease lease;
     private final ObjectMapper mapper;
+    private final HoldSettlement holds;
 
-    public RecordAttemptResult(JobRepository jobs, JobStepRepository steps, OutboxRepository outbox, JobLease lease, ObjectMapper mapper) {
+    public RecordAttemptResult(JobRepository jobs, JobStepRepository steps, OutboxRepository outbox, JobLease lease,
+            ObjectMapper mapper, HoldSettlement holds) {
         this.jobs = jobs;
         this.steps = steps;
         this.outbox = outbox;
         this.lease = lease;
         this.mapper = mapper;
+        this.holds = holds;
     }
 
     @Transactional
@@ -76,6 +79,7 @@ public class RecordAttemptResult {
         steps.end(job.id(), job.attempt(), JobStepStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
         JobTransitions.requireCancellable(job.status());
         jobs.updateStatus(job.id(), JobStatus.RUNNING, JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
+        holds.settle(job.holdId(), JobStatus.CANCELLED);
         return JobStatus.CANCELLED;
     }
 
@@ -84,6 +88,7 @@ public class RecordAttemptResult {
         jobs.updateResult(job.id(), resultKeysJson(outcome.resultObjectKeys()));
         JobTransitions.requireSucceeded(job.status());
         jobs.updateStatus(job.id(), JobStatus.RUNNING, JobStatus.SUCCEEDED, null);
+        holds.settle(job.holdId(), JobStatus.SUCCEEDED);
         return JobStatus.SUCCEEDED;
     }
 
@@ -97,10 +102,12 @@ public class RecordAttemptResult {
             jobs.updateStatus(job.id(), JobStatus.FAILED, JobStatus.QUEUED, outcome.errorCode());
             UUID eventId = UUID.randomUUID();
             outbox.insertPending(eventId, "job", job.id(), JobMessagePayload.of(job.id(), eventId));
+            // 重试不释放也不重冻：冻结单保持 frozen，等最终终态再结算。
             return JobStatus.QUEUED;
         }
         JobTransitions.requireDead(JobStatus.FAILED);
         jobs.updateStatus(job.id(), JobStatus.FAILED, JobStatus.DEAD, outcome.errorCode());
+        holds.settle(job.holdId(), JobStatus.DEAD);
         return JobStatus.DEAD;
     }
 

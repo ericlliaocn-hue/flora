@@ -32,14 +32,15 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
     private final Map<String, IdempotencyRecord> idempotency = new LinkedHashMap<>();
 
     @Override
-    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey) {
+    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey,
+            UUID holdId) {
         boolean exists = jobs.values().stream()
                 .anyMatch(job -> job.userId().equals(userId) && job.idempotencyKey().equals(idempotencyKey));
         if (exists) {
             return Optional.empty();
         }
         Instant now = Instant.now();
-        Job job = new Job(UUID.randomUUID(), userId, JobStatus.CREATED, capability, model, paramsJson, 0, 3, null,
+        Job job = new Job(UUID.randomUUID(), userId, JobStatus.CREATED, capability, model, paramsJson, 0, 3, holdId,
                 idempotencyKey, null, null, null, now, now);
         jobs.put(job.id(), job);
         return Optional.of(job);
@@ -176,6 +177,12 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
     /** 所有 step 行。 */
     public List<JobStep> allSteps() {
         return List.copyOf(steps.values());
+    }
+
+    /** 任务当前状态的小写值；钱包对账器要知道任务是不是终态。 */
+    public String statusOf(UUID jobId) {
+        Job job = jobs.get(jobId);
+        return job == null ? null : job.status().value();
     }
 
     private static Job copy(Job job, JobStatus status, String errorCode, int attempt, Instant cancelRequestedAt, String resultObjectKeysJson) {

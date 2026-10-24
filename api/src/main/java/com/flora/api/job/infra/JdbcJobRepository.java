@@ -49,10 +49,11 @@ public class JdbcJobRepository implements JobRepository {
     }
 
     @Override
-    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey) {
+    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey,
+            UUID holdId) {
         List<Job> rows = jdbc.query(
-                "INSERT INTO job (user_id, status, capability, model, params, idempotency_key) "
-                        + "VALUES (?, 'created', ?, ?, ?, ?) "
+                "INSERT INTO job (user_id, status, capability, model, params, idempotency_key, hold_id) "
+                        + "VALUES (?, 'created', ?, ?, ?, ?, ?) "
                         + "ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING " + COLUMNS,
                 ps -> {
                     ps.setObject(1, userId);
@@ -60,6 +61,11 @@ public class JdbcJobRepository implements JobRepository {
                     ps.setString(3, model);
                     ps.setObject(4, paramsJson, Types.OTHER);
                     ps.setString(5, idempotencyKey);
+                    if (holdId == null) {
+                        ps.setNull(6, Types.OTHER);
+                    } else {
+                        ps.setObject(6, holdId);
+                    }
                 },
                 MAPPER);
         return rows.stream().findFirst();
