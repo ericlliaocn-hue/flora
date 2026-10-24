@@ -19,6 +19,8 @@ import com.flora.api.billing.infra.BillingProperties;
 import com.flora.api.billing.support.InMemoryWalletStore;
 import com.flora.api.billing.support.LedgerAssertions;
 import com.flora.api.job.domain.JobStatus;
+import com.flora.api.storage.TosProperties;
+import com.flora.api.storage.TosUrlSigner;
 import com.flora.api.job.infra.JobException;
 import com.flora.api.job.infra.JobMessageTransport;
 import com.flora.api.job.infra.FakeJobTransport;
@@ -57,7 +59,9 @@ class JobLifecycleTest {
     private final SubmitJob submitJob = new SubmitJob(store, store, store, new JobRequestHasher(), walletService,
             new JobCostPolicy(billing));
     private final GetJob getJob = new GetJob(store, holdSettlement);
-    private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement);
+    private final TosUrlSigner tosUrlSigner = new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080",
+            "cn-beijing", "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, "/tmp/flora-tos"));
+    private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement, tosUrlSigner);
     private final CancelJob cancelJob = new CancelJob(store, holdSettlement);
     private final ClaimJob claimJob = new ClaimJob(store, store, lease, holdSettlement);
     private final RecordAttemptResult recordAttemptResult =
@@ -180,7 +184,9 @@ class JobLifecycleTest {
         JobResultView result = getJobResult.result(USER, jobId, "zh");
         assertThat(result.outputs()).hasSize(1);
         assertThat(result.outputs().get(0).objectKey()).isEqualTo("img/a.png");
-        assertThat(result.outputs().get(0).url()).isNull();
+        assertThat(result.outputs().get(0).url()).isNotNull();
+        assertThat(result.outputs().get(0).url()).contains("X-Tos-Algorithm=TOS4-HMAC-SHA256");
+        assertThat(result.outputs().get(0).url()).contains("X-Tos-Signature=");
         assertThat(lease.heldCount()).isZero();
 
         assertThat(wallets.walletOf(USER).available()).isEqualTo(90);

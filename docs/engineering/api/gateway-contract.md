@@ -141,7 +141,9 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 | `object_key` | string | 是 | TOS 对象键 |
 | `url` | string | 否 | api 用 TOS 签名的短期读地址 |
 
-`url` 由 api 用 TOS 签名，短 TTL。worker 只写 `object_key`。
+`url` 由 api 用火山 TOS V4（`TOS4-HMAC-SHA256`）签发短期预签名 GET 地址（默认 TTL 900 秒，**WP8 已落地**）；worker 只写 `object_key`。
+
+签名地址是 **现签** 的：不落库、不进 MQ 消息、不进 `job` 行（ADR 0003）。任务不是 `succeeded` 时 `outputs` 恒为空数组，不给未完成或失败的任务签发读地址。
 
 ## Cancel
 

@@ -105,6 +105,17 @@ export FLORA_BILLING_DEFAULT_JOB_COST=10    # 单次任务冻结 credit 数（�
 export FLORA_BILLING_INITIAL_CREDITS=0      # 新注册用户初始赠送 credit 数（0 = 不赠送）
 export FLORA_BILLING_SETTLE_POLL_MS=200     # 后台对账扫描间隔（毫秒）
 export FLORA_BILLING_SETTLE_BATCH_SIZE=50   # 单轮最多结算多少张冻结单
+
+# WP8：火山引擎 TOS（api 签发预签名读地址，worker 写对象字节）
+export FLORA_TOS_MODE=stub                  # stub（本地零密钥，写 local-dir）| http（真实火山 TOS）
+export FLORA_TOS_ENDPOINT=https://tos-cn-beijing.volces.com
+export FLORA_TOS_REGION=cn-beijing
+export FLORA_TOS_BUCKET=flora-dev
+export FLORA_TOS_ACCESS_KEY=                # 由环境变量注入，勿入库
+export FLORA_TOS_SECRET_KEY=                # 由环境变量注入，勿入库
+export FLORA_TOS_PRESIGN_TTL_SECONDS=900    # 预签名读地址有效期（60..86400）
+export FLORA_TOS_TIMEOUT_MS=15000
+export FLORA_TOS_LOCAL_DIR=/tmp/flora-tos   # stub 模式的落盘根目录
 ```
 
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
@@ -447,10 +458,61 @@ WHERE w.user_id = (SELECT id FROM users WHERE username = 'bob')
 GROUP BY w.available, w.frozen, w.user_id;"
 ```
 
-### 8. WP5 / WP6 的边界（不要误以为已经能用）
+### 9. WP8 双进程端到端（火山 TOS 结果落地与签名读 URL）
+
+默认 `FLORA_TOS_MODE=stub`：**零云密钥**。worker 把生成结果字节写到本地
+`${FLORA_TOS_LOCAL_DIR}/{bucket}/{object_key}`，api 照样按 TOS V4 规则签出短期预签名 GET 地址。
+
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"bob","password":"password1"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 1) 提交一个会成功的任务（余额要先充够，见第 7 节）
+JOB=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp8-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"a quiet garden"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 2
+
+# 2) result：object_key 是 TOS 对象键，url 是短期签名读地址
+curl -s $API/jobs/$JOB/result -H "flora-token: $TOKEN"
+# {"ok":true,"data":{"job_id":"...","status":"succeeded","outputs":[
+#   {"type":"image","object_key":"anytoken/img/<job_id>/1.png",
+#    "url":"http://127.0.0.1:18080/flora-dev/anytoken/img/<job_id>/1.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Credential=...&X-Tos-Date=...&X-Tos-Expires=900&X-Tos-SignedHeaders=host&X-Tos-Signature=..."}],"error_code":null,"message":null}}
+
+# 3) 落盘核验：文件真的写出来了，且是合法 PNG（文件头 89 50 4e 47）
+ls -l /tmp/flora-tos/flora-dev/anytoken/img/$JOB/1.png
+xxd -l 8 /tmp/flora-tos/flora-dev/anytoken/img/$JOB/1.png
+# 89504e47 0d0a1a0a
+
+# 4) 取回字节：把签名 URL 指到本地文件服务上就能真的 GET 回来
+python3 -m http.server 18080 --directory /tmp/flora-tos &
+# 用 FLORA_TOS_ENDPOINT=http://127.0.0.1:18080 重启 api 后，签名 URL 直接可访问：
+# curl -s "$URL" -o /tmp/fetched.png && xxd -l 8 /tmp/fetched.png
+
+# 5) TOS 故障：不吞冻、不假成功 → 重试 3 次后 dead，钱包冻结额自动退回
+JOB_TOS_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp8-tos-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_tos_outcome":"unavailable"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 4
+curl -s $API/jobs/$JOB_TOS_FAIL -H "flora-token: $TOKEN"
+# → status="dead", attempt=3, error_code="PROVIDER_UNAVAILABLE"
+curl -s $API/wallet -H "flora-token: $TOKEN"
+# → available 回到扣费前，frozen=0（失败不吞冻）
+```
+
+接真实火山 TOS：配齐桶与 AK/SK，设 `FLORA_TOS_MODE=http`、
+`FLORA_TOS_ENDPOINT=https://tos-cn-beijing.volces.com`（或对应 region 的端点），
+并让 `FLORA_TOS_BUCKET` 与桶名一致即可，worker 走 V4 Header 签名 PUT，api 走 V4 Query 预签名 GET。
+
+### 10. WP5 / WP6 / WP8 的边界（不要误以为已经能用）
 
 - **没有钱包充值入口**：WP6 不提供 C 端自助充值接口（没有 `POST /api/v1/wallet/topup`），
   充值只能走运维 SQL、`FLORA_BILLING_INITIAL_CREDITS`，或未来 WP11 Admin 的受控加额。
+- **TOS 默认是 stub**：WP8 默认 `FLORA_TOS_MODE=stub`，结果字节写本地 `/tmp/flora-tos`，
+  不是真的对象存储；配齐真实火山 TOS 桶与 AK/SK 并设 `FLORA_TOS_MODE=http` 才直连线上 TOS。
+- **签名 URL 是短期的**：默认 TTL 900 秒，过期后前端要重新调 `result` 拿新的地址。
 - **钱包不等于钱**：flora credit 是产品内部的计费单位，没有支付渠道、没有充值订单、
   没有退款（M4 / WP11 之前都还没有）。
 - **默认不连真上游**：`FLORA_GATEWAY_MODE=stub` 是本地假上游；`http` 模式才真的调 Anytoken，
@@ -464,7 +526,7 @@ GROUP BY w.available, w.frozen, w.user_id;"
 
 下列内容在对应 WP 落地前 **不要当作可执行步骤**：
 
-- 火山 TOS bucket、STS、回调
+- 火山 TOS 的 STS 临时凭证与回调（WP8 只做了存储与签名读地址）
 - Anytoken 的真实付费调用方式（WP5 只有适配器边界 + 本地 stub）
 - 支付渠道与充值订单（钱包在 WP6，但「钱怎么进来」要到 M4 / WP11 Admin）
 - 前端改打 flora API（WP7）
@@ -479,9 +541,10 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | --- | --- | --- |
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP4+ 接任务链路 |
 | 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis | WP7 前端登录页 |
-| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游、没有 TOS** | WP4–WP7 |
+| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游** | WP4–WP7 |
 | 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `flora.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
 | 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release | WP7 前端余额展示 |
 | 如何加测试余额？ | WP6：运维 psql 充值 SQL（必须同时写 topup 流水）或 `FLORA_BILLING_INITIAL_CREDITS`；**没有 C 端自助充值接口** | M4 / WP11 admin |
+| 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`** | WP7 前端直接用 url 展示图片 |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。

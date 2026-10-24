@@ -13,11 +13,15 @@ import com.flora.worker.gateway.AnytokenGatewayAdapter;
 import com.flora.worker.gateway.AnytokenProperties;
 import com.flora.worker.gateway.AnytokenRequest;
 import com.flora.worker.job.domain.JobOutcome;
+import com.flora.worker.storage.TosObjectStorage;
+import com.flora.worker.storage.TosObjectStorageAdapter;
+import com.flora.worker.storage.TosProperties;
 import com.flora.worker.job.domain.WorkerJobStatus;
 import com.flora.worker.job.domain.WorkerStepStatus;
 import com.flora.worker.job.support.FakeWorkerJobLease;
 import com.flora.worker.job.support.InMemoryWorkerStore;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * worker 的状态机闭环：成功、可重试回 queued、取消、dead。
@@ -26,20 +30,33 @@ import org.junit.jupiter.api.Test;
  */
 class ExecuteJobTest {
 
+    @TempDir
+    java.nio.file.Path tempDir;
+
     private final InMemoryWorkerStore store = new InMemoryWorkerStore();
     private final FakeWorkerJobLease lease = new FakeWorkerJobLease();
     private final ObjectMapper mapper = new ObjectMapper();
-    private final AnytokenGatewayAdapter stubGateway = new AnytokenGatewayAdapter(
-            new AnytokenProperties("stub", "http://127.0.0.1:18080", "", 30000, "/v1/generations"), mapper);
     private final WorkerJobLifecycleService lifecycle = new WorkerJobLifecycleService(store, store, store, store, mapper);
-    private final ExecuteJob executeJob = new ExecuteJob(lifecycle, stubGateway, lease);
+
+    private TosObjectStorage tosStorage() {
+        return new TosObjectStorageAdapter(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing",
+                "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, tempDir.toString()));
+    }
+
+    /** stub 适配器要等 @TempDir 注入后才能建，所以按方法给。 */
+    private ExecuteJob executeJob() {
+        AnytokenGatewayAdapter stubGateway = new AnytokenGatewayAdapter(
+                new AnytokenProperties("stub", "http://127.0.0.1:18080", "", 30000, "/v1/generations"), mapper,
+                tosStorage());
+        return new ExecuteJob(lifecycle, stubGateway, lease);
+    }
 
     @Test
     void successfulAttemptEndsSucceeded() {
         UUID jobId = UUID.randomUUID();
         store.enqueue(jobId, "{}");
 
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.SUCCEEDED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.SUCCEEDED);
 
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.SUCCEEDED);
         assertThat(store.job(jobId).attempt()).isEqualTo(1);
@@ -57,7 +74,7 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         store.enqueue(jobId, "{\"stub_outcome\":\"provider_unavailable\"}");
 
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
 
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.QUEUED);
         assertThat(store.job(jobId).attempt()).isEqualTo(1);
@@ -75,9 +92,9 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         store.enqueue(jobId, "{\"stub_outcome\":\"provider_unavailable\"}");
 
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.DEAD);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.DEAD);
 
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.DEAD);
         assertThat(store.job(jobId).attempt()).isEqualTo(3);
@@ -92,7 +109,7 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         store.enqueue(jobId, "{\"stub_outcome\":\"job_failed\"}");
 
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.DEAD);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.DEAD);
 
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.DEAD);
         assertThat(store.job(jobId).attempt()).isEqualTo(1);
@@ -100,6 +117,29 @@ class ExecuteJobTest {
         assertThat(store.allSteps()).hasSize(1);
         assertThat(store.allProviderTasks()).hasSize(1);
         assertThat(store.allOutbox()).isEmpty();
+    }
+
+    /**
+     * WP8：TOS 写失败按可重试失败处理（不吞冻、不假成功），
+     * 重试耗尽后落 dead，由 api 侧把钱包冻结额退回。
+     */
+    @Test
+    void tosFailureIsRetryableAndEndsDeadWithoutResultKeys() {
+        UUID jobId = UUID.randomUUID();
+        store.enqueue(jobId, "{\"stub_tos_outcome\":\"unavailable\"}");
+
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
+        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.QUEUED);
+        assertThat(store.job(jobId).errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
+        assertThat(store.resultKeys(jobId)).isNull();
+
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.RETRY_QUEUED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.DEAD);
+
+        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.DEAD);
+        assertThat(store.job(jobId).attempt()).isEqualTo(3);
+        assertThat(store.job(jobId).errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
+        assertThat(store.resultKeys(jobId)).isNull();
     }
 
     /** 取消意图优先于本次 attempt 的成功结果。 */
@@ -145,7 +185,7 @@ class ExecuteJobTest {
         store.enqueue(jobId, "{}");
         lease.lockByOtherWorker();
 
-        assertThat(executeJob.execute(jobId)).isEqualTo(JobOutcome.SKIPPED);
+        assertThat(executeJob().execute(jobId)).isEqualTo(JobOutcome.SKIPPED);
 
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.QUEUED);
         assertThat(store.allSteps()).isEmpty();
@@ -154,6 +194,6 @@ class ExecuteJobTest {
 
     @Test
     void unknownJobIsSkipped() {
-        assertThat(executeJob.execute(UUID.randomUUID())).isEqualTo(JobOutcome.SKIPPED);
+        assertThat(executeJob().execute(UUID.randomUUID())).isEqualTo(JobOutcome.SKIPPED);
     }
 }

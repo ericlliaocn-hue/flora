@@ -19,6 +19,7 @@ Brief 是 flora 的需求源。Minimax 与人实现都从这里粘贴，不从�
 | [2026-10-24-wp3-auth-users.md](./2026-10-24-wp3-auth-users.md) | WP3 | 已实现，待验收 |
 | [2026-10-24-wp4-job-outbox-rabbit.md](./2026-10-24-wp4-job-outbox-rabbit.md) | WP4 | 已实现，待验收 |
 | [2026-10-24-wp5-thin-worker-anytoken.md](./2026-10-24-wp5-thin-worker-anytoken.md) | WP5 | 已实现，待验收 |
-| [2026-10-24-wp6-prepaid-wallet.md](./2026-10-24-wp6-prepaid-wallet.md) | WP6 | 已实现，待验收 |
+| [2026-10-24-wp6-prepaid-wallet.md](./2026-10-24-wp6-prepaid-wallet.md) | WP6 | 已实现 |
+| [2026-10-24-wp8-tos-storage-signed-url.md](./2026-10-24-wp8-tos-storage-signed-url.md) | WP8 / M2 | 火山 TOS 对象存储与短期签名读 URL（worker PUT + api V4 预签名 GET） | 已实现，待验收 |
 
-后续 WP7–WP11 在开工当天按模板新增，不要提前写空 brief。上表里的行是 **真实 brief**（已落盘、可整份粘贴给 Minimax），不是占位行。
+后续 WP7 / WP9–WP11 在开工当天按模板新增，不要提前写空 brief。上表里的行是 **真实 brief**（已落盘、可整份粘贴给 Minimax），不是占位行。
