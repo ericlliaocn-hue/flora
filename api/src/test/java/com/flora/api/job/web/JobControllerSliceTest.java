@@ -1,11 +1,14 @@
 package com.flora.api.job.web;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -184,5 +187,34 @@ class JobControllerSliceTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(false))
                 .andExpect(jsonPath("$.error_code").value("JOB_NOT_FOUND"));
+    }
+
+    /** WP9：Accept-Language 决定失败短句的语言。 */
+    @Test
+    void theMessageFollowsTheAcceptLanguageHeader() throws Exception {
+        when(sessions.currentUserId()).thenReturn(USER.toString());
+        when(getJob.get(eq(USER), eq(JOB_ID), any())).thenThrow(JobException.notFound());
+
+        mockMvc.perform(get("/api/v1/jobs/" + JOB_ID).header("Accept-Language", "en-US,en;q=0.9"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ok").value(false))
+                .andExpect(jsonPath("$.error_code").value("JOB_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("The task does not exist."));
+    }
+
+    /** WP9：未捕获异常兜底成 PROVIDER_UNAVAILABLE，原文与 SQL 一律不外泄。 */
+    @Test
+    void anUncaughtRuntimeExceptionIsSanitized() throws Exception {
+        when(sessions.currentUserId()).thenReturn(USER.toString());
+        when(getJob.get(eq(USER), eq(JOB_ID), any()))
+                .thenThrow(new IllegalStateException("relation \"users\" does not exist"));
+
+        mockMvc.perform(get("/api/v1/jobs/" + JOB_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ok").value(false))
+                .andExpect(jsonPath("$.data").doesNotExist())
+                .andExpect(jsonPath("$.error_code").value("PROVIDER_UNAVAILABLE"))
+                .andExpect(jsonPath("$.message").value("生成服务暂时不可用，请稍后重试。"))
+                .andExpect(content().string(not(containsString("does not exist"))));
     }
 }

@@ -3,6 +3,7 @@ package com.flora.api.job.application;
 import java.util.UUID;
 
 import com.flora.api.common.ErrorCodes;
+import com.flora.api.i18n.application.I18nMessageService;
 import com.flora.api.job.domain.Job;
 import com.flora.api.job.domain.JobStatus;
 import com.flora.api.job.domain.JobTransitions;
@@ -24,10 +25,12 @@ public class CancelJob {
 
     private final JobRepository jobs;
     private final HoldSettlement holds;
+    private final I18nMessageService i18n;
 
-    public CancelJob(JobRepository jobs, HoldSettlement holds) {
+    public CancelJob(JobRepository jobs, HoldSettlement holds, I18nMessageService i18n) {
         this.jobs = jobs;
         this.holds = holds;
+        this.i18n = i18n;
     }
 
     @Transactional
@@ -35,7 +38,7 @@ public class CancelJob {
         Job job = jobs.findByIdAndUser(jobId, userId).orElseThrow(JobException::notFound);
         if (job.status().isTerminal()) {
             holds.settle(job.holdId(), job.status());
-            return JobView.of(job, locale);
+            return JobView.of(job, message(job, locale));
         }
 
         jobs.requestCancel(jobId);
@@ -44,9 +47,14 @@ public class CancelJob {
             jobs.updateStatus(jobId, job.status(), JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
             holds.settle(job.holdId(), JobStatus.CANCELLED);
             Job cancelled = jobs.findById(jobId).orElseThrow(JobException::notFound);
-            return JobView.of(cancelled, locale);
+            return JobView.of(cancelled, message(cancelled, locale));
         }
         // running / failed：保留取消意图，等驱动下一步时收尾。
-        return JobView.of(job, locale);
+        return JobView.of(job, message(job, locale));
+    }
+
+    /** 失败任务按当前语言给一句友好短句；成功任务没有 message。 */
+    private String message(Job job, String locale) {
+        return job.errorCode() == null ? null : i18n.resolve(job.errorCode(), locale);
     }
 }
