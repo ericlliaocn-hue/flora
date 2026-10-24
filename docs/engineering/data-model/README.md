@@ -12,10 +12,10 @@
 | --- | --- | --- | --- | --- |
 | `users` | 账号 | WP3 | [下方字段](#userswp3-已落地) | 登录主体；Sa-Token 会话指向 `user_id` |
 | `wallet` / `wallet_hold` / `wallet_ledger` | 计费 | WP6 | [billing.md](./billing.md) | 余额 + 冻结单 + 流水；单账本 |
-| `job` | 任务 | WP4 | [jobs.md](./jobs.md) | 状态机权威行 |
-| `job_step` | 任务 | WP4 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
-| `outbox_message` | 投递 | WP4 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
-| `idempotency_record` | 任务 | WP4 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
+| `job` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 状态机权威行 |
+| `job_step` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
+| `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
+| `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
 | `provider_task` | 网关痕迹 | WP5 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
 | `i18n_message` | 文案 | WP9 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
@@ -50,6 +50,16 @@ WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)�
 | `locale` | TEXT | YES | | `zh` / `en` 偏好；空则回退 Accept-Language / zh |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
+
+## Job 四表（WP4 已落地）
+
+WP4 已实现：见 [WP4 brief](../feature-briefs/2026-10-24-wp4-job-outbox-rabbit.md)。四张表由
+`api/src/main/resources/db/migration/V2__create_job_domain.sql` 建。
+
+列定义 **不** 在本页改，仍以 [jobs.md](./jobs.md) 为准（WP4 照抄实现，没有加列，也没有加
+`queue_name` / `routing_key` / `amqp_*` 这类队列实现字段）。
+
+`provider_task` 仍是 WP5，`wallet*` 仍是 WP6，`job_lease` 永远不建（用 Redis 短锁）。
 
 ## 通用约定
 
