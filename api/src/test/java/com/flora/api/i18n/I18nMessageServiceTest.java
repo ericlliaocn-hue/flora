@@ -143,5 +143,10 @@ class I18nMessageServiceTest {
         public I18nMessage upsert(String key, String locale, String template) {
             throw new IllegalStateException("relation \"i18n_message\" does not exist");
         }
+
+        @Override
+        public List<I18nMessage> search(String query) {
+            throw new IllegalStateException("relation \"i18n_message\" does not exist");
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.flora.api.auth.application;
 
 import java.util.Optional;
 
+import com.flora.api.admin.infra.AdminBootstrap;
 import com.flora.api.auth.domain.User;
 import com.flora.api.auth.infra.AuthException;
 import com.flora.api.auth.infra.AuthSessionService;
@@ -21,11 +22,13 @@ public class LoginUser {
     private final UserRepository users;
     private final PasswordHasher hasher;
     private final AuthSessionService sessions;
+    private final AdminBootstrap adminBootstrap;
 
-    public LoginUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions) {
+    public LoginUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, AdminBootstrap adminBootstrap) {
         this.users = users;
         this.hasher = hasher;
         this.sessions = sessions;
+        this.adminBootstrap = adminBootstrap;
     }
 
     public AuthSession login(LoginCommand command) {
@@ -47,6 +50,6 @@ public class LoginUser {
         if (!hasher.matches(password, user.passwordHash())) {
             throw AuthException.unauthorized();
         }
-        return sessions.start(user);
+        return sessions.start(adminBootstrap.ensureRole(user));
     }
 }

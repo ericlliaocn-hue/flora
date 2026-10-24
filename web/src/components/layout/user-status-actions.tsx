@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import { Tooltip } from "antd";
-import { BookOpen, Keyboard, LogOut, Puzzle, Settings2, Wallet } from "lucide-react";
+import { BookOpen, Keyboard, LogOut, Puzzle, Settings2, ShieldCheck, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { GitHubLink } from "@/components/layout/github-link";
@@ -24,6 +25,7 @@ type UserStatusActionsProps = {
 
 export function UserStatusActions({ showConfig = true, variant = "default", onOpenShortcuts, onOpenPlugins }: UserStatusActionsProps) {
     const { i18n, t } = useTranslation();
+    const navigate = useNavigate();
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
@@ -70,6 +72,15 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                     <span className="hidden max-w-24 truncate text-xs font-medium text-stone-600 sm:inline dark:text-stone-300" style={iconStyle}>
                         {t("auth.signedInAs", { username: user.username })}
                     </span>
+                    {/* WP11：只有管理员才看到运维后台入口。 */}
+                    {user.role === "admin" ? (
+                        <Tooltip title={t("admin.entry")} mouseEnterDelay={0.2}>
+                            <button type="button" className={flatTextClass} style={iconStyle} onClick={() => navigate("/admin")} aria-label={t("admin.entry")}>
+                                <ShieldCheck className="size-3.5" />
+                                {variant === "canvas" ? null : <span>{t("admin.entry")}</span>}
+                            </button>
+                        </Tooltip>
+                    ) : null}
                     <Tooltip title={t("auth.logout")} mouseEnterDelay={0.2}>
                         <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => void logout()} aria-label={t("auth.logout")}>
                             <LogOut className="size-4" />

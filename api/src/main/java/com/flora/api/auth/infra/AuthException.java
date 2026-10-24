@@ -24,6 +24,10 @@ public class AuthException extends RuntimeException {
     public static AuthException validation() {
         return new AuthException(ErrorCodes.VALIDATION_ERROR);
     }
+    /** WP11：已登录但不是管理员，访问运维后台被拒。 */
+    public static AuthException forbidden() {
+        return new AuthException(ErrorCodes.FORBIDDEN);
+    }
 
     public String errorCode() {
         return errorCode;

@@ -1,5 +1,6 @@
 package com.flora.api.job.infra;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.flora.api.job.domain.JobStep;
@@ -17,4 +18,11 @@ public interface JobStepRepository {
 
     /** 收尾：写 step 的终态、错误码与结束时间。 */
     void end(UUID jobId, int attempt, JobStepStatus status, String errorCode);
+
+    /**
+     * 批量取若干任务的全部 step（按 attempt 升序）。
+     *
+     * <p>WP11 运维后台一次要展示一整页任务的步骤，用一次查询代替 N 次。
+     */
+    List<JobStep> findByJobIds(List<UUID> jobIds);
 }

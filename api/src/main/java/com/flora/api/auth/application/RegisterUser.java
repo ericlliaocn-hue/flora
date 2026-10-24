@@ -3,6 +3,7 @@ package com.flora.api.auth.application;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.flora.api.admin.infra.AdminBootstrap;
 import com.flora.api.auth.domain.User;
 import com.flora.api.auth.infra.AuthException;
 import com.flora.api.auth.infra.AuthSessionService;
@@ -31,12 +32,15 @@ public class RegisterUser {
     private final PasswordHasher hasher;
     private final AuthSessionService sessions;
     private final TopUpWallet topUpWallet;
+    private final AdminBootstrap adminBootstrap;
 
-    public RegisterUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, TopUpWallet topUpWallet) {
+    public RegisterUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, TopUpWallet topUpWallet,
+            AdminBootstrap adminBootstrap) {
         this.users = users;
         this.hasher = hasher;
         this.sessions = sessions;
         this.topUpWallet = topUpWallet;
+        this.adminBootstrap = adminBootstrap;
     }
 
     public AuthSession register(RegisterCommand command) {
@@ -59,6 +63,7 @@ public class RegisterUser {
 
         User user = users.insert(username, hasher.hash(password), locale);
         topUpWallet.ensureInitialWallet(user.id());
-        return sessions.start(user);
+        // 引导名单里的用户名直接就是管理员，联调不必手写 SQL 改库。
+        return sessions.start(adminBootstrap.ensureRole(user));
     }
 }

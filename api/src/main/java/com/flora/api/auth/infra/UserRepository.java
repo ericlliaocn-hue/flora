@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class UserRepository {
 
-    private static final String COLUMNS = "id, username, password_hash, locale, created_at, updated_at";
+    private static final String COLUMNS = "id, username, password_hash, locale, created_at, updated_at, role";
 
     private static final RowMapper<User> MAPPER = (rs, rowNum) -> new User(
             rs.getObject("id", UUID.class),
@@ -27,7 +27,8 @@ public class UserRepository {
             rs.getString("password_hash"),
             rs.getString("locale"),
             rs.getTimestamp("created_at").toInstant(),
-            rs.getTimestamp("updated_at").toInstant());
+            rs.getTimestamp("updated_at").toInstant(),
+            rs.getString("role"));
 
     private final JdbcTemplate jdbc;
 
@@ -67,5 +68,17 @@ public class UserRepository {
                 },
                 MAPPER);
         return rows.get(0);
+    }
+
+    /**
+     * 改角色：WP11 的 bootstrap admin 升权用。
+     *
+     * <p>只允许 {@code user} / {@code admin} 两个值（DB 有 CHECK 约束兜底）。
+     *
+     * @return 是否真的改了
+     */
+    public boolean updateRole(UUID id, String role) {
+        int updated = jdbc.update("UPDATE users SET role = ?, updated_at = now() WHERE id = ?", role, id);
+        return updated > 0;
     }
 }

@@ -1,6 +1,7 @@
 package com.flora.api.job.support;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +111,27 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
                 .sorted((a, b) -> b.createdAt().compareTo(a.createdAt()))
                 .limit(limit)
                 .toList();
+    }
+
+    @Override
+    public List<JobStep> findByJobIds(List<UUID> jobIds) {
+        return steps.values().stream()
+                .filter(step -> jobIds.contains(step.jobId()))
+                .sorted(Comparator.comparing(JobStep::jobId).thenComparingInt(JobStep::attempt))
+                .toList();
+    }
+
+    @Override
+    public boolean requeueForAdmin(UUID jobId, boolean clearHoldId) {
+        Job job = jobs.get(jobId);
+        if (job == null || (job.status() != JobStatus.DEAD && job.status() != JobStatus.FAILED)) {
+            return false;
+        }
+        jobs.put(jobId, new Job(job.id(), job.userId(), JobStatus.QUEUED, job.capability(), job.model(),
+                job.paramsJson(), job.attempt(), Math.max(job.maxAttempts(), job.attempt()) + 1,
+                clearHoldId ? null : job.holdId(), job.idempotencyKey(), null, null, null,
+                job.createdAt(), Instant.now()));
+        return true;
     }
 
     @Override

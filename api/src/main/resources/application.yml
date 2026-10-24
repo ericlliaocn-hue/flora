@@ -50,6 +50,10 @@ sa-token:
 # WP5+ 的 Anytoken hop 才消费这两个值。本阶段的作用是把密钥注入路径
 # 固定成环境变量，仓库里不出现真实 Key。
 flora:
+  # WP11：Admin 运维与配置后台。
+  admin:
+    # 逗号分隔的初始管理员用户名列表：命中者在注册或登录时自动升为 admin 角色
+    bootstrap-usernames: ${FLORA_ADMIN_BOOTSTRAP_USERNAMES:admin,flora_admin}
   gateway:
     base-url: ${FLORA_GATEWAY_BASE_URL:}
     api-key: ${FLORA_GATEWAY_API_KEY:}

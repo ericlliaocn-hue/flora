@@ -20,4 +20,11 @@ public interface I18nMessageRepository {
      * 写入或覆盖一条模板；供集成测试与后续 WP11 Admin 复用。
      */
     I18nMessage upsert(String key, String locale, String template);
+
+    /**
+     * 列出词条：按 {@code key ASC, locale ASC} 排序。
+     *
+     * @param query 非空时按 key 或 template 包含该关键字过滤
+     */
+    List<I18nMessage> search(String query);
 }

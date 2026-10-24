@@ -26,6 +26,8 @@ public final class ErrorCodes {
     public static final String PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND";
     /** WP10 起启用：素材不存在或不属于当前用户。 */
     public static final String ASSET_NOT_FOUND = "ASSET_NOT_FOUND";
+    /** WP11 起启用：已登录但不是管理员，访问 /api/v1/admin/** 被拒。 */
+    public static final String FORBIDDEN = "FORBIDDEN";
 
     private ErrorCodes() {
     }

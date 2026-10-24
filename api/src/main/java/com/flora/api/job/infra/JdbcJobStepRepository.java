@@ -52,6 +52,16 @@ public class JdbcJobStepRepository implements JobStepRepository {
                 status.value(), errorCode, jobId, attempt);
     }
 
+    @Override
+    public List<JobStep> findByJobIds(List<UUID> jobIds) {
+        if (jobIds.isEmpty()) {
+            return List.of();
+        }
+        String placeholders = String.join(", ", jobIds.stream().map(id -> "?").toList());
+        return jdbc.query("SELECT " + COLUMNS + " FROM job_step WHERE job_id IN (" + placeholders + ") "
+                + "ORDER BY job_id, attempt", MAPPER, jobIds.toArray());
+    }
+
     private static Instant toInstant(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant();
     }
