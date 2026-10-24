@@ -109,7 +109,7 @@ public class JdbcJobRepository implements JobRepository {
     @Override
     public boolean requestCancel(UUID jobId) {
         int updated = jdbc.update(
-                "UPDATE job SET cancel_requested_at = COALESCE(cancel_requested_at, now()) WHERE id = ?",
+                "UPDATE job SET cancel_requested_at = COALESCE(cancel_requested_at, now()), updated_at = now() WHERE id = ?",
                 jobId);
         return updated > 0;
     }

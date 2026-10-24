@@ -4,6 +4,37 @@ server:
 spring:
   application:
     name: flora-worker
+  # 全部字段 snake_case，与内部合同一致。
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  # worker 直连 Postgres：迁移统一由 api 管理，worker 不跑 Flyway。
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/flora}
+    username: ${SPRING_DATASOURCE_USERNAME:flora}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${FLORA_DB_POOL_SIZE:5}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      database: ${SPRING_DATA_REDIS_DATABASE:0}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:127.0.0.1}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    listener:
+      simple:
+        # 一次只预取一条：worker 端到端是「领取 → 调上游 → 收尾」的串行动作。
+        prefetch: ${FLORA_WORKER_PREFETCH:1}
+        # 死信靠 AmqpRejectAndDontRequeueException + 队列自带的 x-dead-letter-routing-key；
+        # 关闭 requeue 避免未处理异常把消息无限塞回自己。
+        requeue-rejected: false
+  flyway:
+    enabled: false
 
 management:
   endpoints:
@@ -11,5 +42,20 @@ management:
       exposure:
         include: health,info
 
-# WP3 起接入 RabbitMQ。WP1 阶段刻意不引入 amqp 依赖：
-# 消费者落地前不需要 broker 在线，也避免 rabbit 健康探针在无 broker 时把进程判成 DOWN。
+flora:
+  # 队列名只是传输配置，不进 job 表（ADR 0003）。
+  job:
+    exchange: ${FLORA_JOB_EXCHANGE:flora.jobs}
+    routing-key: ${FLORA_JOB_ROUTING_KEY:job.execute}
+    queue: ${FLORA_JOB_QUEUE:flora.jobs.execute}
+    dead-letter-queue: ${FLORA_JOB_DEAD_LETTER_QUEUE:flora.jobs.execute.dlq}
+    # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑。
+    lease-ttl-seconds: ${FLORA_JOB_LEASE_TTL_SECONDS:60}
+  # 唯一的模型供应商适配器（ADR 0001：只走 Anytoken，没有第二个适配器）。
+  gateway:
+    # stub = 本地确定性假上游（默认，无需真实密钥即可跑通）；http = 调真实 Anytoken HTTP 接口
+    mode: ${FLORA_GATEWAY_MODE:stub}
+    base-url: ${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
+    api-key: ${FLORA_GATEWAY_API_KEY:}
+    timeout-ms: ${FLORA_GATEWAY_TIMEOUT_MS:30000}
+    generate-path: ${FLORA_GATEWAY_GENERATE_PATH:/v1/generations}

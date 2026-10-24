@@ -20,13 +20,13 @@ Docker 只构建/运行现有前端镜像时，同样 **不是** flora 业务栈
 | 进程 | 依赖 | 端口 | 健康检查 |
 | --- | --- | --- | --- |
 | `api` | JDK 21 + **Postgres** + **Redis** + **RabbitMQ** | 8080 | `GET /actuator/health` |
-| `worker` | JDK 21 | 8081 | `GET /actuator/health` |
+| `worker` | JDK 21 + **Postgres** + **Redis** + **RabbitMQ** | 8081 | `GET /actuator/health` |
 
 WP1 落了进程骨架与健康检查；WP3 起 `api` 需要 Postgres 与 Redis（Flyway 迁移要连 Postgres，Sa-Token 会话存 Redis）；WP4 起 `api` 还要 RabbitMQ（outbox dispatcher 要把 pending 消息投递出去）。
 
-**`worker` 仍然只需要 JDK 21**：它不面向 C 端登录，WP4 也没有给它加 amqp 依赖（真实消费者是 WP5）。
+WP5 起 `worker` 也需要 Postgres + Redis + RabbitMQ：它直连 Postgres 做 claim / complete 两段短事务，用 Redis 短锁 `job:lease:{job_id}` 防同一个 job 被两个 worker 并发跑，并监听 `flora.jobs.execute` 消费。
 
-> broker 没起时，`api` 的 `/actuator/health` 会因为 RabbitMQ 健康探针而报 **DOWN**（HTTP 503）。这是已知且预期的：WP4 之后 `api` 真的需要 broker。
+> broker 没起时，两个进程的 `/actuator/health` 都会因为 RabbitMQ 健康探针而报 **DOWN**（HTTP 503）。这是已知且预期的：WP4 之后 `api` 真的需要 broker，WP5 之后 `worker` 也真的需要 broker。
 
 ### 1. 起 Postgres、Redis 与 RabbitMQ
 
@@ -91,6 +91,14 @@ export FLORA_JOB_LEASE_TTL_SECONDS=60      # worker 领取 job 的 Redis 短锁 
 export FLORA_OUTBOX_POLL_MS=500            # outbox 轮询间隔
 export FLORA_OUTBOX_BATCH_SIZE=50          # 单轮最多投递多少条
 export FLORA_OUTBOX_MAX_ATTEMPTS=10        # 同一条消息连续失败多少次后停在 failed
+
+# WP5：worker 与唯一 Anytoken 网关
+export FLORA_WORKER_PORT=8081
+export FLORA_WORKER_PREFETCH=1             # 一次只预取一条
+export FLORA_GATEWAY_MODE=stub              # stub（本地假上游，默认）| http（真实 Anytoken）
+export FLORA_GATEWAY_BASE_URL=http://127.0.0.1:18080   # 仅 http 模式生效
+export FLORA_GATEWAY_API_KEY=               # 仅 http 模式生效；由环境变量注入，勿入库
+export FLORA_GATEWAY_TIMEOUT_MS=30000
 ```
 
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
@@ -123,8 +131,9 @@ cd flora
 
 - `V1__create_users.sql` —— 只建 `users` 表
 - `V2__create_job_domain.sql` —— 建 `job` / `job_step` / `outbox_message` / `idempotency_record`
+- `V3__create_provider_task.sql` —— 建 `provider_task`，并给 `job_step.provider_task_id` 补上物理外键
 
-迁移历史在 `flyway_schema_history` 表里。
+迁移历史在 `flyway_schema_history` 表里。**迁移统一由 api 管理**，`worker` 不跑 Flyway（`spring.flyway.enabled: false`）。
 
 健康检查（两个进程各一个）：
 
@@ -252,23 +261,91 @@ rabbitmqctl list_queues name messages consumers
 # flora.jobs.execute.dlq    0  0
 ```
 
-### 6. WP4 的边界（不要误以为已经能用）
+### 6. WP5 双进程端到端（api + worker）
 
-- **没有钱包**：submit 不 freeze，`hold_id` 恒为 null，`queued` 只表示「已入队可被领取」。
-- **没有 Anytoken**：不会真的去生成任何图。
-- **worker 还不会消费**：WP4 只在 api 侧提供 `ClaimJob` / `RecordAttemptResult` 两个用例，
-  真实消费者在 WP5。所以 curl 提交的任务会一直停在 `queued`，直到 WP5 的 worker 领走它。
-  成功 / 重试 / dead 的完整路径由自动化测试驱动（内存仓储 + FakeTransport）。
-- **没有 TOS**：`result[].url` 恒为 null，只有 `object_key`。
-- **DLQ 只有拓扑声明**：没有重投运营台（WP11）。
+**要同时起 api（8080）与 worker（8081）**，worker 才会把队列里的 job 领走。默认 `FLORA_GATEWAY_MODE=stub`：不发外部请求，用本地确定性假上游跑通全链路。
 
-## TBD：flora 业务进程（WP4 之后）
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"password1"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 1) 正常任务（stub 默认成功）：submit 后被 worker 消费 → succeeded
+JOB_OK=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp5-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"a quiet garden"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 1
+curl -s $API/jobs/$JOB_OK -H "flora-token: $TOKEN"
+# → status="succeeded", attempt=1, error_code=null
+curl -s $API/jobs/$JOB_OK/result -H "flora-token: $TOKEN"
+# → status="succeeded", outputs=[{"type":"image","object_key":"anytoken/img/...","url":null}]
+
+# 2) 上游暂时不可用（stub_outcome=provider_unavailable）：自动重试 3 次后进 dead + 死信队列
+JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp5-retry-1","capability":"image.generate","model":"demo","params":{"prompt":"fail","stub_outcome":"provider_unavailable"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 3
+curl -s $API/jobs/$JOB_RETRY -H "flora-token: $TOKEN"
+# → status="dead", attempt=3, max_attempts=3, error_code="PROVIDER_UNAVAILABLE", message="生成服务暂时不可用，请稍后重试。"
+
+# 3) 不可重试业务失败（stub_outcome=job_failed）：attempt=1 直接进 dead
+JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp5-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_outcome":"job_failed"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 1
+curl -s $API/jobs/$JOB_FAIL -H "flora-token: $TOKEN"
+# → status="dead", attempt=1, error_code="JOB_FAILED", message="任务执行失败。"
+
+# 4) 运行中取消：stub_delay_ms 让上游慢一点，取消意图优先于本次 attempt 的结果
+JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp5-cancel-1","capability":"image.generate","model":"demo","params":{"prompt":"slow","stub_delay_ms":4000}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 2
+curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "flora-token: $TOKEN"   # 运行中取消：先记意图
+sleep 4
+curl -s $API/jobs/$JOB_CANCEL -H "flora-token: $TOKEN"
+# → status="cancelled", error_code="JOB_CANCELLED"（即使上游这次成功也收敛为 cancelled）
+```
+
+上游原文只进 `provider_task`，`job_step` 通过 `provider_task_id` 关联：
+
+```bash
+psql -d flora -c "SELECT job_id, job_step_id, upstream_request_id, raw_status, raw_body FROM provider_task ORDER BY created_at DESC LIMIT 5;"
+psql -d flora -c "SELECT job_id, attempt, status, error_code, provider_task_id FROM job_step ORDER BY started_at DESC LIMIT 5;"
+```
+
+死信队列里能看到 dead 的消息：
+
+```bash
+rabbitmqctl list_queues name messages consumers
+# flora.jobs.execute        0  1
+# flora.jobs.execute.dlq    2  0
+```
+
+Redis 短锁在消费期间是真实存在的（跑完就释放）：
+
+```bash
+redis-cli --scan --pattern 'job:lease:*'
+# job:lease:<job_id>
+```
+
+### 7. WP5 的边界（不要误以为已经能用）
+
+- **没有钱包**：submit 不 freeze，`hold_id` 恒为 null。钱包整包在 WP6。
+- **默认不连真上游**：`FLORA_GATEWAY_MODE=stub` 是本地假上游；`http` 模式才真的调 Anytoken，
+  而且本 WP 没有接真实付费账号与账单。
+- **生成结果是假的**：WP5 还没接 TOS，`result[].url` 恒为 null，只有合成的 `object_key`。
+  **不要把「submit 能跑通」写成「托管 flora 已可用」**。
+- **没有 DLQ 重投运营台**：死信只进队列，没有 UI（WP11）。
+- **没有超时孤儿回收**：running 状态卡住的任务不会被定时扫回 queued（属运维策略，不在本 WP）。
+
+## TBD：flora 业务进程（WP5 之后）
 
 下列内容在对应 WP 落地前 **不要当作可执行步骤**：
 
 - 火山 TOS bucket、STS、回调
-- Anytoken 的真实调用方式（WP1 只固定了环境变量名，没接网关）
-- worker 的真实消费者与 ack / 重试 / DLQ 策略（WP5）
+- Anytoken 的真实付费调用方式（WP5 只有适配器边界 + 本地 stub）
 - 钱包的 freeze / confirm / release（WP6）
 - 前端改打 flora API（WP7）
 
@@ -282,8 +359,8 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | --- | --- | --- |
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP4+ 接任务链路 |
 | 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis | WP7 前端登录页 |
-| 如何提交托管任务？ | WP4：`POST /api/v1/jobs/submit` 能入队，**但没有 worker 消费、没有钱包、没有真实出图** | WP4–WP7 |
-| 如何看 RabbitMQ 死信？ | WP4：exchange / queue / DLQ 已声明，DLQ 运营台没有 | WP4 + 以后的 runbook |
+| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通，**但没有钱包、没有真上游、没有 TOS** | WP4–WP7 |
+| 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `flora.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
 | 如何加测试余额？ | 无 | WP6 脚本 / M4 admin |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。

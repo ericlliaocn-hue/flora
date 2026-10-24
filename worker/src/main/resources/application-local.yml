@@ -2,3 +2,27 @@
 logging:
   level:
     com.flora: DEBUG
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/flora}
+    username: ${SPRING_DATASOURCE_USERNAME:flora}
+    # 密码不写进仓库：本地用 trust 认证，或用环境变量注入。
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:127.0.0.1}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    # 本地只用官方默认 guest/guest；其它环境走环境变量，不写进仓库。
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+flora:
+  gateway:
+    # 本地默认走 stub：不发外部请求，用确定性假上游跑通全链路。
+    mode: ${FLORA_GATEWAY_MODE:stub}
+    base-url: ${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
