@@ -15,6 +15,12 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
       port: ${SPRING_DATA_REDIS_PORT:6379}
       password: ${SPRING_DATA_REDIS_PASSWORD:}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:127.0.0.1}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    # 本地只用官方默认 guest/guest；其它环境走环境变量，不写进仓库。
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
 flora:
   gateway:

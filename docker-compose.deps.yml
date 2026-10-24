@@ -1,11 +1,15 @@
-# 仅本地依赖：Postgres + Redis。
-# 不是 flora 全家桶编排（web / api / worker / rabbitmq 都不在这里）。
+# 仅本地依赖：Postgres + Redis + RabbitMQ。
+# 不是 flora 全家桶编排（web / api / worker 都不在这里）。
 #
 # 密码不写进仓库，启动前先导出：
 #   export FLORA_DEPS_POSTGRES_PASSWORD=<本地开发用密码>
 # 宿主机端口冲突时：
 #   export FLORA_DEPS_POSTGRES_PORT=55432
 #   export FLORA_DEPS_REDIS_PORT=56379
+#   export FLORA_DEPS_RABBITMQ_PORT=5673
+#
+# RabbitMQ 用官方本地默认 guest/guest；只监听本机，别的环境必须改密码。
+# 管理台（15672）默认也开，只给本机看。
 
 services:
   postgres:
@@ -34,6 +38,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${FLORA_DEPS_RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${FLORA_DEPS_RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${FLORA_DEPS_RABBITMQ_PORT:-5672}:5672"
+      - "${FLORA_DEPS_RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
   flora-deps-postgres:

@@ -35,6 +35,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- WP4：outbox dispatcher 把 pending 消息投递到 RabbitMQ。
+             只加在 api；worker 本 WP 不消费（真实消费 + Anytoken 是 WP5）。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <!-- 用户表由 Flyway 建，JDBC 直连，不引入 ORM。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
