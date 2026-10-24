@@ -466,9 +466,32 @@ Worker 调 Anytoken 的请求 / 响应 **不** 定义为本合同的一部分。
 
 | 步 | 请求 | 用途 |
 | --- | --- | --- |
-| 1 | `POST /v1/videos/generations` | 提交异步视频任务；请求头带 `Idempotency-Key: <jobId>:<attempt>`；body 含 `model` / `prompt` / `aspect_ratio` / `duration` /（可选）`resolution` /（可选）`reference_images` /（可选）`reference_videos`。响应里取任务 id（`id` → `request_id` → `data.id`）与初始 `status` |
+| 1 | `POST /v1/videos/generations` | 提交异步视频任务；请求头带 `Idempotency-Key: <jobId>:<attempt>`；body **只含** `model` / `prompt` / `aspect_ratio` / `duration` /（可选）`resolution` /（可选）`reference_images` /（可选）`reference_videos`。响应里取任务 id（`id` → `task_id` → `request_id` → `data.id`）与初始 `status` |
 | 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `flora.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制 |
-| 3 | `GET /v1/videos/{taskId}/content` | 下载视频字节；拿不到字节时回退到响应里的直链字段（`url` / `video_url` / `data.url` / `data[0].url` / `output.video_url`） |
+| 3 | `GET /v1/videos/{taskId}/content` → 回退到直链 | 优先试 `/content` 下载字节；**该端点在实测部署里不存在（404 `video not found`）**，必须回退到轮询响应里的成片直链 |
+
+**上游报文的两条硬约束（实测踩出来的，写下来免得再踩）：**
+
+1. **请求 body 不能带 flora 内部字段**（`job_id` / `attempt` / `capability`）。
+   实测 Anytoken 看到 `capability` 会把请求**路由到 xAI 上游**并直接返回 400
+   （`{"error":{"message":"xAI upstream returned status 400"}}`），Seedance 视频根本起不来。
+   任务身份靠 `Idempotency-Key` 头带，权威记录在 `job` / `job_step` / `provider_task` 表里。
+2. **成片直链在 `result.url`**，不是顶层 `url` / `video_url`。
+   实测轮询响应形状：
+
+   ```json
+   {
+     "task_id": "4b2c44e0d8e13f0d7ea98474e9806dfb",
+     "model": "seedance-2.0-fast",
+     "status": "completed",
+     "progress": 100,
+     "poll_after_ms": 5000,
+     "result": { "url": "https://media.xiaoni-apikey.top/file_.../....mp4", "mime_type": "video/mp4" }
+   }
+   ```
+
+   直链本身可匿名下载。取直链时依次看 `result.url` / `result.video_url` / `url` /
+   `video_url` / `data.url` / `data[0].url` / `output.video_url`。
 
 产物对象键固定为 `anytoken/vid/{jobId}/{attempt}.mp4`，以 `video/mp4` 写入火山 TOS；
 worker 只写 `object_key`，读地址仍由 api 现签（同 `Result` 章节）。

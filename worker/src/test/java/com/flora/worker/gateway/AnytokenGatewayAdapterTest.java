@@ -648,6 +648,80 @@ class AnytokenGatewayAdapterTest {
         }
     }
 
+    /**
+     * WP12 修复：上游把成片直链放在 {@code result.url}，且 {@code /content} 端点在本部署**不存在**（404）。
+     *
+     * <p>这是实测 Anytoken Seedance 的真实形状：{@code /content} 404 之后必须能回退到
+     * {@code result.url} 把视频字节下下来，否则任务会以 PROVIDER_UNAVAILABLE 失败。
+     */
+    @Test
+    void httpVideoFallsBackToTheResultUrlWhenTheContentEndpointIsMissing() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+        server.createContext("/v1/videos", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "{\"id\":\"task-r\",\"status\":\"processing\"}");
+                return;
+            }
+            if (path.endsWith("/content")) {
+                respond(exchange, 404, "{\"error\":{\"message\":\"video not found\"}}");
+                return;
+            }
+            respond(exchange, 200, "{\"id\":\"task-r\",\"status\":\"completed\",\"progress\":100,"
+                    + "\"result\":{\"url\":\"" + baseUrl + "/file/task-r.mp4\",\"mime_type\":\"video/mp4\"}}");
+        });
+        server.createContext("/file", exchange -> respondBytes(exchange, 200, MinimalMp4.BYTES));
+        server.start();
+        try {
+            UUID jobId = UUID.randomUUID();
+            AnytokenAttemptResult result = videoAdapter(server, "video-secret")
+                    .execute(videoRequest(jobId, 1, "{\"prompt\":\"a cat\"}"));
+
+            assertThat(result.succeeded()).isTrue();
+            assertThat(result.outputObjectKeys()).containsExactly("anytoken/vid/" + jobId + "/1.mp4");
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/1.mp4")))
+                    .isEqualTo(MinimalMp4.BYTES);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /**
+     * WP12 修复：上游视频报文**不能**带 flora 内部字段。
+     *
+     * <p>实测 Anytoken 看到 {@code capability} 会把请求路由到 xAI 上游并返回 400
+     * （"xAI upstream returned status 400"），Seedance 视频根本起不来。
+     */
+    @Test
+    void httpVideoPayloadCarriesNoFloraInternalFields() throws IOException {
+        AtomicReference<String> submitted = new AtomicReference<>();
+        HttpServer server = videoServer(exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                submitted.set(readBody(exchange));
+                respond(exchange, 200, "{\"id\":\"task-9\",\"status\":\"completed\"}");
+                return;
+            }
+            if (exchange.getRequestURI().getPath().endsWith("/content")) {
+                respondBytes(exchange, 200, MinimalMp4.BYTES);
+                return;
+            }
+            respond(exchange, 200, "{\"status\":\"completed\"}");
+        });
+        try {
+            videoAdapter(server, "video-secret").execute(videoRequest(UUID.randomUUID(), 1, "{\"prompt\":\"a cat\"}"));
+            JsonNode body = readJson(submitted.get());
+            assertThat(body.has("job_id")).isFalse();
+            assertThat(body.has("attempt")).isFalse();
+            assertThat(body.has("capability")).isFalse();
+            // 协议自己的字段照常带。
+            assertThat(body.get("model").asText()).isEqualTo("seedance2");
+            assertThat(body.get("prompt").asText()).isEqualTo("a cat");
+        } finally {
+            server.stop(0);
+        }
+    }
+
     /** WP12：上游视频任务进失败终态 → 不可重试。 */
     @Test
     void httpVideoFailedTerminalIsNotRetryable() throws IOException {

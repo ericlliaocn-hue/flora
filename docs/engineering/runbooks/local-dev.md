@@ -152,6 +152,22 @@ export FLORA_GATEWAY_VIDEO_API_KEY=<your-seedance-key>     # 视频分组 Key；
 已开通的模型：**生图** `gpt-image-2`、`gpt-image-2.5-flare`、`gpt-image-2.5-sunburst`、`image2`
 （前端默认模型是 `gpt-image-2`）；**视频** `seedance2`、`seedance2.5`、`seedance-mini`、`seedance-fast`。
 
+WP12：Seedance 视频是**三步异步协议**（`POST /v1/videos/generations` → 轮询 `GET /v1/videos/{taskId}`
+→ 取成片直链），轮询预算由这两个变量控制：
+
+```bash
+export FLORA_GATEWAY_VIDEO_GENERATE_PATH=/v1/videos/generations   # 提交端点
+export FLORA_GATEWAY_VIDEO_STATUS_PATH_PREFIX=/v1/videos           # 轮询端点前缀
+export FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS=2000                  # 轮询间隔
+export FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS=90                   # 轮询上限（默认 90 × 2s ≈ 180s）
+```
+
+> **实测提醒**：真实 Seedance 出 5 秒片耗时约 **170–200 秒**，默认预算（180s）**刚好压线**。
+> 上游自己的响应里带 `poll_after_ms: 5000`，说明它建议 5 秒轮询一次。
+> 若视频比默认预算更慢，任务会以可重试的 `GATEWAY_TIMEOUT` 失败并**重新提交一次上游任务**
+> （等于多生成一条视频、多花一份钱）。视频时长更长或上游更慢时，请调大
+> `FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS`（例如 `180` = 360s）。
+
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
 
 ```bash
