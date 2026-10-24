@@ -12,6 +12,7 @@ import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import type { CanvasExportFile } from "@/types/canvas-export";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
+import { useAuthStore } from "@/stores/use-auth-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 import { hasAgentUrlBootstrap } from "@/lib/agent/agent-url-bootstrap";
 
@@ -24,8 +25,11 @@ export default function CanvasPage() {
     const autoOpenRef = useRef(false);
     const hydrated = useCanvasStore((state) => state.hydrated);
     const projects = useCanvasStore((state) => state.projects);
-    const createProject = useCanvasStore((state) => state.createProject);
+    const cloudSyncStatus = useCanvasStore((state) => state.cloudSyncStatus);
+    const createCloudProjectAndOpen = useCanvasStore((state) => state.createCloudProjectAndOpen);
+    const syncProjectsFromCloud = useCanvasStore((state) => state.syncProjectsFromCloud);
     const importProject = useCanvasStore((state) => state.importProject);
+    const token = useAuthStore((state) => state.token);
     const selectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
 
@@ -36,7 +40,7 @@ export default function CanvasPage() {
         const agentHash = hasAgentUrlBootstrap(window.location.hash) ? window.location.hash : "";
         navigate(`/canvas/${id}${agentQuery}${agentHash}`, { replace: Boolean(agentHash) });
     };
-    const createAndEnter = () => enterProject(createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+    const createAndEnter = async () => enterProject(await createCloudProjectAndOpen(t("canvas.defaultTitle", { count: projects.length + 1 })));
     const importCanvas = async (file?: File) => {
         if (!file) return;
         try {
@@ -65,10 +69,21 @@ export default function CanvasPage() {
     };
 
     useEffect(() => {
+        if (!hydrated) return;
+        void syncProjectsFromCloud();
+    }, [hydrated, syncProjectsFromCloud, token]);
+
+    useEffect(() => {
         if (!hydrated || autoOpenRef.current || (mode !== "new" && mode !== "recent")) return;
         autoOpenRef.current = true;
-        enterProject(mode === "new" ? createProject(t("canvas.defaultTitle", { count: projects.length + 1 })) : projects[0]?.id || createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
-    }, [createProject, hydrated, mode, projects, t]);
+        void (async () => {
+            if (mode === "recent" && projects[0]?.id) {
+                enterProject(projects[0].id);
+                return;
+            }
+            enterProject(await createCloudProjectAndOpen(t("canvas.defaultTitle", { count: projects.length + 1 })));
+        })();
+    }, [createCloudProjectAndOpen, hydrated, mode, projects, t]);
 
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">{t("canvas.opening")}</main>;
 
@@ -81,6 +96,16 @@ export default function CanvasPage() {
                         <h1 className="mt-3 text-3xl font-semibold">{t("canvas.title")}</h1>
                     </div>
                     <div className="flex items-center gap-2">
+                        {token ? (
+                            <>
+                                <span className="text-xs text-stone-500">{t("canvas.cloud.enabled")}</span>
+                                <Button size="small" loading={cloudSyncStatus === "syncing"} onClick={() => void syncProjectsFromCloud()}>
+                                    {t("canvas.cloud.refresh")}
+                                </Button>
+                            </>
+                        ) : (
+                            <span className="text-xs text-stone-500">{t("canvas.cloud.local")}</span>
+                        )}
                         {selectedIds.length ? (
                             <>
                                 <Button disabled={!hydrated} icon={<Download className="size-4" />} onClick={() => void exportCanvasProjects(projects.filter((project) => selectedIds.includes(project.id)), `${t("canvas.title")}-${selectedIds.length}`)}>

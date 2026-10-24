@@ -43,7 +43,9 @@ import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/a
 import { CanvasSidePanel } from "@/components/canvas/canvas-side-panel";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { useAgentStore } from "@/stores/use-agent-store";
-import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
+import { useAuthStore } from "@/stores/use-auth-store";
+import { isCloudProjectId, toCanvasDataSnapshot } from "@/services/api/flora-cloud";
+import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useAgentBridge } from "@/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
@@ -166,6 +168,11 @@ function measureFocusFrame(container: HTMLDivElement | null, nodeId: string) {
     return { above, below, bottomInset: dockRect && below > 0 ? Math.max(0, container.getBoundingClientRect().bottom - dockRect.top) : 0 };
 }
 
+/** 云端保存的内容指纹：标题 + 画布快照，用来判断「有没有变」。 */
+function buildCloudSnapshot(project: Pick<CanvasProject, "title" | "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">) {
+    return JSON.stringify({ title: project.title, ...toCanvasDataSnapshot(project) });
+}
+
 function InfiniteCanvasPage() {
     const { message, modal } = App.useApp();
     const { t } = useTranslation();
@@ -190,6 +197,9 @@ function InfiniteCanvasPage() {
     const lastHistoryRef = useRef<CanvasHistoryEntry | null>(null);
     const historyCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const viewportSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cloudBaselineRef = useRef("");
+    const cloudSnapshotRef = useRef("");
     const applyingHistoryRef = useRef(false);
     const historyPausedRef = useRef(false);
     const rafRef = useRef<number | null>(null);
@@ -218,11 +228,17 @@ function InfiniteCanvasPage() {
     const addAsset = useAssetStore((state) => state.addAsset);
     const cleanupAssetImages = useAssetStore((state) => state.cleanupImages);
     const hydrated = useCanvasStore((state) => state.hydrated);
-    const createProject = useCanvasStore((state) => state.createProject);
     const openProject = useCanvasStore((state) => state.openProject);
     const updateProject = useCanvasStore((state) => state.updateProject);
     const renameProject = useCanvasStore((state) => state.renameProject);
     const deleteProjects = useCanvasStore((state) => state.deleteProjects);
+    const deleteProjectsFromCloud = useCanvasStore((state) => state.deleteProjectsFromCloud);
+    const createCloudProjectAndOpen = useCanvasStore((state) => state.createCloudProjectAndOpen);
+    const loadCloudProject = useCanvasStore((state) => state.loadCloudProject);
+    const saveProjectToCloud = useCanvasStore((state) => state.saveProjectToCloud);
+    const cloudSyncStatus = useCanvasStore((state) => state.cloudSyncStatus);
+    const cloudVersion = useCanvasStore((state) => state.cloudVersions[projectId]);
+    const token = useAuthStore((state) => state.token);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
@@ -440,15 +456,12 @@ function InfiniteCanvasPage() {
     useEffect(() => {
         if (!hydrated) return;
         setProjectLoaded(false);
-        const project = openProject(projectId);
-        if (!project) {
-            navigate("/canvas", { replace: true });
-            return;
-        }
+        let cancelled = false;
 
-        const restore = async () => {
+        const restore = async (project: CanvasProject) => {
             const restoredNodes = await hydrateCanvasImages(resetInterruptedGeneration(project.nodes));
             const restoredSessions = await hydrateAssistantImages(project.chatSessions || []);
+            if (cancelled) return;
             setNodes(restoredNodes);
             setConnections(project.connections);
             setChatSessions(restoredSessions);
@@ -470,10 +483,27 @@ function InfiniteCanvasPage() {
                 showImageInfo: project.showImageInfo || false,
             };
             setHistoryState({ canUndo: false, canRedo: false });
+            // 刚恢复完的内容不算变更，避免一进画布就推一次云端。
+            cloudBaselineRef.current = buildCloudSnapshot({ title: project.title, nodes: restoredNodes, connections: project.connections, chatSessions: restoredSessions, activeChatId: project.activeChatId || null, backgroundMode: project.backgroundMode, showImageInfo: project.showImageInfo || false, viewport: project.viewport });
             setProjectLoaded(true);
         };
-        void restore();
-    }, [hydrated, navigate, openProject, projectId]);
+
+        const start = async () => {
+            // 云端项目先拉最新快照：换浏览器登录也能恢复画布节点与连线。
+            if (isCloudProjectId(projectId)) await loadCloudProject(projectId);
+            if (cancelled) return;
+            const project = openProject(projectId);
+            if (!project) {
+                navigate("/canvas", { replace: true });
+                return;
+            }
+            await restore(project);
+        };
+        void start();
+        return () => {
+            cancelled = true;
+        };
+    }, [hydrated, loadCloudProject, navigate, openProject, projectId]);
 
     useEffect(() => {
         if (!projectLoaded) return;
@@ -525,6 +555,40 @@ function InfiniteCanvasPage() {
         if (!projectLoaded || historyPausedRef.current) return;
         updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
     }, [activeChatId, backgroundMode, chatSessions, connections, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
+
+    // 云端保存：内容变更后防抖 1 秒自动上云，顶栏状态按钮可立即保存（方式 A：自动 + 手动双保险）。
+    const cloudSnapshot = useMemo(
+        () => buildCloudSnapshot({ title: currentProject?.title || "", nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo, viewport }),
+        [activeChatId, backgroundMode, chatSessions, connections, currentProject?.title, nodes, showImageInfo, viewport],
+    );
+
+    useEffect(() => {
+        cloudSnapshotRef.current = cloudSnapshot;
+    }, [cloudSnapshot]);
+
+    const saveToCloud = useCallback(async () => {
+        const savedId = await saveProjectToCloud(projectId);
+        if (!savedId) return;
+        if (savedId !== projectId) {
+            // 本地项目首次上云，换成云端 UUID。
+            navigate(`/canvas/${savedId}`, { replace: true });
+            return;
+        }
+        cloudBaselineRef.current = cloudSnapshotRef.current;
+    }, [navigate, projectId, saveProjectToCloud]);
+
+    useEffect(() => {
+        if (!projectLoaded || !token) return;
+        if (cloudSnapshot === cloudBaselineRef.current) return;
+        if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+        cloudSaveTimerRef.current = setTimeout(() => {
+            cloudSaveTimerRef.current = null;
+            void saveToCloud();
+        }, 1000);
+        return () => {
+            if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+        };
+    }, [cloudSnapshot, projectLoaded, saveToCloud, token]);
 
     useEffect(() => {
         if (!dialogNodeId) setNodeImageSettingsOpen(false);
@@ -1185,16 +1249,17 @@ function InfiniteCanvasPage() {
         applyHistory(next);
     }, [applyHistory]);
 
-    const createAndOpenProject = useCallback(() => {
-        const id = createProject(t("canvas.defaultTitle", { count: useCanvasStore.getState().projects.length + 1 }));
+    const createAndOpenProject = useCallback(async () => {
+        const id = await createCloudProjectAndOpen(t("canvas.defaultTitle", { count: useCanvasStore.getState().projects.length + 1 }));
         navigate(`/canvas/${id}`);
-    }, [createProject, navigate, t]);
+    }, [createCloudProjectAndOpen, navigate, t]);
 
     const deleteCurrentProject = useCallback(() => {
+        void deleteProjectsFromCloud([projectId]);
         deleteProjects([projectId]);
         cleanupAssetImages();
         navigate("/canvas");
-    }, [cleanupAssetImages, deleteProjects, navigate, projectId]);
+    }, [cleanupAssetImages, deleteProjects, deleteProjectsFromCloud, navigate, projectId]);
 
     const exportCurrentProject = useCallback(async () => {
         const project = useCanvasStore.getState().projects.find((item) => item.id === projectId);
@@ -3179,6 +3244,7 @@ function InfiniteCanvasPage() {
                     agentOpen={agentPanelOpen}
                     compactAgentStatus={{ connected: localAgentConnected, enabled: localAgentEnabled, activity: localAgentActivity }}
                     onToggleAgent={toggleAgentPanel}
+                    cloudSync={{ status: token ? cloudSyncStatus : "local", version: cloudVersion, onSave: () => void saveToCloud() }}
                 />
 
                 <InfiniteCanvas

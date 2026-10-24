@@ -140,6 +140,33 @@ class TosObjectStorageAdapterTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    // ------------------------------------------------------------- 访问风格
+
+    /** 回环地址保持 Path-Style：本地 HttpServer 绑不了子域名。 */
+    @Test
+    void loopbackEndpointKeepsPathStyle() {
+        TosObjectStorageAdapter.TosTarget target = stubAdapter(tempDir).resolveTarget(OBJECT_KEY);
+
+        assertThat(target.targetUri().toString()).isEqualTo("http://127.0.0.1:18080/flora-dev/anytoken/img/x/1.png");
+        assertThat(target.hostHeader()).isEqualTo("127.0.0.1:18080");
+        assertThat(target.canonicalUri()).isEqualTo("/flora-dev/anytoken/img/x/1.png");
+    }
+
+    /** 真实火山域名强制 Virtual-Host Style：路径风格会被网关以 403 InvalidPathAccess 拒绝。 */
+    @Test
+    void realVolcesDomainUsesVirtualHostStyle() {
+        TosObjectStorageAdapter adapter = new TosObjectStorageAdapter(new TosProperties("http",
+                "https://tos-cn-guangzhou.volces.com", "cn-guangzhou", "flora-media-test",
+                ACCESS_KEY, SECRET_KEY, 900, 5000, tempDir.toString()));
+
+        TosObjectStorageAdapter.TosTarget target = adapter.resolveTarget(OBJECT_KEY);
+
+        assertThat(target.targetUri().toString())
+                .isEqualTo("https://flora-media-test.tos-cn-guangzhou.volces.com/anytoken/img/x/1.png");
+        assertThat(target.hostHeader()).isEqualTo("flora-media-test.tos-cn-guangzhou.volces.com");
+        assertThat(target.canonicalUri()).isEqualTo("/anytoken/img/x/1.png");
+    }
+
     // ---------------------------------------------------------------- 工具
 
     private TosObjectStorageAdapter stubAdapter(Path localDir) {

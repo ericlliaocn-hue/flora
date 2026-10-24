@@ -81,6 +81,10 @@ export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
 
 /** 托管云端模式内置的生图模型：走 flora 后端网关，浏览器不需要配供应商 Key。 */
 export const FLORA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
+    { name: "gpt-image-2", capability: "image" },
+    { name: "gpt-image-2.5-flare", capability: "image" },
+    { name: "gpt-image-2.5-sunburst", capability: "image" },
+    { name: "image2", capability: "image" },
     { name: "gpt-image-1", capability: "image" },
     { name: "dall-e-3", capability: "image" },
     { name: "flux-1-schnell", capability: "image" },
@@ -106,8 +110,8 @@ export const defaultConfig: AiConfig = {
             ],
         },
     ],
-    model: "gpt-image-1",
-    imageModel: "gpt-image-1",
+    model: "gpt-image-2",
+    imageModel: "gpt-image-2",
     videoModel: "default::grok-imagine-video",
     textModel: "default::gpt-5.5",
     audioModel: "default::gpt-4o-mini-tts",

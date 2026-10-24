@@ -1,5 +1,6 @@
 package com.flora.api.job.infra;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,4 +48,11 @@ public interface JobRepository {
 
     /** 记录取消意图（重复取消不覆盖首次时间）。 */
     boolean requestCancel(UUID jobId);
+
+    /**
+     * 本人的任务列表，按创建时间倒序。
+     *
+     * <p>WP10 起用于 C 端生图历史：换浏览器登录也能看到自己的任务。
+     */
+    List<Job> findByUserOrderByCreatedAtDesc(UUID userId, int limit);
 }

@@ -26,34 +26,41 @@ public final class I18nDefaultCatalog {
     /** 单个参数值的最大长度，超出截断。 */
     private static final int MAX_PARAM_LENGTH = 64;
 
-    private static final Map<String, Map<String, String>> SEEDS = Map.of(
-            ErrorCodes.WALLET_INSUFFICIENT, Map.of(
+    /** 种子超过 10 对时用 Map.ofEntries（Map.of 上限是 10 对）。 */
+    private static final Map<String, Map<String, String>> SEEDS = Map.ofEntries(
+            Map.entry(ErrorCodes.WALLET_INSUFFICIENT, Map.of(
                     "zh", "账户余额不足，请先充值。",
-                    "en", "Insufficient wallet balance. Please top up first."),
-            ErrorCodes.JOB_NOT_FOUND, Map.of(
+                    "en", "Insufficient wallet balance. Please top up first.")),
+            Map.entry(ErrorCodes.JOB_NOT_FOUND, Map.of(
                     "zh", "任务不存在。",
-                    "en", "The task does not exist."),
-            ErrorCodes.JOB_CANCELLED, Map.of(
+                    "en", "The task does not exist.")),
+            Map.entry(ErrorCodes.JOB_CANCELLED, Map.of(
                     "zh", "任务已取消。",
-                    "en", "The task has been cancelled."),
-            ErrorCodes.JOB_FAILED, Map.of(
+                    "en", "The task has been cancelled.")),
+            Map.entry(ErrorCodes.JOB_FAILED, Map.of(
                     "zh", "任务执行失败。",
-                    "en", "The task failed to run."),
-            ErrorCodes.PROVIDER_UNAVAILABLE, Map.of(
+                    "en", "The task failed to run.")),
+            Map.entry(ErrorCodes.PROVIDER_UNAVAILABLE, Map.of(
                     "zh", "生成服务暂时不可用，请稍后重试。",
-                    "en", "The generation service is temporarily unavailable. Please try again later."),
-            ErrorCodes.IDEMPOTENCY_CONFLICT, Map.of(
+                    "en", "The generation service is temporarily unavailable. Please try again later.")),
+            Map.entry(ErrorCodes.IDEMPOTENCY_CONFLICT, Map.of(
                     "zh", "同一个幂等键对应了不同的请求内容。",
-                    "en", "The same idempotency key was used with a different request."),
-            ErrorCodes.UNAUTHORIZED, Map.of(
+                    "en", "The same idempotency key was used with a different request.")),
+            Map.entry(ErrorCodes.UNAUTHORIZED, Map.of(
                     "zh", "请先登录后再试。",
-                    "en", "Please sign in first."),
-            ErrorCodes.VALIDATION_ERROR, Map.of(
+                    "en", "Please sign in first.")),
+            Map.entry(ErrorCodes.VALIDATION_ERROR, Map.of(
                     "zh", "请求参数不合法。",
-                    "en", "The request parameters are invalid."),
-            KEY_JOB_FAILED_RETRY, Map.of(
+                    "en", "The request parameters are invalid.")),
+            Map.entry(ErrorCodes.PROJECT_NOT_FOUND, Map.of(
+                    "zh", "项目不存在。",
+                    "en", "The project does not exist.")),
+            Map.entry(ErrorCodes.ASSET_NOT_FOUND, Map.of(
+                    "zh", "素材不存在。",
+                    "en", "The asset does not exist.")),
+            Map.entry(KEY_JOB_FAILED_RETRY, Map.of(
                     "zh", "生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。",
-                    "en", "Generation issue, retrying ({attempt}/{max_attempts})."));
+                    "en", "Generation issue, retrying ({attempt}/{max_attempts}).")));
 
     private I18nDefaultCatalog() {
     }

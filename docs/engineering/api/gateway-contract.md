@@ -99,6 +99,100 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 （没有 `POST /api/v1/wallet/topup`）：充值走运维 SQL 或未来的 Admin 加额接口。
 
 
+## Projects（`/api/v1/projects`）
+
+**用途**：C 端账号级画布项目云端持久化。需登录（`AuthPathPolicy` 覆盖 `/api/v1/**`）。
+`user_id` 一律取会话，**不接受请求体或 query 里的 `user_id`**。
+
+### `POST /api/v1/projects`
+
+请求：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 是 | 1..128 字符 |
+| `canvas_data` | object | 否 | 画布快照；必须是 JSON Object，序列化后 ≤ 2,000,000 字符 |
+
+响应：项目详情（见下）。
+
+### `GET /api/v1/projects`
+
+响应：当前用户的项目摘要数组，**不含 `canvas_data`**，按 `updated_at DESC` 排序。
+
+### `GET /api/v1/projects/{projectId}`
+
+响应：项目详情（含 `canvas_data`）。
+
+### `PUT /api/v1/projects/{projectId}`
+
+请求：`name` 与 / 或 `canvas_data` 均可选（部分更新，未提供的字段保持原值）。
+
+响应：项目详情，`version` 每次成功更新 **+1**。
+
+### `DELETE /api/v1/projects/{projectId}`
+
+响应：`{"id": "...", "deleted": true}`。
+
+### 项目视图字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string (uuid) | 云端项目 id；浏览器本地项目 id 是 nanoid，两者不可混用 |
+| `name` | string | 项目名 |
+| `version` | integer | 每次成功更新 +1，前端用来显示「已同步 v{version}」 |
+| `canvas_data` | object | 仅详情返回：`nodes` / `connections` / `chatSessions` / `activeChatId` / `backgroundMode` / `showImageInfo` / `viewport` |
+| `created_at` / `updated_at` | string (ISO 8601) | |
+
+失败：项目不存在或属于他人 → `ok=false, error_code="PROJECT_NOT_FOUND"`，**不泄露他人资源是否存在**。
+
+## Assets（`/api/v1/assets`）
+
+**用途**：当前用户的云端素材列表与删除。需登录。
+
+### `GET /api/v1/assets?limit=N`
+
+`limit` 缺省 100，越界收敛到 1..100。
+
+调用时会把当前用户 **已 `succeeded`** 任务的输出对象键幂等同步进 `user_asset`（重复调用不报错、不产生重复行），并为每条记录 **现签** 短期 TOS 读地址。
+
+### `DELETE /api/v1/assets/{assetId}`
+
+响应：`{"id": "...", "deleted": true}`。失败：`error_code="ASSET_NOT_FOUND"`。
+
+### 素材视图字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string (uuid) | 素材 id |
+| `project_id` | string (uuid) \| null | 关联的云端画布项目 |
+| `job_id` | string (uuid) \| null | 来源任务 |
+| `source` | string | `generated` 或 `uploaded` |
+| `object_key` | string | TOS 对象键 |
+| `signed_url` | string \| null | 现签的短期读地址；对象键非法时为 null |
+| `mime_type` | string | |
+| `created_at` | string (ISO 8601) | |
+
+**数据库只存 `object_key`，绝不落预签名 URL 或图片 Base64**（ADR 0003）：每次查询都由 api 调 `TosUrlSigner.signGetUrl(objectKey)` 现签。
+
+## Job History（`/api/v1/jobs/history`）
+
+**用途**：当前用户的生图任务历史，跨设备可见。需登录。
+
+请求：`GET /api/v1/jobs/history?limit=N`（`GET /api/v1/jobs` 等价），按 `created_at DESC` 排序。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `job_id` | string (uuid) | |
+| `status` | string | 状态机枚举 |
+| `capability` | string | 如 `image.generate` |
+| `model` | string | |
+| `prompt` | string | 来自任务参数 |
+| `cost_credits` | integer | 该任务扣除的 credit |
+| `result_urls` | array | 成功任务的对象键现签读地址；失败任务为空数组 |
+| `error_code` / `message` | string \| null | 失败时的稳定码与本地化友好短句 |
+| `created_at` / `updated_at` | string (ISO 8601) | |
+| `finished_at` | string (ISO 8601) \| null | 终态时取最后更新时间，未终态为 null |
+
 ## Query
 
 **用途**：读状态，给画布轮询或刷新。不触发生成。

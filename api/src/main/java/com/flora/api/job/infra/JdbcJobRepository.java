@@ -120,6 +120,12 @@ public class JdbcJobRepository implements JobRepository {
         return updated > 0;
     }
 
+    @Override
+    public List<Job> findByUserOrderByCreatedAtDesc(UUID userId, int limit) {
+        return jdbc.query("SELECT " + COLUMNS + " FROM job WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                MAPPER, userId, limit);
+    }
+
     private static Instant toInstant(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toInstant();
     }

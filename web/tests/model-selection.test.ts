@@ -115,6 +115,7 @@ test("the managed cloud mode still rejects prefixed models and the local mode ne
 
 test("the managed cloud mode resolves an image capability to a built-in cloud model", () => {
     const managed: AiConfig = { ...defaultConfig, channelMode: "remote", imageModel: "gpt-image-2", channels: [] };
-    expect(resolveModelForCapability(managed, "gpt-image-2", "image")).toBe("gpt-image-1");
+    expect(resolveModelForCapability(managed, "gpt-image-2", "image")).toBe("gpt-image-2");
+    expect(resolveModelForCapability(managed, "legacy-local-only", "image")).toBe("gpt-image-2");
     expect(resolveModelForCapability(managed, "dall-e-3", "image")).toBe("dall-e-3");
 });

@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -132,12 +133,13 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
     // ---------------------------------------------------------------- http
 
     private AnytokenAttemptResult http(AnytokenRequest request) {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(properties.baseUrl() + properties.generatePath()))
+        HttpRequest.Builder builder = HttpRequest.newBuilder(resolveGenerateUri())
                 .timeout(Duration.ofMillis(Math.max(1, properties.timeoutMs())))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson(request)));
-        if (properties.apiKey() != null && !properties.apiKey().isBlank()) {
-            builder.header("Authorization", "Bearer " + properties.apiKey());
+        String effectiveKey = properties.apiKeyForCapability(request.capability());
+        if (effectiveKey != null && !effectiveKey.isBlank()) {
+            builder.header("Authorization", "Bearer " + effectiveKey);
         }
         try {
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
@@ -150,6 +152,25 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
             Thread.currentThread().interrupt();
             return AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, null, "INTERRUPTED", rawBodyJson(0, ""));
         }
+    }
+
+    /**
+     * 真实上游地址：{@code baseUrl} 末尾的 {@code /v1} 与 {@code generatePath} 开头的
+     * {@code /v1/} 只保留一个，避免拼出 {@code /v1/v1/...}。
+     */
+    URI resolveGenerateUri() {
+        String base = (properties.baseUrl() == null ? "" : properties.baseUrl().trim()).replaceAll("/+$", "");
+        String path = (properties.generatePath() == null || properties.generatePath().isBlank())
+                ? "/v1/images/generations"
+                : properties.generatePath().trim();
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        if (base.toLowerCase(Locale.ROOT).endsWith("/v1")
+                && path.toLowerCase(Locale.ROOT).startsWith("/v1/")) {
+            path = path.substring(3);
+        }
+        return URI.create(base + path);
     }
 
     private AnytokenAttemptResult fromResponse(AnytokenRequest request, HttpResponse<String> response) {
@@ -232,7 +253,40 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
                         Base64.getDecoder().decode(base64)));
             } else if (objectKey != null && !objectKey.isBlank()) {
                 outputs.add(new StoredOutput(objectKey, MinimalPng.BYTES));
+            } else {
+                // 真实上游可能只给一个临时图片 URL：下载字节后再写进 TOS。
+                String url = node.path("url").asText(null);
+                if (url != null && !url.isBlank() && (url.startsWith("http://") || url.startsWith("https://"))) {
+                    outputs.add(new StoredOutput(defaultObjectKey(request), downloadImageBytes(url)));
+                }
             }
+        }
+    }
+
+    /**
+     * 下载上游给的临时图片字节。
+     *
+     * <p>失败一律抛 {@link IllegalArgumentException}（不含 URL，避免签名泄露），
+     * 由 {@link #storeHttpResult} 归一成可重试的 PROVIDER_UNAVAILABLE。
+     */
+    private byte[] downloadImageBytes(String url) {
+        try {
+            HttpResponse<byte[]> response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create(url))
+                            .timeout(Duration.ofMillis(Math.max(1, properties.timeoutMs())))
+                            .GET()
+                            .build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+            byte[] bytes = response.body();
+            if (response.statusCode() < 200 || response.statusCode() >= 300 || bytes == null || bytes.length == 0) {
+                throw new IllegalArgumentException("Failed to download upstream image url");
+            }
+            return bytes;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("Failed to download upstream image url");
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to download upstream image url");
         }
     }
 
@@ -272,8 +326,49 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
         node.put("attempt", request.attempt());
         node.put("capability", request.capability());
         node.put("model", request.model());
-        node.set("params", readParams(request.paramsJson()));
+        JsonNode params = readParams(request.paramsJson());
+        node.set("params", params);
+
+        // 真实 Anytoken 认的是标准 OpenAI /v1/images/generations：把生图字段提升到顶层。
+        String prompt = params.path("prompt").asText("");
+        if (!prompt.isBlank()) {
+            node.put("prompt", prompt);
+        }
+        node.put("n", Math.max(1, params.path("n").asInt(1)));
+        String size = normalizeOpenAiImageSize(params.path("size").asText(""));
+        if (!size.isBlank()) {
+            node.put("size", size);
+        }
+        String quality = params.path("quality").asText("");
+        if ("low".equals(quality) || "medium".equals(quality) || "high".equals(quality)) {
+            node.put("quality", quality);
+        }
+        // gpt-image 系列默认就返回 base64，显式带 response_format 反而可能被上游拒绝。
+        if (request.model() == null || !request.model().toLowerCase(Locale.ROOT).contains("gpt-image")) {
+            node.put("response_format", "b64_json");
+        }
         return node.toString();
+    }
+
+    /**
+     * 把比例尺寸翻成 OpenAI 认的像素尺寸；已经是 {@code 1024x1024} 的原样保留。
+     *
+     * @return 空串表示「不要写顶层 size」
+     */
+    static String normalizeOpenAiImageSize(String rawSize) {
+        if (rawSize == null) {
+            return "";
+        }
+        String size = rawSize.trim().toLowerCase(Locale.ROOT);
+        if (size.isEmpty() || "auto".equals(size)) {
+            return "";
+        }
+        return switch (size) {
+            case "1:1" -> "1024x1024";
+            case "16:9", "3:2" -> "1536x1024";
+            case "9:16", "2:3" -> "1024x1536";
+            default -> size.matches("\\d+x\\d+") ? size : "";
+        };
     }
 
     /** 上游响应体摘要：脱敏（去掉 Base64 图片字节）后截断到 4096 字符。 */

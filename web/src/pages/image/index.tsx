@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, BookOpen, CheckSquare, ClipboardPaste, Download, FolderPlus, History, ImagePlus, LoaderCircle, PenLine, Plus, SlidersHorizontal, Sparkles, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { App, Button, Checkbox, Drawer, Empty, Image, Input, Modal, Tag, Tooltip, Typography } from "antd";
 import localforage from "localforage";
 import { saveAs } from "file-saver";
@@ -16,8 +16,10 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
+import { listFloraJobHistory, type FloraJobHistoryItem } from "@/services/api/flora-cloud";
 import { deleteStoredImages, ensureImagePreview, getImagePreviewRevision, previewUrlFor, resolveImageUrl, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { useAssetStore } from "@/stores/use-asset-store";
+import { useAuthStore } from "@/stores/use-auth-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
 import type { ReferenceImage } from "@/types/image";
 import i18n from "@/i18n";
@@ -79,10 +81,12 @@ export default function ImagePage() {
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const addAsset = useAssetStore((state) => state.addAsset);
+    const token = useAuthStore((state) => state.token);
     const [prompt, setPrompt] = useState("");
     const [references, setReferences] = useState<ReferenceImage[]>([]);
     const [results, setResults] = useState<GenerationResult[]>([]);
     const [logs, setLogs] = useState<GenerationLog[]>([]);
+    const [cloudLogs, setCloudLogs] = useState<GenerationLog[]>([]);
     const [running, setRunning] = useState(false);
     const [logsOpen, setLogsOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -104,6 +108,19 @@ export default function ImagePage() {
     const model = effectiveConfig.imageModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const generationCount = Math.max(1, Math.min(10, Number(config.count) || 1));
+    // 本地生成记录 + 云端任务历史：换浏览器登录同一账号也能看到之前的历史。
+    const mergedLogs = useMemo(() => [...logs, ...cloudLogs].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)), [cloudLogs, logs]);
+
+    /** 拉云端任务历史：成功的带现签图片地址，失败的带后端本地化错误。 */
+    const syncCloudHistory = async () => {
+        if (!token) return;
+        try {
+            const items = await listFloraJobHistory({ limit: 50 });
+            setCloudLogs(items.map(cloudHistoryToLog));
+        } catch {
+            // 云端历史拉不到不影响本地记录，静默忽略。
+        }
+    };
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -114,6 +131,14 @@ export default function ImagePage() {
     useEffect(() => {
         void refreshLogs();
     }, []);
+
+    useEffect(() => {
+        if (!token) {
+            setCloudLogs([]);
+            return;
+        }
+        void syncCloudHistory();
+    }, [token]);
 
     const addReferences = async (files?: FileList | null) => {
         const imageFiles = Array.from(files || []).filter((file) => file.type.startsWith("image/"));
@@ -202,6 +227,7 @@ export default function ImagePage() {
                 }),
             );
             successCount ? message.success(t("imageWorkbench.generated")) : message.error(failed?.reason instanceof Error ? failed.reason.message : t("workbench.generationFailed"));
+            void syncCloudHistory();
         } finally {
             setRunning(false);
         }
@@ -276,8 +302,11 @@ export default function ImagePage() {
     };
 
     const deleteSelectedLogs = () => {
-        const imageKeys = logs.filter((log) => selectedLogIds.includes(log.id)).flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
-        void Promise.all([deleteStoredImages(imageKeys), ...selectedLogIds.map((id) => logStore.removeItem(id))]).then(refreshLogs);
+        // 云端任务历史只读：本地记录才真正删除。
+        const localSelected = logs.filter((log) => selectedLogIds.includes(log.id));
+        if (selectedLogIds.length > localSelected.length) message.info(t("workbench.cloudLogsReadOnly"));
+        const imageKeys = localSelected.flatMap((log) => log.images.map((image) => image.storageKey).filter((key): key is string => Boolean(key)));
+        void Promise.all([deleteStoredImages(imageKeys), ...localSelected.map((log) => logStore.removeItem(log.id))]).then(refreshLogs);
         if (previewLog && selectedLogIds.includes(previewLog.id)) {
             setPreviewLog(null);
             setResults([]);
@@ -366,7 +395,7 @@ export default function ImagePage() {
             <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[300px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[320px_minmax(0,1fr)]">
                 <aside className="thin-scrollbar hidden min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:block">
                     <LogPanel
-                        logs={logs}
+                        logs={mergedLogs}
                         selectedLogIds={selectedLogIds}
                         activeLogId={previewLog?.id}
                         onSelectedLogIdsChange={setSelectedLogIds}
@@ -531,7 +560,7 @@ export default function ImagePage() {
             />
             <Drawer title={t("workbench.logs")} placement="bottom" size="large" open={logsOpen} onClose={() => setLogsOpen(false)}>
                 <LogPanel
-                    logs={logs}
+                    logs={mergedLogs}
                     selectedLogIds={selectedLogIds}
                     activeLogId={previewLog?.id}
                     onSelectedLogIdsChange={setSelectedLogIds}
@@ -822,6 +851,30 @@ function serializeLog(log: GenerationLog): GenerationLog {
         ...log,
         references: log.references.map((item) => ({ ...item, dataUrl: item.storageKey ? "" : item.dataUrl })),
         images: log.images.map((image) => ({ ...image, dataUrl: image.storageKey ? "" : image.dataUrl })),
+    };
+}
+
+/** 云端任务历史 → 本地生成记录形状。result_urls 是后端现签的 TOS 读地址。 */
+function cloudHistoryToLog(item: FloraJobHistoryItem): GenerationLog {
+    const createdAt = Date.parse(item.created_at) || Date.now();
+    const succeeded = item.status === "succeeded";
+    return {
+        id: `cloud:${item.job_id}`,
+        createdAt,
+        title: item.prompt || item.model,
+        prompt: item.prompt,
+        time: new Date(createdAt).toLocaleString(i18n.resolvedLanguage, { hour12: false }),
+        model: item.model,
+        config: { model: item.model, imageModel: item.model, quality: "", size: "", count: String(item.result_urls.length || 1) },
+        references: [],
+        durationMs: 0,
+        successCount: succeeded ? item.result_urls.length : 0,
+        failCount: succeeded ? 0 : 1,
+        imageCount: item.result_urls.length,
+        size: "",
+        quality: "",
+        status: succeeded ? "success" : "failed",
+        images: item.result_urls.map((url, index) => ({ id: `${item.job_id}-${index}`, dataUrl: url, durationMs: 0, width: 0, height: 0, bytes: 0, mimeType: "image/png" })),
     };
 }
 

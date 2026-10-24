@@ -48,8 +48,31 @@ public class TosUrlSigner {
         String key = normalizeKey(objectKey);
         String iso = TosV4Signer.formatBasicUtc(signingTime);
         String date = TosV4Signer.yyyymmdd(iso);
-        String host = hostHeader();
-        String canonicalUri = "/" + properties.bucket() + "/" + TosV4Signer.uriEncodePath(key);
+
+        URI uri = URI.create(endpointBase());
+        String scheme = uri.getScheme();
+        String rawHost = uri.getHost();
+        int port = uri.getPort();
+        if (scheme == null || rawHost == null || rawHost.isBlank()) {
+            throw new IllegalStateException("flora.storage.tos.endpoint 不是合法的 URI：" + properties.endpoint());
+        }
+
+        // 回环地址走 Path-Style（本地 HttpServer 绑不了子域名）；
+        // 真实火山域名强制 Virtual-Host Style，否则网关返回 403 InvalidPathAccess。
+        String host;
+        String canonicalUri;
+        if (isLoopbackHost(rawHost)) {
+            host = formatHostPort(rawHost, port);
+            canonicalUri = "/" + properties.bucket() + "/" + TosV4Signer.uriEncodePath(key);
+        } else {
+            String bucketPrefix = properties.bucket() + ".";
+            String virtualHost = rawHost.regionMatches(true, 0, bucketPrefix, 0, bucketPrefix.length())
+                    ? rawHost
+                    : bucketPrefix + rawHost;
+            host = formatHostPort(virtualHost, port);
+            canonicalUri = "/" + TosV4Signer.uriEncodePath(key);
+        }
+        String baseUrl = scheme + "://" + host;
 
         Map<String, String> query = new TreeMap<>();
         query.put("X-Tos-Algorithm", TosV4Signer.ALGORITHM);
@@ -73,7 +96,29 @@ public class TosUrlSigner {
         String stringToSign = TosV4Signer.stringToSign(iso, properties.region(), canonicalRequest);
         String signature = TosV4Signer.signature(properties.secretKey(), properties.region(), date, stringToSign);
 
-        return endpointBase() + canonicalUri + "?" + canonicalQueryString + "&X-Tos-Signature=" + signature;
+        return baseUrl + canonicalUri + "?" + canonicalQueryString + "&X-Tos-Signature=" + signature;
+    }
+
+    /**
+     * 回环地址判定：本地单测的 HttpServer 只绑 127.0.0.1 / localhost，必须保持 Path-Style。
+     */
+    static boolean isLoopbackHost(String host) {
+        if (host == null) {
+            return false;
+        }
+        String lower = host.trim().toLowerCase(java.util.Locale.ROOT);
+        return "127.0.0.1".equals(lower)
+                || "localhost".equals(lower)
+                || "::1".equals(lower)
+                || "[::1]".equals(lower);
+    }
+
+    /** 参与签名的 host 头：非默认端口要带端口号。 */
+    private static String formatHostPort(String host, int port) {
+        if (port != -1 && port != 80 && port != 443) {
+            return host + ":" + port;
+        }
+        return host;
     }
 
     /** 对象键规范化：去前导 {@code /}，拒绝空串与 {@code ..} 路径穿越。 */
@@ -121,19 +166,5 @@ public class TosUrlSigner {
             endpoint = endpoint.substring(0, endpoint.length() - 1);
         }
         return endpoint;
-    }
-
-    /** 参与签名的 host 头：非默认端口要带端口号。 */
-    private String hostHeader() {
-        URI uri = URI.create(endpointBase());
-        String host = uri.getHost();
-        if (host == null || host.isBlank()) {
-            throw new IllegalStateException("flora.storage.tos.endpoint 不是合法的 URI：" + properties.endpoint());
-        }
-        int port = uri.getPort();
-        if (port != -1 && port != 80 && port != 443) {
-            return host + ":" + port;
-        }
-        return host;
     }
 }

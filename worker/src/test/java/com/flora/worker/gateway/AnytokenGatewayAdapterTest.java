@@ -288,6 +288,167 @@ class AnytokenGatewayAdapterTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    // ------------------------------------------------------- 真实 Anytoken 协议
+
+    /** baseUrl 末尾的 /v1 与 generatePath 开头的 /v1/ 只保留一个。 */
+    @Test
+    void resolveGenerateUriDropsTheDuplicatedV1Segment() {
+        AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                new AnytokenProperties("http", "https://api.anytoken.work/v1", API_KEY, 30000, "/v1/images/generations"),
+                mapper, tosStorage());
+
+        assertThat(adapter.resolveGenerateUri()).hasToString("https://api.anytoken.work/v1/images/generations");
+    }
+
+    @Test
+    void resolveGenerateUriKeepsASingleV1() {
+        AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                new AnytokenProperties("http", "https://api.anytoken.work", API_KEY, 30000, "/v1/images/generations"),
+                mapper, tosStorage());
+
+        assertThat(adapter.resolveGenerateUri()).hasToString("https://api.anytoken.work/v1/images/generations");
+    }
+
+    /** 请求体同时带内部契约字段与标准 OpenAI 生图顶层字段。 */
+    @Test
+    void httpRequestBodyCarriesOpenAiImageFields() throws IOException {
+        AtomicReference<String> received = new AtomicReference<>();
+        HttpServer server = server(exchange -> {
+            received.set(readBody(exchange));
+            respond(exchange, 200, "{\"id\":\"upstream-1\"}");
+        });
+        try {
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, 5000,
+                            "/v1/generations"),
+                    mapper, tosStorage());
+
+            adapter.execute(request(UUID.randomUUID(), 1, "{\"prompt\":\"a garden\",\"size\":\"1:1\",\"quality\":\"high\"}"));
+
+            JsonNode sent = readJson(received.get());
+            // 内部契约字段（既有断言不能破）
+            assertThat(sent.get("job_id").asText()).isNotBlank();
+            assertThat(sent.get("params").get("prompt").asText()).isEqualTo("a garden");
+            // OpenAI /v1/images/generations 顶层字段
+            assertThat(sent.get("prompt").asText()).isEqualTo("a garden");
+            assertThat(sent.get("size").asText()).isEqualTo("1024x1024");
+            assertThat(sent.get("quality").asText()).isEqualTo("high");
+            assertThat(sent.get("n").asInt()).isEqualTo(1);
+            assertThat(sent.get("response_format").asText()).isEqualTo("b64_json");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** gpt-image 系列默认返回 base64：不带 response_format。 */
+    @Test
+    void gptImageModelDoesNotSendResponseFormat() throws IOException {
+        AtomicReference<String> received = new AtomicReference<>();
+        HttpServer server = server(exchange -> {
+            received.set(readBody(exchange));
+            respond(exchange, 200, "{\"id\":\"upstream-1\"}");
+        });
+        try {
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, 5000,
+                            "/v1/generations"),
+                    mapper, tosStorage());
+
+            adapter.execute(new AnytokenRequest(UUID.randomUUID(), 1, "image.generate", "gpt-image-2", "{\"prompt\":\"x\"}"));
+
+            assertThat(readJson(received.get()).has("response_format")).isFalse();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** 上游只给临时图片 URL 时，worker 下载字节并写进 TOS。 */
+    @Test
+    void httpTemporaryImageUrlIsDownloadedAndStoredInTos() throws IOException {
+        HttpServer server = serverWithImage();
+        try {
+            UUID jobId = UUID.randomUUID();
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, 5000,
+                            "/v1/generations"),
+                    mapper, tosStorage());
+
+            AnytokenAttemptResult result = adapter.execute(request(jobId, 7, "{\"prompt\":\"x\"}"));
+
+            assertThat(result.succeeded()).isTrue();
+            assertThat(result.outputObjectKeys()).containsExactly("anytoken/img/" + jobId + "/7.png");
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/img/" + jobId + "/7.png")))
+                    .isEqualTo(MinimalPng.BYTES);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** 临时图片下载失败 → 可重试失败，绝不假装成功。 */
+    @Test
+    void httpTemporaryImageDownloadFailureIsRetryable() throws IOException {
+        HttpServer server = server(exchange -> respond(exchange, 200, "{\"data\":[{\"url\":\"http://127.0.0.1:1/none.png\"}]}"));
+        try {
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, 5000,
+                            "/v1/generations"),
+                    mapper, tosStorage());
+
+            AnytokenAttemptResult result = adapter.execute(request(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(result.succeeded()).isFalse();
+            assertThat(result.retryable()).isTrue();
+            assertThat(result.errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
+            assertThat(result.outputObjectKeys()).isEmpty();
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** 视频能力用独立的 video key。 */
+    @Test
+    void videoCapabilityUsesTheVideoApiKey() throws IOException {
+        AtomicReference<String> authorization = new AtomicReference<>();
+        HttpServer server = server(exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            respond(exchange, 200, "{\"id\":\"upstream-1\"}");
+        });
+        try {
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, "video-secret",
+                            5000, "/v1/generations"),
+                    mapper, tosStorage());
+
+            adapter.execute(new AnytokenRequest(UUID.randomUUID(), 1, "video.generate", "seedance2", "{}"));
+
+            assertThat(authorization.get()).isEqualTo("Bearer video-secret");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    /** 生图能力仍然用通用 key。 */
+    @Test
+    void imageCapabilityKeepsTheGeneralApiKey() throws IOException {
+        AtomicReference<String> authorization = new AtomicReference<>();
+        HttpServer server = server(exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            respond(exchange, 200, "{\"id\":\"upstream-1\"}");
+        });
+        try {
+            AnytokenGatewayAdapter adapter = new AnytokenGatewayAdapter(
+                    new AnytokenProperties("http", "http://127.0.0.1:" + server.getAddress().getPort(), API_KEY, "video-secret",
+                            5000, "/v1/generations"),
+                    mapper, tosStorage());
+
+            adapter.execute(request(UUID.randomUUID(), 1, "{}"));
+
+            assertThat(authorization.get()).isEqualTo("Bearer " + API_KEY);
+        } finally {
+            server.stop(0);
+        }
+    }
+
     // ------------------------------------------------------------------ 工具
 
     private AnytokenGatewayAdapter stubAdapter() {
@@ -325,6 +486,24 @@ class AnytokenGatewayAdapterTest {
     private HttpServer server(Responder responder) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v1/generations", exchange -> responder.respond(exchange));
+        server.start();
+        return server;
+    }
+
+    /** 上游只回临时图片 URL 的场景：同一个桩既当生图接口，也当图片源站。 */
+    private HttpServer serverWithImage() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/generations", exchange -> {
+            String host = exchange.getRequestHeaders().getFirst("Host");
+            respond(exchange, 200, "{\"data\":[{\"url\":\"http://" + host + "/generated.png\"}]}");
+        });
+        server.createContext("/generated.png", exchange -> {
+            byte[] bytes = MinimalPng.BYTES;
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(bytes);
+            }
+        });
         server.start();
         return server;
     }

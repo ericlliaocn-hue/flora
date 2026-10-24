@@ -8,6 +8,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { DOCS_URL } from "@/constant/env";
+import type { CloudSyncStatus } from "@/stores/canvas/use-canvas-store";
 
 export function CanvasTopBar({
     title,
@@ -31,6 +32,7 @@ export function CanvasTopBar({
     agentOpen,
     compactAgentStatus,
     onToggleAgent,
+    cloudSync,
 }: {
     title: string;
     titleDraft: string;
@@ -53,6 +55,7 @@ export function CanvasTopBar({
     agentOpen: boolean;
     compactAgentStatus: { connected: boolean; enabled: boolean; activity: string };
     onToggleAgent: () => void;
+    cloudSync: { status: CloudSyncStatus; version?: number; onSave: () => void };
 }) {
     const colorTheme = useThemeStore((state) => state.theme);
     const { t } = useTranslation();
@@ -139,6 +142,7 @@ export function CanvasTopBar({
                 </div>
 
                 <div className="pointer-events-auto flex items-center gap-1.5">
+                    <CloudSyncBadge sync={cloudSync} />
                     <UserStatusActions variant="canvas" onOpenShortcuts={() => setShortcutsOpen(true)} onOpenPlugins={onOpenPlugins} />
                     <span className="h-6 w-px" style={{ background: theme.toolbar.border }} />
                     <Button
@@ -172,6 +176,19 @@ export function CanvasTopBar({
                 </div>
             </Modal>
         </>
+    );
+}
+
+function CloudSyncBadge({ sync }: { sync: { status: CloudSyncStatus; version?: number; onSave: () => void } }) {
+    const colorTheme = useThemeStore((state) => state.theme);
+    const theme = canvasThemes[colorTheme];
+    const { t } = useTranslation();
+    if (sync.status === "local") return <span className="text-xs" style={{ color: theme.node.muted }}>{t("canvas.cloud.localBadge")}</span>;
+    const label = sync.status === "syncing" ? t("canvas.cloud.syncing") : sync.status === "error" ? t("canvas.cloud.error") : t("canvas.cloud.synced", { version: sync.version ?? 0 });
+    return (
+        <button type="button" onClick={sync.onSave} className="text-xs transition hover:opacity-75" style={{ color: theme.node.muted }} title={t("canvas.cloud.saveNow")}>
+            {label}
+        </button>
     );
 }
 

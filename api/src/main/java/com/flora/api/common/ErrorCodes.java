@@ -22,6 +22,10 @@ public final class ErrorCodes {
     public static final String PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE";
     /** WP6 起启用：冻结失败，余额不足；不入队。 */
     public static final String WALLET_INSUFFICIENT = "WALLET_INSUFFICIENT";
+    /** WP10 起启用：项目不存在或不属于当前用户。 */
+    public static final String PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND";
+    /** WP10 起启用：素材不存在或不属于当前用户。 */
+    public static final String ASSET_NOT_FOUND = "ASSET_NOT_FOUND";
 
     private ErrorCodes() {
     }
