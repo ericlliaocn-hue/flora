@@ -150,6 +150,7 @@ cd flora
 - `V2__create_job_domain.sql` —— 建 `job` / `job_step` / `outbox_message` / `idempotency_record`
 - `V3__create_provider_task.sql` —— 建 `provider_task`，并给 `job_step.provider_task_id` 补上物理外键
 - `V4__create_wallet_domain.sql` —— 建 `wallet` / `wallet_hold` / `wallet_ledger`，并给 `job.hold_id` 补上物理外键
+- `V5__create_i18n_message.sql` —— 建 `i18n_message`，并灌入 stage-1 全部已登记 error_code 与 `JOB_FAILED.RETRY` 的 zh / en 种子（18 行）
 
 迁移历史在 `flyway_schema_history` 表里。**迁移统一由 api 管理**，`worker` 不跑 Flyway（`spring.flyway.enabled: false`）。
 
@@ -506,7 +507,60 @@ curl -s $API/wallet -H "flora-token: $TOKEN"
 `FLORA_TOS_ENDPOINT=https://tos-cn-beijing.volces.com`（或对应 region 的端点），
 并让 `FLORA_TOS_BUCKET` 与桶名一致即可，worker 走 V4 Header 签名 PUT，api 走 V4 Query 预签名 GET。
 
-### 10. WP5 / WP6 / WP8 的边界（不要误以为已经能用）
+### 10. WP9 友好错误与 `i18n_message`（改词条即时生效）
+
+WP9 起 C 端的 `message` 不再写死在代码里，而是按 locale 查 `i18n_message` 表。
+**运维改表即时生效，不用重启 api**（stage-1 只有几十行词条，没有缓存）。
+
+语言选择优先级：登录用户的 `users.locale` 偏好 > 请求 `Accept-Language` > `zh`。
+
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"bob","password":"password1"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 1) 缺词条回退：查一个不存在的 job → JOB_NOT_FOUND
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN"
+# {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"任务不存在。"}
+
+# 2) Accept-Language 决定语言
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+# {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"The task does not exist."}
+
+# 3) 用户偏好优先于请求头：users.locale='en' 后，不带 Accept-Language 也是英文
+psql -d flora -c "UPDATE users SET locale='en' WHERE username='bob';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN"
+# → message="The task does not exist."
+psql -d flora -c "UPDATE users SET locale=NULL WHERE username='bob';"   # 还原
+
+# 4) 改词条即时生效：改完直接再 curl，**不要重启 api**
+psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值或换一台机器。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"
+curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp9-1","capability":"image.generate","model":"demo","params":{}}'
+# {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值或换一台机器。"}
+psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"   # 还原
+
+# 5) 缺词条回退链：DB(en) → DB(zh) → 内置种子
+psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='en';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+# → message="任务不存在。"（DB 里 en 那条没了，回退到 zh 那条）
+psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='zh';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+# → message="The task does not exist."（表里两条都没了，回退到内置种子）
+
+# 还原种子
+psql -d flora -c "
+INSERT INTO i18n_message (key, locale, template) VALUES
+  ('JOB_NOT_FOUND', 'zh', '任务不存在。'),
+  ('JOB_NOT_FOUND', 'en', 'The task does not exist.')
+ON CONFLICT (key, locale) DO NOTHING;"
+
+# 6) 词条现状
+psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
+```
+
+### 11. WP5 / WP6 / WP8 / WP9 的边界（不要误以为已经能用）
 
 - **没有钱包充值入口**：WP6 不提供 C 端自助充值接口（没有 `POST /api/v1/wallet/topup`），
   充值只能走运维 SQL、`FLORA_BILLING_INITIAL_CREDITS`，或未来 WP11 Admin 的受控加额。
@@ -521,6 +575,10 @@ curl -s $API/wallet -H "flora-token: $TOKEN"
   **不要把「submit 能跑通」写成「托管 flora 已可用」**。
 - **没有 DLQ 重投运营台**：死信只进队列，没有 UI（WP11）。
 - **没有超时孤儿回收**：running 状态卡住的任务不会被定时扫回 queued（属运维策略，不在本 WP）。
+- **没有运营改词条入口**：WP9 只把词条落进 `i18n_message` 表，改词条要走运维 SQL；
+  Admin CRUD 留给 WP11。
+- **C 端静态 UI 文案不在库里**：`i18n_message` 只放服务端错误模板与运营可改的动态提示；
+  按钮、导航栏、设置项文案仍在 `web/src/i18n/locales/`（两层 i18n 不混用）。
 
 ## TBD：flora 业务进程（WP5 之后）
 
@@ -546,5 +604,6 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release | WP7 前端余额展示 |
 | 如何加测试余额？ | WP6：运维 psql 充值 SQL（必须同时写 topup 流水）或 `FLORA_BILLING_INITIAL_CREDITS`；**没有 C 端自助充值接口** | M4 / WP11 admin |
 | 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`** | WP7 前端直接用 url 展示图片 |
+| 错误文案在哪改？ | WP9：C 端 `message` 按 locale 查 `i18n_message` 表，运维 psql 改词条即时生效；**没有 Admin 界面**（WP11） | WP11 运营后台 |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。

@@ -1,7 +1,6 @@
 package com.flora.api.job.application;
 
 import com.flora.api.job.domain.Job;
-import com.flora.api.job.infra.JobErrorMessages;
 
 /**
  * query 的成功载荷。不含 raw / provider 字段。
@@ -18,14 +17,18 @@ public record JobView(
         String message,
         String updatedAt) {
 
-    public static JobView of(Job job, String locale) {
+    /**
+     * 文案由调用方按 locale 解析好再传进来（见 {@code I18nMessageService}）：
+     * DTO 自己不查表，也不认识 error_code。
+     */
+    public static JobView of(Job job, String message) {
         return new JobView(
                 job.id().toString(),
                 job.status().value(),
                 job.attempt(),
                 job.maxAttempts(),
                 job.errorCode(),
-                job.errorCode() == null ? null : JobErrorMessages.resolve(job.errorCode(), locale),
+                message,
                 job.updatedAt().toString());
     }
 }

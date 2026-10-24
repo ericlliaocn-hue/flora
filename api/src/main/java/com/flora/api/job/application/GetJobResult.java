@@ -7,9 +7,9 @@ import java.util.UUID;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flora.api.i18n.application.I18nMessageService;
 import com.flora.api.job.domain.Job;
 import com.flora.api.job.domain.JobStatus;
-import com.flora.api.job.infra.JobErrorMessages;
 import com.flora.api.job.infra.JobException;
 import com.flora.api.job.infra.JobRepository;
 import com.flora.api.storage.TosUrlSigner;
@@ -34,12 +34,15 @@ public class GetJobResult {
     private final ObjectMapper mapper;
     private final HoldSettlement holds;
     private final TosUrlSigner tosUrlSigner;
+    private final I18nMessageService i18n;
 
-    public GetJobResult(JobRepository jobs, ObjectMapper mapper, HoldSettlement holds, TosUrlSigner tosUrlSigner) {
+    public GetJobResult(JobRepository jobs, ObjectMapper mapper, HoldSettlement holds, TosUrlSigner tosUrlSigner,
+            I18nMessageService i18n) {
         this.jobs = jobs;
         this.mapper = mapper;
         this.holds = holds;
         this.tosUrlSigner = tosUrlSigner;
+        this.i18n = i18n;
     }
 
     public JobResultView result(UUID userId, UUID jobId, String locale) {
@@ -52,7 +55,7 @@ public class GetJobResult {
                 job.status().value(),
                 outputs,
                 errorCode,
-                errorCode == null ? null : JobErrorMessages.resolve(errorCode, locale));
+                errorCode == null ? null : i18n.resolve(errorCode, locale));
     }
 
     private List<JobOutput> outputs(Job job) {

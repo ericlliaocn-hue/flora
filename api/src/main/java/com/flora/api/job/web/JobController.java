@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.flora.api.auth.infra.AuthException;
 import com.flora.api.auth.infra.AuthSessionService;
 import com.flora.api.common.ApiResponse;
+import com.flora.api.i18n.application.I18nDefaultCatalog;
+import com.flora.api.i18n.application.RequestLocaleResolver;
 import com.flora.api.job.application.CancelJob;
 import com.flora.api.job.application.GetJob;
 import com.flora.api.job.application.GetJobResult;
@@ -13,8 +15,8 @@ import com.flora.api.job.application.JobResultView;
 import com.flora.api.job.application.JobView;
 import com.flora.api.job.application.SubmitJob;
 import com.flora.api.job.application.SubmitJobView;
-import com.flora.api.job.infra.JobErrorMessages;
 import com.flora.api.job.infra.JobException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,13 +43,16 @@ public class JobController {
     private final GetJob getJob;
     private final GetJobResult getJobResult;
     private final CancelJob cancelJob;
+    private final ObjectProvider<RequestLocaleResolver> localeResolvers;
 
-    public JobController(AuthSessionService sessions, SubmitJob submitJob, GetJob getJob, GetJobResult getJobResult, CancelJob cancelJob) {
+    public JobController(AuthSessionService sessions, SubmitJob submitJob, GetJob getJob, GetJobResult getJobResult,
+            CancelJob cancelJob, ObjectProvider<RequestLocaleResolver> localeResolvers) {
         this.sessions = sessions;
         this.submitJob = submitJob;
         this.getJob = getJob;
         this.getJobResult = getJobResult;
         this.cancelJob = cancelJob;
+        this.localeResolvers = localeResolvers;
     }
 
     @PostMapping("/submit")
@@ -64,19 +69,22 @@ public class JobController {
     @GetMapping("/{jobId}")
     public ApiResponse<JobView> get(@PathVariable String jobId,
                                     @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
-        return ApiResponse.ok(getJob.get(currentUserId(), jobIdOf(jobId), JobErrorMessages.localeOf(acceptLanguage)));
+        UUID userId = currentUserId();
+        return ApiResponse.ok(getJob.get(userId, jobIdOf(jobId), locale(userId, acceptLanguage)));
     }
 
     @GetMapping("/{jobId}/result")
     public ApiResponse<JobResultView> result(@PathVariable String jobId,
                                               @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
-        return ApiResponse.ok(getJobResult.result(currentUserId(), jobIdOf(jobId), JobErrorMessages.localeOf(acceptLanguage)));
+        UUID userId = currentUserId();
+        return ApiResponse.ok(getJobResult.result(userId, jobIdOf(jobId), locale(userId, acceptLanguage)));
     }
 
     @PostMapping("/{jobId}/cancel")
     public ApiResponse<JobView> cancel(@PathVariable String jobId,
                                         @RequestHeader(value = "Accept-Language", required = false) String acceptLanguage) {
-        return ApiResponse.ok(cancelJob.cancel(currentUserId(), jobIdOf(jobId), JobErrorMessages.localeOf(acceptLanguage)));
+        UUID userId = currentUserId();
+        return ApiResponse.ok(cancelJob.cancel(userId, jobIdOf(jobId), locale(userId, acceptLanguage)));
     }
 
     private UUID currentUserId() {
@@ -94,6 +102,19 @@ public class JobController {
         } catch (IllegalArgumentException e) {
             throw JobException.notFound();
         }
+    }
+
+    /**
+     * 有效语言：登录用户的 {@code users.locale} 优先，其次 {@code Accept-Language}。
+     *
+     * <p>窄切片里没有 {@link RequestLocaleResolver} 时按请求头解析。
+     */
+    private String locale(UUID userId, String acceptLanguage) {
+        RequestLocaleResolver resolver = localeResolvers.getIfAvailable();
+        if (resolver == null) {
+            return I18nDefaultCatalog.localeOf(acceptLanguage);
+        }
+        return resolver.resolve(userId, acceptLanguage);
     }
 
     /**

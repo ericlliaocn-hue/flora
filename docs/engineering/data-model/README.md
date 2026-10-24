@@ -17,7 +17,7 @@
 | `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
 | `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
 | `provider_task` | 网关痕迹 | WP5 已落地 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
-| `i18n_message` | 文案 | WP9 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
+| `i18n_message` | 文案 | WP9 已落地 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | 画布 / 素材 / 生成记录 | C 端数据 | WP10 | 待 WP10 brief 定 | 只要求挂 `user_id` |
 | 模型展示配置 | 运营 | WP11 | 待 WP11 brief 定 | 不是渠道账本 |

@@ -18,6 +18,8 @@ import com.flora.api.billing.domain.WalletLedgerType;
 import com.flora.api.billing.infra.BillingProperties;
 import com.flora.api.billing.support.InMemoryWalletStore;
 import com.flora.api.billing.support.LedgerAssertions;
+import com.flora.api.i18n.InMemoryI18nMessageRepository;
+import com.flora.api.i18n.application.I18nMessageService;
 import com.flora.api.job.domain.JobStatus;
 import com.flora.api.storage.TosProperties;
 import com.flora.api.storage.TosUrlSigner;
@@ -56,13 +58,16 @@ class JobLifecycleTest {
     private final WalletService walletService = new WalletService(wallets, wallets, wallets);
     private final HoldSettlement holdSettlement = new HoldSettlement(walletService);
 
+    private final InMemoryI18nMessageRepository i18nRepository = new InMemoryI18nMessageRepository();
+    private final I18nMessageService i18n = new I18nMessageService(i18nRepository);
+
     private final SubmitJob submitJob = new SubmitJob(store, store, store, new JobRequestHasher(), walletService,
             new JobCostPolicy(billing));
-    private final GetJob getJob = new GetJob(store, holdSettlement);
+    private final GetJob getJob = new GetJob(store, holdSettlement, i18n);
     private final TosUrlSigner tosUrlSigner = new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080",
             "cn-beijing", "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, "/tmp/flora-tos"));
-    private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement, tosUrlSigner);
-    private final CancelJob cancelJob = new CancelJob(store, holdSettlement);
+    private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement, tosUrlSigner, i18n);
+    private final CancelJob cancelJob = new CancelJob(store, holdSettlement, i18n);
     private final ClaimJob claimJob = new ClaimJob(store, store, lease, holdSettlement);
     private final RecordAttemptResult recordAttemptResult =
             new RecordAttemptResult(store, store, store, lease, mapper, holdSettlement);
@@ -213,6 +218,21 @@ class JobLifecycleTest {
         assertThat(dispatchTick.tick()).isEqualTo(2);
         assertThat(transport.sent()).hasSize(2);
         assertThat(store.allOutbox()).allMatch(message -> "sent".equals(message.status()));
+    }
+
+    /** WP9：改了仓储里的模板后，任务查询返回的文案随之动态变化。 */
+    @Test
+    void theMessageFollowsTheTemplateInTheRepository() {
+        UUID jobId = submit("k1");
+        claimJob.claim(jobId, WORKER);
+        recordAttemptResult.record(jobId, WORKER, AttemptOutcome.failure("JOB_FAILED", true));
+
+        assertThat(getJob.get(USER, jobId, "zh").message()).isEqualTo("任务执行失败。");
+
+        i18nRepository.upsert("JOB_FAILED", "zh", "生成失败了，请稍后再试。");
+
+        assertThat(getJob.get(USER, jobId, "zh").message()).isEqualTo("生成失败了，请稍后再试。");
+        assertThat(getJobResult.result(USER, jobId, "zh").message()).isEqualTo("生成失败了，请稍后再试。");
     }
 
     @Test
