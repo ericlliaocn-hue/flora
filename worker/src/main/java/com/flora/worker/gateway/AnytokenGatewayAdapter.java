@@ -7,13 +7,19 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flora.worker.job.domain.WorkerErrorCodes;
+import com.flora.worker.storage.MinimalPng;
+import com.flora.worker.storage.TosObjectStorage;
+import com.flora.worker.storage.TosStorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -29,8 +35,13 @@ import org.springframework.stereotype.Component;
  * <p>http：真调 Anytoken。错误映射：4xx（429 除外）→ JOB_FAILED（不可重试）；
  * 429 / 5xx / 网络异常 / 超时 / 非法 JSON → PROVIDER_UNAVAILABLE（可重试）。
  *
+ * <p>WP8 起：生成结果的字节在这里写进火山 TOS，job 里只留对象键
+ * （{@code job.result_object_keys}）。TOS 写失败一律归一成
+ * {@code PROVIDER_UNAVAILABLE}（可重试），**绝不**让没写进 TOS 的任务算成功。
+ *
  * <p>脱敏：只把上游响应体摘要写进 raw_body（截断 4096 字符），
- * **绝不**把 apiKey 或 Authorization 头写进 raw_body 或日志。
+ * Base64 图片字节会被替换成占位符，**绝不**把 apiKey、TOS 密钥或
+ * Authorization 头写进 raw_body 或日志。
  */
 @Component
 public class AnytokenGatewayAdapter implements AnytokenGateway {
@@ -43,11 +54,13 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
 
     private final AnytokenProperties properties;
     private final ObjectMapper mapper;
+    private final TosObjectStorage tosStorage;
     private final HttpClient httpClient;
 
-    public AnytokenGatewayAdapter(AnytokenProperties properties, ObjectMapper mapper) {
+    public AnytokenGatewayAdapter(AnytokenProperties properties, ObjectMapper mapper, TosObjectStorage tosStorage) {
         this.properties = properties;
         this.mapper = mapper;
+        this.tosStorage = tosStorage;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(Math.max(1, properties.timeoutMs())))
                 .build();
@@ -78,10 +91,24 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
             case "job_failed" -> AnytokenAttemptResult.failure(
                     WorkerErrorCodes.JOB_FAILED, false, upstreamRequestId, "400",
                     stubRawBody(400, "invalid generation parameters"));
-            default -> AnytokenAttemptResult.success(
-                    List.of("anytoken/img/" + request.jobId() + "/" + request.attempt() + ".png"),
-                    upstreamRequestId, "200", stubSuccessRawBody(request.model()));
+            default -> storeStubResult(request, params, upstreamRequestId);
         };
+    }
+
+    /** stub 成功分支：把最小 PNG 写进 TOS，再返回对象键。 */
+    private AnytokenAttemptResult storeStubResult(AnytokenRequest request, JsonNode params, String upstreamRequestId) {
+        if ("unavailable".equals(params.path("stub_tos_outcome").asText(""))) {
+            return AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, upstreamRequestId,
+                    "TOS_503", stubRawBody(503, "tos storage unavailable"));
+        }
+        String objectKey = defaultObjectKey(request);
+        try {
+            tosStorage.putObject(objectKey, MinimalPng.BYTES, "image/png");
+        } catch (TosStorageException e) {
+            return tosFailure(upstreamRequestId, e);
+        }
+        return AnytokenAttemptResult.success(List.of(objectKey), upstreamRequestId, "200",
+                stubSuccessRawBody(request.model()));
     }
 
     private String stubSuccessRawBody(String model) {
@@ -136,11 +163,7 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
                 return AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, null,
                         String.valueOf(status), rawBody);
             }
-            return AnytokenAttemptResult.success(
-                    outputKeys(request, body),
-                    upstreamRequestId(response, body),
-                    String.valueOf(status),
-                    rawBody);
+            return storeHttpResult(request, body, upstreamRequestId(response, body), status, rawBody);
         }
         if (status >= 400 && status < 500 && status != 429) {
             // 客户端业务拒绝：不可重试。
@@ -151,26 +174,82 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
                 upstreamRequestId(response, null), String.valueOf(status), rawBody);
     }
 
-    private List<String> outputKeys(AnytokenRequest request, JsonNode body) {
-        List<String> keys = new java.util.ArrayList<>();
+    /** http 成功分支：把每个输出写进 TOS，再返回对象键列表。 */
+    private AnytokenAttemptResult storeHttpResult(AnytokenRequest request, JsonNode body, String upstreamRequestId,
+            int status, String rawBody) {
+        List<StoredOutput> outputs;
+        try {
+            outputs = extractOutputs(request, body);
+        } catch (IllegalArgumentException e) {
+            // Base64 图片字节非法：按可重试失败处理。
+            return AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, upstreamRequestId,
+                    String.valueOf(status), rawBody);
+        }
+        List<String> keys = new ArrayList<>();
+        for (StoredOutput output : outputs) {
+            try {
+                tosStorage.putObject(output.key(), output.bytes(), "image/png");
+            } catch (TosStorageException e) {
+                return tosFailure(upstreamRequestId, e);
+            }
+            keys.add(output.key());
+            log.debug("生成结果已写入 TOS key={} bytes={}", output.key(), output.bytes().length);
+        }
+        return AnytokenAttemptResult.success(keys, upstreamRequestId, String.valueOf(status), rawBody);
+    }
+
+    /** 上游输出 → 待写入 TOS 的对象键与字节。 */
+    private List<StoredOutput> extractOutputs(AnytokenRequest request, JsonNode body) {
+        List<StoredOutput> outputs = new ArrayList<>();
         JsonNode objectKeys = body.path("object_keys");
         if (objectKeys.isArray()) {
-            objectKeys.forEach(node -> keys.add(node.asText()));
+            objectKeys.forEach(node -> outputs.add(new StoredOutput(node.asText(), MinimalPng.BYTES)));
         }
-        JsonNode outputs = body.path("outputs");
-        if (outputs.isArray()) {
-            outputs.forEach(node -> {
-                String key = node.path("object_key").asText(null);
-                if (key != null && !key.isBlank()) {
-                    keys.add(key);
-                }
-            });
+        collectOutputs(body.path("outputs"), request, outputs);
+        collectOutputs(body.path("data"), request, outputs);
+        if (outputs.isEmpty()) {
+            // 上游没给输出：兜底合成一个键 + 最小 PNG 字节。
+            outputs.add(new StoredOutput(defaultObjectKey(request), MinimalPng.BYTES));
         }
-        if (keys.isEmpty()) {
-            // 上游没给对象键：兜底合成一个（WP8 之前没有 TOS，也就没有签名 URL）。
-            keys.add("anytoken/img/" + request.jobId() + "/" + request.attempt() + ".png");
+        return outputs;
+    }
+
+    private void collectOutputs(JsonNode array, AnytokenRequest request, List<StoredOutput> outputs) {
+        if (!array.isArray()) {
+            return;
         }
-        return keys;
+        for (JsonNode node : array) {
+            if (node.isTextual()) {
+                outputs.add(new StoredOutput(node.asText(), MinimalPng.BYTES));
+                continue;
+            }
+            String base64 = node.path("b64_json").asText(null);
+            String objectKey = node.path("object_key").asText(null);
+            if (base64 != null && !base64.isBlank()) {
+                // 非法 Base64 会抛 IllegalArgumentException，由调用方归一成可重试失败。
+                outputs.add(new StoredOutput(
+                        objectKey == null || objectKey.isBlank() ? defaultObjectKey(request) : objectKey,
+                        Base64.getDecoder().decode(base64)));
+            } else if (objectKey != null && !objectKey.isBlank()) {
+                outputs.add(new StoredOutput(objectKey, MinimalPng.BYTES));
+            }
+        }
+    }
+
+    private String defaultObjectKey(AnytokenRequest request) {
+        return "anytoken/img/" + request.jobId() + "/" + request.attempt() + ".png";
+    }
+
+    /** TOS 写失败：统一归一成可重试的 PROVIDER_UNAVAILABLE。 */
+    private AnytokenAttemptResult tosFailure(String upstreamRequestId, TosStorageException e) {
+        String status = e.status() > 0 ? "TOS_" + e.status() : "TOS_ERROR";
+        ObjectNode node = mapper.createObjectNode();
+        node.put("provider", "anytoken");
+        node.put("stage", "tos");
+        node.put("http_status", e.status());
+        node.put("error", e.getMessage());
+        return AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, upstreamRequestId,
+                status, node.toString());
     }
 
     private String upstreamRequestId(HttpResponse<String> response, JsonNode body) {
@@ -197,17 +276,49 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
         return node.toString();
     }
 
-    /** 上游响应体摘要：截断到 4096 字符，超出时标 truncated。 */
+    /** 上游响应体摘要：脱敏（去掉 Base64 图片字节）后截断到 4096 字符。 */
     private String rawBodyJson(int httpStatus, String bodyText) {
         ObjectNode node = mapper.createObjectNode();
         node.put("http_status", httpStatus);
-        String text = bodyText == null ? "" : bodyText;
+        String text = sanitizeBody(bodyText);
         boolean truncated = text.length() > MAX_RAW_BODY_CHARS;
         node.put("body_excerpt", truncated ? text.substring(0, MAX_RAW_BODY_CHARS) : text);
         if (truncated) {
             node.put("truncated", true);
         }
         return node.toString();
+    }
+
+    /** JSON 里的 b64_json 换成占位符：图片字节不进 raw_body、不进日志。 */
+    private String sanitizeBody(String bodyText) {
+        if (bodyText == null || bodyText.isBlank()) {
+            return "";
+        }
+        JsonNode node = parseBody(bodyText);
+        if (node == null) {
+            return bodyText;
+        }
+        return redactBase64(node).toString();
+    }
+
+    private JsonNode redactBase64(JsonNode node) {
+        if (node.isObject()) {
+            ObjectNode copy = mapper.createObjectNode();
+            node.fields().forEachRemaining(entry -> {
+                if ("b64_json".equals(entry.getKey())) {
+                    copy.put(entry.getKey(), "<omitted base64 image bytes>");
+                } else {
+                    copy.set(entry.getKey(), redactBase64(entry.getValue()));
+                }
+            });
+            return copy;
+        }
+        if (node.isArray()) {
+            ArrayNode copy = mapper.createArrayNode();
+            node.forEach(item -> copy.add(redactBase64(item)));
+            return copy;
+        }
+        return node;
     }
 
     private JsonNode parseBody(String bodyText) {
@@ -243,5 +354,9 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /** 待写入 TOS 的一个输出。 */
+    private record StoredOutput(String key, byte[] bytes) {
     }
 }

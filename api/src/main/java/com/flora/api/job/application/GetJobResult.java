@@ -12,6 +12,7 @@ import com.flora.api.job.domain.JobStatus;
 import com.flora.api.job.infra.JobErrorMessages;
 import com.flora.api.job.infra.JobException;
 import com.flora.api.job.infra.JobRepository;
+import com.flora.api.storage.TosUrlSigner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,8 +20,10 @@ import org.springframework.stereotype.Service;
 /**
  * 查询任务结果。
  *
- * <p>outputs 来自 {@code job.result_object_keys}；本 WP 没有 TOS 签名，
- * 所以每个元素的 {@code url} 恒为 null。
+ * <p>outputs 来自 {@code job.result_object_keys}；每个对象键在读取时现签一个
+ * 火山 TOS 的短期预签名读地址（默认 TTL 900 秒），签名地址不落库、不进 MQ 消息。
+ *
+ * <p>任务没成功时 outputs 为空数组：不给未完成或失败的任务签发读地址。
  */
 @Service
 public class GetJobResult {
@@ -30,11 +33,13 @@ public class GetJobResult {
     private final JobRepository jobs;
     private final ObjectMapper mapper;
     private final HoldSettlement holds;
+    private final TosUrlSigner tosUrlSigner;
 
-    public GetJobResult(JobRepository jobs, ObjectMapper mapper, HoldSettlement holds) {
+    public GetJobResult(JobRepository jobs, ObjectMapper mapper, HoldSettlement holds, TosUrlSigner tosUrlSigner) {
         this.jobs = jobs;
         this.mapper = mapper;
         this.holds = holds;
+        this.tosUrlSigner = tosUrlSigner;
     }
 
     public JobResultView result(UUID userId, UUID jobId, String locale) {
@@ -57,7 +62,18 @@ public class GetJobResult {
         }
         try {
             List<JobOutput> outputs = new ArrayList<>();
-            mapper.readTree(json).forEach(item -> outputs.add(new JobOutput("image", item.asText(), null)));
+            mapper.readTree(json).forEach(item -> {
+                String objectKey = item.asText();
+                if (objectKey == null || objectKey.isBlank()) {
+                    return;
+                }
+                try {
+                    outputs.add(new JobOutput("image", objectKey, tosUrlSigner.signGetUrl(objectKey)));
+                } catch (IllegalArgumentException e) {
+                    // 非法对象键只跳过这一条：不让一条脏数据打挂整个 result 响应。
+                    log.warn("跳过非法 TOS 对象键 job={} key={}", job.id(), objectKey);
+                }
+            });
             return outputs;
         } catch (JsonProcessingException e) {
             log.warn("result_object_keys 解析失败 job={}", job.id());

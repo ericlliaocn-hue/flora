@@ -78,3 +78,16 @@ flora:
     # 后台扫描 worker 已完成任务并自动 confirm/release 冻结单的间隔（毫秒）与批大小。
     settle-poll-ms: ${FLORA_BILLING_SETTLE_POLL_MS:200}
     settle-batch-size: ${FLORA_BILLING_SETTLE_BATCH_SIZE:50}
+  # WP8 的火山引擎 TOS。api 只签发短期预签名读地址，字节由 worker 写入。
+  storage:
+    tos:
+      # stub = 本地零密钥模式（worker 写 local-dir，api 同样按 V4 规则签出短期 URL）；http = 调真实火山 TOS HTTP 接口
+      mode: ${FLORA_TOS_MODE:stub}
+      endpoint: ${FLORA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}
+      region: ${FLORA_TOS_REGION:cn-beijing}
+      bucket: ${FLORA_TOS_BUCKET:flora-dev}
+      access-key: ${FLORA_TOS_ACCESS_KEY:flora-local-ak}
+      secret-key: ${FLORA_TOS_SECRET_KEY:flora-local-sk}
+      presign-ttl-seconds: ${FLORA_TOS_PRESIGN_TTL_SECONDS:900}
+      timeout-ms: ${FLORA_TOS_TIMEOUT_MS:15000}
+      local-dir: ${FLORA_TOS_LOCAL_DIR:/tmp/flora-tos}

@@ -59,3 +59,16 @@ flora:
     api-key: ${FLORA_GATEWAY_API_KEY:}
     timeout-ms: ${FLORA_GATEWAY_TIMEOUT_MS:30000}
     generate-path: ${FLORA_GATEWAY_GENERATE_PATH:/v1/generations}
+  # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
+  storage:
+    tos:
+      # stub = 本地零密钥模式（写 local-dir）；http = 调真实火山 TOS HTTP 接口
+      mode: ${FLORA_TOS_MODE:stub}
+      endpoint: ${FLORA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}
+      region: ${FLORA_TOS_REGION:cn-beijing}
+      bucket: ${FLORA_TOS_BUCKET:flora-dev}
+      access-key: ${FLORA_TOS_ACCESS_KEY:flora-local-ak}
+      secret-key: ${FLORA_TOS_SECRET_KEY:flora-local-sk}
+      presign-ttl-seconds: ${FLORA_TOS_PRESIGN_TTL_SECONDS:900}
+      timeout-ms: ${FLORA_TOS_TIMEOUT_MS:15000}
+      local-dir: ${FLORA_TOS_LOCAL_DIR:/tmp/flora-tos}
