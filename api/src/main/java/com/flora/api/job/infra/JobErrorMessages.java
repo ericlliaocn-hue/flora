@@ -32,6 +32,9 @@ public final class JobErrorMessages {
             ErrorCodes.PROVIDER_UNAVAILABLE, Map.of(
                     "zh", "生成服务暂时不可用，请稍后重试。",
                     "en", "The generation service is temporarily unavailable. Please try again later."),
+            ErrorCodes.WALLET_INSUFFICIENT, Map.of(
+                    "zh", "账户余额不足，请先充值。",
+                    "en", "Insufficient wallet balance. Please top up first."),
             ErrorCodes.UNAUTHORIZED, Map.of(
                     "zh", "请先登录后再试。",
                     "en", "Please sign in first."));

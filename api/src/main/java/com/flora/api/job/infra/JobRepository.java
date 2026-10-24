@@ -19,9 +19,11 @@ public interface JobRepository {
      * 插入一条 status=created 的 job。同一 {@code (user_id, idempotency_key)} 已有行时
      * 不插入（并发同键的安全网）。
      *
+     * @param holdId 钱包冻结单；未冻结时传 null
      * @return 新建的 job；同键已存在时返回空
      */
-    Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey);
+    Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey,
+            UUID holdId);
 
     Optional<Job> findById(UUID jobId);
 

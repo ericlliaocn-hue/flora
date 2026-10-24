@@ -7,8 +7,8 @@ package com.flora.api.common;
  * 不发明新码——需要新码时先改那份文档。
  *
  * <p>WP4 启用的码：UNAUTHORIZED、VALIDATION_ERROR、JOB_NOT_FOUND、JOB_CANCELLED、
- * IDEMPOTENCY_CONFLICT、JOB_FAILED；WP5 起启用 PROVIDER_UNAVAILABLE。
- * 没有钱包（WP6）也不启用 WALLET_INSUFFICIENT。
+ * IDEMPOTENCY_CONFLICT、JOB_FAILED；WP5 起启用 PROVIDER_UNAVAILABLE；
+ * WP6 起启用 WALLET_INSUFFICIENT。
  */
 public final class ErrorCodes {
 
@@ -20,6 +20,8 @@ public final class ErrorCodes {
     public static final String JOB_FAILED = "JOB_FAILED";
     /** WP5 起启用：上游不可用或未识别（worker 写进 job.error_code）。 */
     public static final String PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE";
+    /** WP6 起启用：冻结失败，余额不足；不入队。 */
+    public static final String WALLET_INSUFFICIENT = "WALLET_INSUFFICIENT";
 
     private ErrorCodes() {
     }

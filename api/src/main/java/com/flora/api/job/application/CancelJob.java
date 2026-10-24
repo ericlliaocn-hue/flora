@@ -15,23 +15,26 @@ import org.springframework.transaction.annotation.Transactional;
  * 取消任务。
  *
  * <p>非终态：先写 {@code cancel_requested_at}；
- * 仍处于 created / queued → 直接 cancelled；
+ * 仍处于 created / queued → 直接 cancelled（同事务解冻退回）；
  * 已在 running → 保留意图，等 Claim 或驱动下一步时收尾成 cancelled。
- * 已终态 → 幂等返回当前状态。
+ * 已终态 → 幂等返回当前状态，并顺手做一次幂等结算兜底。
  */
 @Service
 public class CancelJob {
 
     private final JobRepository jobs;
+    private final HoldSettlement holds;
 
-    public CancelJob(JobRepository jobs) {
+    public CancelJob(JobRepository jobs, HoldSettlement holds) {
         this.jobs = jobs;
+        this.holds = holds;
     }
 
     @Transactional
     public JobView cancel(UUID userId, UUID jobId, String locale) {
         Job job = jobs.findByIdAndUser(jobId, userId).orElseThrow(JobException::notFound);
         if (job.status().isTerminal()) {
+            holds.settle(job.holdId(), job.status());
             return JobView.of(job, locale);
         }
 
@@ -39,6 +42,7 @@ public class CancelJob {
         if (job.status() == JobStatus.QUEUED || job.status() == JobStatus.CREATED) {
             JobTransitions.requireCancellable(job.status());
             jobs.updateStatus(jobId, job.status(), JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
+            holds.settle(job.holdId(), JobStatus.CANCELLED);
             Job cancelled = jobs.findById(jobId).orElseThrow(JobException::notFound);
             return JobView.of(cancelled, locale);
         }

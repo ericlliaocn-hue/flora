@@ -99,6 +99,12 @@ export FLORA_GATEWAY_MODE=stub              # stub（本地假上游，默认）
 export FLORA_GATEWAY_BASE_URL=http://127.0.0.1:18080   # 仅 http 模式生效
 export FLORA_GATEWAY_API_KEY=               # 仅 http 模式生效；由环境变量注入，勿入库
 export FLORA_GATEWAY_TIMEOUT_MS=30000
+
+# WP6：预付费钱包
+export FLORA_BILLING_DEFAULT_JOB_COST=10    # 单次任务冻结 credit 数（正整数）
+export FLORA_BILLING_INITIAL_CREDITS=0      # 新注册用户初始赠送 credit 数（0 = 不赠送）
+export FLORA_BILLING_SETTLE_POLL_MS=200     # 后台对账扫描间隔（毫秒）
+export FLORA_BILLING_SETTLE_BATCH_SIZE=50   # 单轮最多结算多少张冻结单
 ```
 
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
@@ -132,6 +138,7 @@ cd flora
 - `V1__create_users.sql` —— 只建 `users` 表
 - `V2__create_job_domain.sql` —— 建 `job` / `job_step` / `outbox_message` / `idempotency_record`
 - `V3__create_provider_task.sql` —— 建 `provider_task`，并给 `job_step.provider_task_id` 补上物理外键
+- `V4__create_wallet_domain.sql` —— 建 `wallet` / `wallet_hold` / `wallet_ledger`，并给 `job.hold_id` 补上物理外键
 
 迁移历史在 `flyway_schema_history` 表里。**迁移统一由 api 管理**，`worker` 不跑 Flyway（`spring.flyway.enabled: false`）。
 
@@ -206,10 +213,11 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"password1"}' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
-# submit：写 job(queued) + outbox(pending) + 幂等记录
+# submit：写 job(queued) + outbox(pending) + 幂等记录；WP6 起还会冻结余额并返回 hold_id
 curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{"prompt":"hi"}}'
-# {"ok":true,"data":{"job_id":"...","status":"queued","hold_id":null},"error_code":null,"message":null}
+# {"ok":true,"data":{"job_id":"...","status":"queued","hold_id":"..."},"error_code":null,"message":null}
+# 余额不足时 → {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}（不入队）
 
 # 同一个 idempotency_key + 同一个 body → 返回同一个 job_id，不二次入队
 curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
@@ -330,9 +338,121 @@ redis-cli --scan --pattern 'job:lease:*'
 # job:lease:<job_id>
 ```
 
-### 7. WP5 的边界（不要误以为已经能用）
+### 7. WP6 双进程端到端（钱包冻结 / 确认 / 释放）
 
-- **没有钱包**：submit 不 freeze，`hold_id` 恒为 null。钱包整包在 WP6。
+**同样要同时起 api（8080）与 worker（8081）**：worker 把 job 推进终态后，api 侧的
+`WalletHoldSettlementDispatcher`（每 200ms 扫一次）会把冻结单结掉。
+
+先用运维 SQL 充值（**不要**只改 `wallet.available`：必须同时记一笔 `type='topup'` 的流水，
+否则余额和流水对不上）：
+
+```bash
+psql -d flora -c "
+WITH w AS (
+    INSERT INTO wallet (user_id, available, frozen)
+    SELECT id, 100, 0 FROM users WHERE username = 'bob'
+    ON CONFLICT (user_id) DO UPDATE
+        SET available = wallet.available + 100,
+            updated_at = now()
+    RETURNING id, user_id
+)
+INSERT INTO wallet_ledger (wallet_id, user_id, type, amount)
+SELECT id, user_id, 'topup', 100 FROM w;
+"
+```
+
+也可以把 `FLORA_BILLING_INITIAL_CREDITS` 设成大于 0 的值，让**新注册**的用户自动带一笔 topup 流水。
+
+```bash
+API=http://127.0.0.1:8080/api/v1
+TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
+  -d '{"username":"bob","password":"password1","locale":"zh"}' \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+# 1) 新用户余额为 0（initial-credits 默认 0）
+curl -s $API/wallet -H "flora-token: $TOKEN"
+# {"ok":true,"data":{"user_id":"...","available":0,"frozen":0,"updated_at":"..."},"error_code":null,"message":null}
+
+# 2) 余额不足时 submit → WALLET_INSUFFICIENT，且不入队（job / wallet_hold / wallet_ledger / outbox / 幂等记录都是 0 行）
+curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}'
+# {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}
+
+# 3) 充值 100（上面的 psql），然后用**同一个** idempotency_key 重新提交
+psql -d flora -c "..."   # 见本节开头的充值 SQL
+JOB_OK=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+# 提交瞬间：available=90 frozen=10，hold_id 非空
+curl -s $API/wallet -H "flora-token: $TOKEN"
+
+# 4) 成功 → 自动 confirm（冻结转实扣）
+sleep 2
+curl -s $API/jobs/$JOB_OK -H "flora-token: $TOKEN"     # status="succeeded"
+curl -s $API/wallet -H "flora-token: $TOKEN"            # available=90 frozen=0
+
+# 5) 同 key 同 body 重放：同一个 job_id、同一个 hold_id，不二次冻结
+curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}'
+
+# 6) 不可重试失败（stub_outcome=job_failed）：dead → 自动 release（失败不吞冻）
+JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_outcome":"job_failed"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 2
+curl -s $API/jobs/$JOB_FAIL -H "flora-token: $TOKEN"   # status="dead", error_code="JOB_FAILED"
+curl -s $API/wallet -H "flora-token: $TOKEN"            # available 回到扣费前
+
+# 7) 可重试失败（stub_outcome=provider_unavailable）：重试期间 hold 保持 frozen，不重冻也不释放
+JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-retry-1","capability":"image.generate","model":"demo","params":{"prompt":"retry","stub_outcome":"provider_unavailable"}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+sleep 1
+curl -s $API/wallet -H "flora-token: $TOKEN"            # available=80 frozen=10（还冻着）
+sleep 4
+curl -s $API/jobs/$JOB_RETRY -H "flora-token: $TOKEN"   # status="dead", attempt=3
+curl -s $API/wallet -H "flora-token: $TOKEN"            # available 回到扣费前，frozen=0
+
+# 8) 运行中取消（stub_delay_ms=3000）：cancelled → 自动 release
+JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"idempotency_key":"wp6-cancel-1","capability":"image.generate","model":"demo","params":{"prompt":"slow","stub_delay_ms":3000}}' \
+  | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
+curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "flora-token: $TOKEN"
+sleep 4
+curl -s $API/jobs/$JOB_CANCEL -H "flora-token: $TOKEN"  # status="cancelled", error_code="JOB_CANCELLED"
+curl -s $API/wallet -H "flora-token: $TOKEN"             # available 回到扣费前，frozen=0
+```
+
+对账（三张表 + 流水不变量）：
+
+```bash
+psql -d flora -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
+psql -d flora -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d flora -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+
+# available == Σ(topup) - Σ(freeze) + Σ(release)
+# frozen    == Σ(freeze) - Σ(confirm) - Σ(release) == Σ(status='frozen' 的 hold.amount)
+psql -d flora -c "
+SELECT w.available,
+       COALESCE(SUM(l.amount) FILTER (WHERE l.type='topup'),0)
+     - COALESCE(SUM(l.amount) FILTER (WHERE l.type='freeze'),0)
+     + COALESCE(SUM(l.amount) FILTER (WHERE l.type='release'),0) AS available_by_ledger,
+       w.frozen,
+       COALESCE(SUM(l.amount) FILTER (WHERE l.type='freeze'),0)
+     - COALESCE(SUM(l.amount) FILTER (WHERE l.type='confirm'),0)
+     - COALESCE(SUM(l.amount) FILTER (WHERE l.type='release'),0) AS frozen_by_ledger,
+       (SELECT COALESCE(SUM(h.amount),0) FROM wallet_hold h WHERE h.user_id = w.user_id AND h.status='frozen') AS frozen_by_holds
+FROM wallet w JOIN wallet_ledger l ON l.wallet_id = w.id
+WHERE w.user_id = (SELECT id FROM users WHERE username = 'bob')
+GROUP BY w.available, w.frozen, w.user_id;"
+```
+
+### 8. WP5 / WP6 的边界（不要误以为已经能用）
+
+- **没有钱包充值入口**：WP6 不提供 C 端自助充值接口（没有 `POST /api/v1/wallet/topup`），
+  充值只能走运维 SQL、`FLORA_BILLING_INITIAL_CREDITS`，或未来 WP11 Admin 的受控加额。
+- **钱包不等于钱**：flora credit 是产品内部的计费单位，没有支付渠道、没有充值订单、
+  没有退款（M4 / WP11 之前都还没有）。
 - **默认不连真上游**：`FLORA_GATEWAY_MODE=stub` 是本地假上游；`http` 模式才真的调 Anytoken，
   而且本 WP 没有接真实付费账号与账单。
 - **生成结果是假的**：WP5 还没接 TOS，`result[].url` 恒为 null，只有合成的 `object_key`。
@@ -346,7 +466,7 @@ redis-cli --scan --pattern 'job:lease:*'
 
 - 火山 TOS bucket、STS、回调
 - Anytoken 的真实付费调用方式（WP5 只有适配器边界 + 本地 stub）
-- 钱包的 freeze / confirm / release（WP6）
+- 支付渠道与充值订单（钱包在 WP6，但「钱怎么进来」要到 M4 / WP11 Admin）
 - 前端改打 flora API（WP7）
 
 ## TBD：一键编排
@@ -359,8 +479,9 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | --- | --- | --- |
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP4+ 接任务链路 |
 | 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis | WP7 前端登录页 |
-| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通，**但没有钱包、没有真上游、没有 TOS** | WP4–WP7 |
+| 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游、没有 TOS** | WP4–WP7 |
 | 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `flora.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
-| 如何加测试余额？ | 无 | WP6 脚本 / M4 admin |
+| 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release | WP7 前端余额展示 |
+| 如何加测试余额？ | WP6：运维 psql 充值 SQL（必须同时写 topup 流水）或 `FLORA_BILLING_INITIAL_CREDITS`；**没有 C 端自助充值接口** | M4 / WP11 admin |
 
 如果你发现某份对外 README 把上述目标写成「已经支持」，开 PR 改掉它，不要在本 runbook 里用假命令圆过去。

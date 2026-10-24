@@ -29,14 +29,17 @@ public class GetJobResult {
 
     private final JobRepository jobs;
     private final ObjectMapper mapper;
+    private final HoldSettlement holds;
 
-    public GetJobResult(JobRepository jobs, ObjectMapper mapper) {
+    public GetJobResult(JobRepository jobs, ObjectMapper mapper, HoldSettlement holds) {
         this.jobs = jobs;
         this.mapper = mapper;
+        this.holds = holds;
     }
 
     public JobResultView result(UUID userId, UUID jobId, String locale) {
         Job job = jobs.findByIdAndUser(jobId, userId).orElseThrow(JobException::notFound);
+        holds.settle(job.holdId(), job.status());
         List<JobOutput> outputs = job.status() == JobStatus.SUCCEEDED ? outputs(job) : List.of();
         String errorCode = job.errorCode();
         return new JobResultView(

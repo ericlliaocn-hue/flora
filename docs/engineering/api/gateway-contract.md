@@ -45,11 +45,59 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `job_id` | string (uuid) | 权威 id，也是以后 MQ 的 body |
-| `status` | string | 状态机枚举；通常 `queued`；冻失败则无 job 或立即失败（WP6 写死一种） |
-| `hold_id` | string (uuid) | 若已冻结 |
+| `status` | string | 状态机枚举；通常 `queued`；**冻失败则无 job**，返 `WALLET_INSUFFICIENT`（WP6 已写死） |
+| `hold_id` | string (uuid) | 若已冻结；WP6 起正常提交恒非空 |
 | `error_code` / `message` | string | 仅失败 |
 
 **副作用**：余额不足 → 不入队。同一 `idempotency_key` + 同一请求哈希 → 不二次冻结；同一 key 不同 body → `IDEMPOTENCY_CONFLICT`。
+
+### 冻失败（WP6 已写死）
+
+余额不足（`available < cost`）时 **不创建 job、不写 `wallet_hold`、不写 `wallet_ledger`、不写 `outbox_message`、不写 `idempotency_record`**：
+
+```json
+{
+  "ok": false,
+  "data": null,
+  "error_code": "WALLET_INSUFFICIENT",
+  "message": "账户余额不足，请先充值。"
+}
+```
+
+HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`** 重新提交。
+
+## Wallet
+
+**用途**：查当前登录用户的钱包余额快照。需登录（`AuthPathPolicy` 覆盖 `/api/v1/**`）。
+
+请求：`GET /api/v1/wallet`，无参数。
+
+响应：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `user_id` | string (uuid) | 钱包主人 |
+| `available` | integer | 可用 credit（BIGINT，不出现浮点） |
+| `frozen` | integer | 已冻未确认 credit |
+| `updated_at` | string (ISO 8601) | 最后一次余额变动时间 |
+
+```json
+{
+  "ok": true,
+  "data": {
+    "user_id": "90d6bf80-1234-4567-89ab-cdef01234567",
+    "available": 90,
+    "frozen": 10,
+    "updated_at": "2026-10-24T04:30:00Z"
+  },
+  "error_code": null,
+  "message": null
+}
+```
+
+用户还没有钱包行时惰性建一行 `available=0, frozen=0` 后返回。**本 WP 不提供 C 端自助充值接口**
+（没有 `POST /api/v1/wallet/topup`）：充值走运维 SQL 或未来的 Admin 加额接口。
+
 
 ## Query
 

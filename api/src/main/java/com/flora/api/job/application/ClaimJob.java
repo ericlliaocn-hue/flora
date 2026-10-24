@@ -30,11 +30,13 @@ public class ClaimJob {
     private final JobRepository jobs;
     private final JobStepRepository steps;
     private final JobLease lease;
+    private final HoldSettlement holds;
 
-    public ClaimJob(JobRepository jobs, JobStepRepository steps, JobLease lease) {
+    public ClaimJob(JobRepository jobs, JobStepRepository steps, JobLease lease, HoldSettlement holds) {
         this.jobs = jobs;
         this.steps = steps;
         this.lease = lease;
+        this.holds = holds;
     }
 
     @Transactional
@@ -42,6 +44,7 @@ public class ClaimJob {
         Job current = jobs.findById(jobId).orElseThrow(JobException::notFound);
         if (current.status() == JobStatus.QUEUED && current.cancelRequestedAt() != null) {
             jobs.updateStatus(jobId, JobStatus.QUEUED, JobStatus.CANCELLED, ErrorCodes.JOB_CANCELLED);
+            holds.settle(current.holdId(), JobStatus.CANCELLED);
             return new ClaimResult(jobId.toString(), JobStatus.CANCELLED.value(), false);
         }
 

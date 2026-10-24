@@ -4,6 +4,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.flora.api.billing.application.JobCostPolicy;
+import com.flora.api.billing.application.WalletService;
+import com.flora.api.billing.domain.WalletHold;
 import com.flora.api.job.domain.IdempotencyRecord;
 import com.flora.api.job.domain.Job;
 import com.flora.api.job.domain.JobStatus;
@@ -20,13 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 提交一个托管任务。
  *
- * <p>事务顺序（brief 锁定）：写 job(status=created) → 迁到 queued → 写 outbox(pending)
- * → 写幂等记录；事务提交后由 dispatcher 异步投递。
+ * <p>事务顺序（brief 锁定的「顺序 A」）：冻结钱包 → 写 job(created, hold_id) → 迁到 queued
+ * → 绑定冻结单的 job_id → 写 outbox(pending) → 写幂等记录；事务提交后由 dispatcher 异步投递。
  *
- * <p>同 key 同 body 重放 → 返回原 job_id，不新建 job、不二次入队；
+ * <p>同 key 同 body 重放 → 返回原 job_id 与原 hold_id，不新建 job、不二次冻结；
  * 同 key 不同 body → IDEMPOTENCY_CONFLICT。
  *
- * <p>本 WP 不冻结钱包，所以 {@code hold_id} 恒为 null（钱包整包在 WP6）。
+ * <p>余额不足时冻结先失败，此时 job / outbox / 幂等记录一行都没写，
+ * 用户充值后可用同一个 idempotency_key 重新提交。
  */
 @Service
 public class SubmitJob {
@@ -39,12 +43,17 @@ public class SubmitJob {
     private final OutboxRepository outbox;
     private final IdempotencyRepository idempotency;
     private final JobRequestHasher hasher;
+    private final WalletService wallets;
+    private final JobCostPolicy costPolicy;
 
-    public SubmitJob(JobRepository jobs, OutboxRepository outbox, IdempotencyRepository idempotency, JobRequestHasher hasher) {
+    public SubmitJob(JobRepository jobs, OutboxRepository outbox, IdempotencyRepository idempotency, JobRequestHasher hasher,
+            WalletService wallets, JobCostPolicy costPolicy) {
         this.jobs = jobs;
         this.outbox = outbox;
         this.idempotency = idempotency;
         this.hasher = hasher;
+        this.wallets = wallets;
+        this.costPolicy = costPolicy;
     }
 
     @Transactional
@@ -63,9 +72,15 @@ public class SubmitJob {
             return replay(recorded.get(), hash);
         }
 
-        Optional<Job> created = jobs.insertIfAbsent(userId, capabilityText, modelText, params.toString(), key);
+        // 冻结：余额不足直接抛 WALLET_INSUFFICIENT，此时还没写 job。
+        long cost = costPolicy.costOf(capabilityText, modelText);
+        WalletHold hold = wallets.freeze(userId, cost);
+
+        Optional<Job> created = jobs.insertIfAbsent(userId, capabilityText, modelText, params.toString(), key, hold.id());
         if (created.isEmpty()) {
-            // 并发同键：另一个事务已经写好 job 与幂等记录，这里只重放它的结果。
+            // 并发同键：另一个事务已经写好 job 与幂等记录。
+            // 本次冻结要退回（冻结单 + release 流水），再重放对方的结果。
+            wallets.release(hold.id());
             IdempotencyRecord record = idempotency.findByUserAndKey(userId, key).orElseThrow(JobException::idempotencyConflict);
             return replay(record, hash);
         }
@@ -75,10 +90,11 @@ public class SubmitJob {
         if (!jobs.updateStatus(job.id(), JobStatus.CREATED, JobStatus.QUEUED, null)) {
             throw JobException.validation();
         }
+        wallets.bindJob(hold.id(), job.id());
         UUID eventId = UUID.randomUUID();
         outbox.insertPending(eventId, "job", job.id(), JobMessagePayload.of(job.id(), eventId));
         idempotency.insert(userId, key, job.id(), hash);
-        return new SubmitJobView(job.id().toString(), JobStatus.QUEUED.value(), null);
+        return new SubmitJobView(job.id().toString(), JobStatus.QUEUED.value(), hold.id().toString());
     }
 
     private SubmitJobView replay(IdempotencyRecord record, String hash) {
