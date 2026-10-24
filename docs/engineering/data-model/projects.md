@@ -35,7 +35,7 @@ WP10 落地的两张表。字段级由 [WP10 brief](../feature-briefs/2026-10-24
 | `job_id` | UUID | YES | FK → `job(id) ON DELETE SET NULL` | 关联生成任务（`source='generated'` 时指向产生该图的 `job.id`） |
 | `source` | TEXT | NO | `CHECK (source IN ('generated', 'uploaded'))` | 资产来源：`generated`（生图落盘）或 `uploaded`（用户上传/登记） |
 | `object_key` | TEXT | NO | | 火山 TOS 对象键（如 `anytoken/img/<job_id>/1.png`）；**严禁存预签名 URL 或 Base64** |
-| `mime_type` | TEXT | NO | `DEFAULT 'image/png'` | MIME 类型 |
+| `mime_type` | TEXT | NO | `DEFAULT 'image/png'` | MIME 类型。自动归档时按产物推导：`video.generate`（或 `.mp4` 对象键）写 `video/mp4`，其余写 `image/png`（WP12） |
 | `created_at` | TIMESTAMPTZ | NO | `DEFAULT now()` | 创建时间 |
 
 约束与索引：

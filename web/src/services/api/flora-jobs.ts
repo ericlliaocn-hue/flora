@@ -1,12 +1,14 @@
 import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
+import { parseVideoResolution } from "@/lib/media-size";
 import { FloraApiError, floraRequest } from "@/services/api/flora-client";
 import { useAuthStore } from "@/stores/use-auth-store";
-import { modelOptionName, type AiConfig } from "@/stores/use-config-store";
+import { decodeChannelModel, isRemoteVideoModel, modelOptionName, type AiConfig } from "@/stores/use-config-store";
 import type { GeneratedImageItem, ReferenceImage } from "@/types/image";
 
-export type FloraJobStatus = "created" | "queued" | "running" | "succeeded" | "cancelled" | "dead";
+/** 后端 JobStatus 的小写形式：failed 是重试中的中间态，终态失败是 dead。 */
+export type FloraJobStatus = "created" | "queued" | "running" | "succeeded" | "failed" | "cancelled" | "dead";
 
 export type FloraSubmitJobRequest = {
     idempotency_key: string;
@@ -76,6 +78,47 @@ export function getFloraJob(jobId: string, options?: FloraJobCallOptions) {
 
 export function getFloraJobResult(jobId: string, options?: FloraJobCallOptions) {
     return floraRequest<FloraJobResultView>(`/api/v1/jobs/${encodeURIComponent(jobId)}/result`, { signal: options?.signal, fetchImpl: options?.fetchImpl });
+}
+
+/**
+ * 当前配置是不是走 flora 托管的视频通道（WP12）。
+ *
+ * <p>判定：托管云端模式，且当前视频模型没有绑定到某个本地渠道
+ * （也就是 {@code channelId::modelName} 形式）。
+ */
+export function usesFloraManagedVideoChannel(config: AiConfig): boolean {
+    return config.channelMode === "remote" && !decodeChannelModel(config.model || config.videoModel);
+}
+
+/** 托管视频通道要用的模型：只认 Seedance 托管模型，其余回落到 seedance2。 */
+export function resolveFloraVideoModel(config: AiConfig): string {
+    const model = modelOptionName(config.model || config.videoModel || "seedance2");
+    return isRemoteVideoModel(model) ? model : "seedance2";
+}
+
+/**
+ * 提交一个托管视频任务（WP12：capability = {@code video.generate}）。
+ *
+ * <p>只传已物化参数：提示词、比例、时长、清晰度。严禁把画布文档或参考素材
+ * Base64 塞进 params（ADR 0003）。
+ */
+export async function submitFloraVideoJob(config: AiConfig, prompt: string, options?: { size?: string; seconds?: string; resolution?: string; aspectRatio?: string }): Promise<{ jobId: string; model: string }> {
+    const model = resolveFloraVideoModel(config);
+    const seconds = options?.seconds ?? config.videoSeconds;
+    const submitted = await submitFloraJob({
+        idempotency_key: nanoid(),
+        capability: "video.generate",
+        model,
+        params: {
+            prompt: prompt.trim(),
+            size: options?.size ?? config.size,
+            seconds,
+            duration: Number(seconds) || 5,
+            resolution: options?.resolution ?? `${parseVideoResolution(config.vquality)}p`,
+            ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
+        },
+    });
+    return { jobId: submitted.job_id, model };
 }
 
 export function cancelFloraJob(jobId: string, options?: FloraJobCallOptions) {

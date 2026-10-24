@@ -61,6 +61,11 @@ flora:
     video-api-key: ${FLORA_GATEWAY_VIDEO_API_KEY:}
     timeout-ms: ${FLORA_GATEWAY_TIMEOUT_MS:30000}
     generate-path: ${FLORA_GATEWAY_GENERATE_PATH:/v1/images/generations}
+    # WP12 的 Seedance 视频三步协议：提交 → 轮询状态 → 下载内容。
+    video-generate-path: ${FLORA_GATEWAY_VIDEO_GENERATE_PATH:/v1/videos/generations}
+    video-status-path-prefix: ${FLORA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:/v1/videos}
+    video-poll-interval-ms: ${FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS:2000}
+    video-max-poll-attempts: ${FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:90}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flora.api.job.domain.Job;
+import com.flora.api.job.domain.JobOutputs;
 import com.flora.api.job.domain.JobStatus;
 import com.flora.api.job.infra.JobRepository;
 import com.flora.api.project.domain.UserAsset;
@@ -66,7 +67,8 @@ public class AssetService {
                 continue;
             }
             for (String objectKey : objectKeysOf(job.resultObjectKeysJson())) {
-                assets.insertGeneratedIfAbsent(userId, job.id(), objectKey, "image/png");
+                // 视频产物归档成 video/mp4，图片产物仍是 image/png（WP12）。
+                assets.insertGeneratedIfAbsent(userId, job.id(), objectKey, JobOutputs.mimeTypeOf(job.capability(), objectKey));
             }
         }
     }

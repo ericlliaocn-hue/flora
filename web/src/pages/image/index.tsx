@@ -116,7 +116,8 @@ export default function ImagePage() {
         if (!token) return;
         try {
             const items = await listFloraJobHistory({ limit: 50 });
-            setCloudLogs(items.map(cloudHistoryToLog));
+            // WP12：视频任务不混进生图历史。
+            setCloudLogs(items.filter((item) => item.capability === "image.generate").map(cloudHistoryToLog));
         } catch {
             // 云端历史拉不到不影响本地记录，静默忽略。
         }

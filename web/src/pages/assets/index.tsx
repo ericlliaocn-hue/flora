@@ -41,7 +41,8 @@ export default function AssetsPage() {
     const updateAsset = useAssetStore((state) => state.updateAsset);
     const removeAsset = useAssetStore((state) => state.removeAsset);
     const token = useAuthStore((state) => state.token);
-    const [cloudAssets, setCloudAssets] = useState<ImageAsset[]>([]);
+    // WP12：云端素材可能是图片也可能是视频，统一按 Asset 收。
+    const [cloudAssets, setCloudAssets] = useState<Asset[]>([]);
     const [keyword, setKeyword] = useState("");
     const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
     const [page, setPage] = useState(1);

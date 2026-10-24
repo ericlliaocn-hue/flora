@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flora.api.i18n.application.I18nMessageService;
 import com.flora.api.job.domain.Job;
+import com.flora.api.job.domain.JobOutputs;
 import com.flora.api.job.domain.JobStatus;
 import com.flora.api.job.infra.JobException;
 import com.flora.api.job.infra.JobRepository;
@@ -71,7 +72,9 @@ public class GetJobResult {
                     return;
                 }
                 try {
-                    outputs.add(new JobOutput("image", objectKey, tosUrlSigner.signGetUrl(objectKey)));
+                    // 视频任务的产物类型是 "video"，图片任务仍是 "image"（WP12）。
+                    outputs.add(new JobOutput(JobOutputs.outputTypeOf(job.capability(), objectKey), objectKey,
+                            tosUrlSigner.signGetUrl(objectKey)));
                 } catch (IllegalArgumentException e) {
                     // 非法对象键只跳过这一条：不让一条脏数据打挂整个 result 响应。
                     log.warn("跳过非法 TOS 对象键 job={} key={}", job.id(), objectKey);

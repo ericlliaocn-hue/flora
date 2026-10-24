@@ -28,6 +28,12 @@ public final class ErrorCodes {
     public static final String ASSET_NOT_FOUND = "ASSET_NOT_FOUND";
     /** WP11 起启用：已登录但不是管理员，访问 /api/v1/admin/** 被拒。 */
     public static final String FORBIDDEN = "FORBIDDEN";
+    /** WP12 起启用：视频轮询到上限仍未进入成功终态（可重试）。 */
+    public static final String GATEWAY_TIMEOUT = "GATEWAY_TIMEOUT";
+    /** WP12 起启用：上游响应结构不合法（拿不到任务 id）。 */
+    public static final String GATEWAY_INVALID_RESPONSE = "GATEWAY_INVALID_RESPONSE";
+    /** WP12 起启用：上游视频任务进入失败终态（不可重试）。 */
+    public static final String UPSTREAM_VIDEO_FAILED = "UPSTREAM_VIDEO_FAILED";
 
     private ErrorCodes() {
     }
