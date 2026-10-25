@@ -112,7 +112,7 @@ export default function IndexPage() {
                     <div className="relative z-[1] flex flex-col items-center">
                         <button
                             type="button"
-                            className="grid size-[72px] place-items-center rounded-[16px] bg-[#f2f2f2] text-[#0b0b0b] shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_0_0_8px_rgba(255,255,255,0.03),0_16px_40px_rgba(0,0,0,0.5)] transition hover:bg-white active:scale-[0.98]"
+                            className="grid size-[72px] place-items-center rounded-[16px] border border-[#5ec9c0]/35 bg-[#161616] text-neutral-100 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_0_24px_rgba(94,201,192,0.12),0_16px_40px_rgba(0,0,0,0.45)] transition hover:border-[#5ec9c0]/55 hover:bg-[#1c1c1c] hover:shadow-[0_0_0_1px_rgba(94,201,192,0.2),0_0_32px_rgba(94,201,192,0.18),0_16px_40px_rgba(0,0,0,0.5)] active:scale-[0.98]"
                             onClick={() => navigate("/canvas")}
                             aria-label={t("home.createCanvas")}
                         >
