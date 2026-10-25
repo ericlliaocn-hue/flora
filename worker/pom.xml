@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.pilipala</groupId>
+        <groupId>art.pilipala</groupId>
         <artifactId>pilipala-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
@@ -53,7 +53,7 @@
     </dependencies>
 
     <build>
-        <finalName>flora-worker</finalName>
+        <finalName>pilipala-worker</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
