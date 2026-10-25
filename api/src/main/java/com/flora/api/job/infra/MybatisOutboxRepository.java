@@ -3,11 +3,13 @@ package com.flora.api.job.infra;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import com.flora.api.job.domain.OutboxMessage;
 
 @Repository
+@Primary
 public class MybatisOutboxRepository implements OutboxRepository {
 
     private final OutboxMapper mapper;

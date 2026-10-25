@@ -3,12 +3,14 @@ package com.flora.api.job.infra;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import com.flora.api.job.domain.JobStep;
 import com.flora.api.job.domain.JobStepStatus;
 
 @Repository
+@Primary
 public class MybatisJobStepRepository implements JobStepRepository {
 
     private final JobStepMapper mapper;
