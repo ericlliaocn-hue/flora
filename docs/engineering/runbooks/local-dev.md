@@ -659,7 +659,7 @@ Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（`VITE_API_PROX
 
 1. 打开 <http://localhost:3000>，右上角点「登录 / 注册」→ 注册一个账号
    （用户名 `^[a-zA-Z0-9_]{3,32}$`，密码 ≥ 8 位）。成功后顶栏出现 **钱包余额** 与用户名。
-   令牌存 localStorage 的 `flora:auth_token`，请求头名是 `pilipala-token`。
+   令牌存 localStorage 的 `pilipala:auth_token`（启动时若仅有旧键 `flora:auth_token` 会一次性迁到新键），请求头名是 `pilipala-token`。
 2. 余额不够时生图会被拦：报错是后端返回的本地化短句「账户余额不足，请先充值。」，
    `error_code` 是 `WALLET_INSUFFICIENT`，**不入队也不冻结**。本地加余额只能用第 7 节的运维 SQL。
 3. 余额够时点「开始生成」：前端 `POST /api/v1/jobs/submit` → 每 800ms 轮询
@@ -684,7 +684,7 @@ Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（`VITE_API_PROX
 
 #### 11.3 等价的 curl 验收
 
-前端把令牌放在 localStorage（`flora:auth_token`），请求头是 `pilipala-token`。
+前端把令牌放在 localStorage（`pilipala:auth_token`；旧版 `flora:auth_token` 仅在启动时迁移一次），请求头是 `pilipala-token`。
 用 curl 走同一条链路：
 
 ```bash
