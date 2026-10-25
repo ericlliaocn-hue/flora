@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Component;
  * secret key / Authorization 头（ADR 0005）。
  */
 @Component
+@Primary
 public class TosObjectStorageAdapter implements TosObjectStorage {
 
     private final TosProperties properties;

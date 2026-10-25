@@ -3,6 +3,7 @@ package com.flora.api.job.infra;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flora.api.job.domain.ProviderTask;
 
 @Repository
+@Primary
 public class MybatisProviderTaskRepository implements ProviderTaskRepository {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
