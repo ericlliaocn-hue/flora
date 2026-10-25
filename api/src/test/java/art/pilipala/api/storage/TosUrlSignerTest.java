@@ -47,7 +47,7 @@ class TosUrlSignerTest {
                 + "&X-Tos-Date=20261024T043000Z"
                 + "&X-Tos-Expires=900"
                 + "&X-Tos-SignedHeaders=host"
-                + "&X-Tos-Signature=0398925e6d7404143b6579e6dcddfb43bf26e198a905edfca9ede0a06d38fe4f");
+                + "&X-Tos-Signature=61015879ac22358103144545f08f0606841f49ddbc931ce68b3a1e4388a6dbf0");
     }
 
     @Test

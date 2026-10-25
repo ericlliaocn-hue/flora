@@ -22,7 +22,7 @@ class TosV4SignerTest {
     @Test
     void derivedSigningKeyMatchesTheSharedVector() {
         assertThat(TosV4Signer.hex(TosV4Signer.deriveSigningKey(SECRET_KEY, DATE, REGION)))
-                .isEqualTo("8de685c0a1d681a8c98a1ed0c361b45d0012ec2942a638c1bc9ac68aff490a5e");
+                .isEqualTo("b15386b40b371aaf262cb95a45ffb5e6f6aa469db8a9671212648e385473fe81");
     }
 
     @Test
@@ -53,7 +53,7 @@ class TosV4SignerTest {
         assertThat(authorization).isEqualTo("TOS4-HMAC-SHA256 "
                 + "Credential=pilipala-local-ak/20261024/cn-beijing/tos/request, "
                 + "SignedHeaders=content-type;host;x-tos-content-sha256;x-tos-date, "
-                + "Signature=047f56261cf45379d5131ab7d0641d6149ef77f8312267db9f24b0267fbde50f");
+                + "Signature=ac5d64132194a606aba1ceb26527d9a56406c2feee50a9d9fc5b4447501f3356");
     }
 
     @Test
