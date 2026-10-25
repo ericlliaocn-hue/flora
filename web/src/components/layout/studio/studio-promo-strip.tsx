@@ -7,6 +7,8 @@ import { formatCountdownUnit, usePromoCountdown } from "@/hooks/use-promo-countd
 
 const STORAGE_KEY = "pilipala:studio-promo-dismissed:v1";
 
+const PROMO_STRIP_ENABLED = import.meta.env.VITE_STUDIO_PROMO_STRIP === "true";
+
 type StudioPromoStripProps = {
     onRecharge?: () => void;
 };
@@ -22,7 +24,7 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
         }
     });
 
-    if (!visible || countdown.expired) return null;
+    if (!PROMO_STRIP_ENABLED || !visible || countdown.expired) return null;
 
     return (
         <div

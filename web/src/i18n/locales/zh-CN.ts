@@ -42,7 +42,7 @@ export default {
         submitRegister: "注册",
         logout: "退出",
         signedInAs: "{{username}}",
-        needLogin: "登录 / 注册",
+        needLogin: "登录/注册",
         loginDescription: "登录 pilipala 后即可用预付费积分生成图片。",
         registerDescription: "注册 pilipala 账号，开始用预付费积分生成图片。",
         loginFailed: "登录失败",
@@ -443,6 +443,8 @@ export default {
         showcaseHint: "提示词与风格示意 · 非社交广场",
         showcaseSearch: "搜索提示词或风格",
         showcaseTabAll: "全部",
+        showcaseUseThis: "用这个",
+        showcaseMakeSame: "做同款",
         showcaseFallback: "提示词库精选",
         recent: {
             title: "最近项目",

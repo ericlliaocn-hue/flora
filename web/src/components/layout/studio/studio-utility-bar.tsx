@@ -3,7 +3,6 @@ import { Bot, Building2, Coins, Menu, Star, Zap } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/use-auth-store";
 
 type StudioUtilityBarProps = {
@@ -32,19 +31,19 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
     const balance = wallet?.available ?? (user ? "—" : "100");
 
     return (
-        <header className="sticky top-0 z-30 flex h-[52px] shrink-0 items-center justify-end gap-2.5 border-b border-white/[0.06] bg-[#0b0b0b]/95 px-4 backdrop-blur-xl md:px-5">
+        <header className="sticky top-0 z-30 flex h-[48px] shrink-0 items-center justify-end gap-2 border-b border-white/[0.06] bg-[#0b0b0b] px-3 md:px-4">
             <button
                 type="button"
-                className="mr-auto inline-flex size-9 items-center justify-center rounded-full text-neutral-300 hover:bg-white/[0.06] md:hidden"
+                className="mr-auto inline-flex size-9 items-center justify-center rounded-full text-neutral-400 hover:bg-white/[0.05] hover:text-neutral-200 md:hidden"
                 onClick={onOpenMenu}
                 aria-label={t("topNav.openMenu")}
             >
                 <Menu className="size-5" />
             </button>
 
-            <div className="flex items-center gap-2 md:gap-2.5">
-                <UtilityButton icon={Building2} label={t("studio.utilities.enterprise")} onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")} />
-                <UtilityButton
+            <div className="flex items-center gap-1.5 md:gap-2">
+                <QuietLink icon={Building2} label={t("studio.utilities.enterprise")} onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")} />
+                <QuietLink
                     icon={Coins}
                     label={t("studio.utilities.points")}
                     onClick={() => {
@@ -52,14 +51,24 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                         else setAuthModalOpen(true, "login");
                     }}
                 />
-                <UtilityButton icon={Star} label={t("studio.utilities.recharge")} badge={t("studio.utilities.rechargeBadge")} accent onClick={onRecharge} />
                 <button
                     type="button"
-                    className="inline-flex h-9 min-w-[62px] items-center justify-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.03] px-3.5 text-[12.5px] font-semibold tabular-nums text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+                    className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
+                    onClick={onRecharge}
+                >
+                    <Star className="size-3.5" strokeWidth={1.6} />
+                    <span className="hidden sm:inline">{t("studio.utilities.recharge")}</span>
+                    <span className="rounded-full bg-[#1a8a84] px-1.5 text-[9px] font-semibold leading-4 text-white sm:ml-0.5">
+                        {t("studio.utilities.rechargeBadge")}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    className="inline-flex h-8 min-w-[52px] items-center justify-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 text-[12px] font-medium tabular-nums text-neutral-200 transition hover:border-white/[0.14] hover:bg-white/[0.04]"
                     onClick={() => (user ? void refreshWallet() : setAuthModalOpen(true, "login"))}
                     title={t("wallet.title")}
                 >
-                    <Zap className="size-3.5 text-[#7ec9c3]" aria-hidden="true" />
+                    <Zap className="size-3.5 text-[#6eb8b2]" aria-hidden="true" />
                     {balance}
                 </button>
 
@@ -67,7 +76,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                     <Tooltip title={t("auth.signedInAs", { username: user.username })}>
                         <button
                             type="button"
-                            className="relative size-9 overflow-hidden rounded-full border border-white/[0.14] bg-gradient-to-br from-[#2a3340] to-[#1a1e26] transition hover:border-white/25"
+                            className="relative size-8 overflow-hidden rounded-full border border-white/[0.12] bg-gradient-to-br from-[#2a3340] to-[#1a1e26] transition hover:border-white/20"
                             onClick={() => void logout()}
                             aria-label={t("auth.logout")}
                         >
@@ -77,7 +86,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 ) : (
                     <button
                         type="button"
-                        className="h-9 rounded-full border border-white/[0.12] bg-white/[0.03] px-4 text-[12.5px] text-neutral-200 transition hover:border-white/20 hover:bg-white/[0.06]"
+                        className="h-8 rounded-full bg-white px-4 text-[12px] font-semibold text-neutral-900 transition hover:bg-neutral-100"
                         onClick={() => setAuthModalOpen(true, "login")}
                     >
                         {t("auth.needLogin")}
@@ -87,7 +96,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 <Tooltip title={t(agentPanelOpen ? "topNav.closeAgent" : "topNav.openAgent")}>
                     <button
                         type="button"
-                        className="inline-flex size-9 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.03] text-neutral-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-neutral-100"
+                        className="inline-flex size-8 items-center justify-center rounded-full text-neutral-500 transition hover:bg-white/[0.05] hover:text-neutral-200"
                         onClick={onToggleAgent}
                         aria-label={t(agentPanelOpen ? "topNav.closeAgent" : "topNav.openAgent")}
                     >
@@ -99,37 +108,15 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
     );
 }
 
-function UtilityButton({
-    icon: Icon,
-    label,
-    badge,
-    accent,
-    onClick,
-}: {
-    icon: typeof Building2;
-    label: string;
-    badge?: string;
-    accent?: boolean;
-    onClick: () => void;
-}) {
+function QuietLink({ icon: Icon, label, onClick }: { icon: typeof Building2; label: string; onClick: () => void }) {
     return (
         <button
             type="button"
-            className={cn(
-                "relative inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12.5px] transition",
-                accent
-                    ? "border-[#3d9a94]/50 bg-[#0d3d3d]/60 text-[#d4f5f2] hover:border-[#5ec9c0]/60 hover:bg-[#0f4848]/80"
-                    : "border-white/[0.12] bg-transparent text-neutral-400 hover:border-white/20 hover:bg-white/[0.05] hover:text-neutral-100",
-            )}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-[12px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-200"
             onClick={onClick}
         >
             <Icon className="size-3.5" strokeWidth={1.6} />
             <span className="hidden sm:inline">{label}</span>
-            {badge ? (
-                <span className="pointer-events-none absolute -right-1 -top-2 rounded-full border border-[#1a6b6b]/50 bg-[#1a8a84] px-1.5 text-[9px] font-semibold leading-4 text-white shadow-sm">
-                    {badge}
-                </span>
-            ) : null}
         </button>
     );
 }
