@@ -42,7 +42,7 @@ export default {
         submitRegister: "Sign up",
         logout: "Sign out",
         signedInAs: "{{username}}",
-        needLogin: "Sign in / Sign up",
+        needLogin: "Sign in / Register",
         loginDescription: "Sign in to generate images with prepaid credits.",
         registerDescription: "Create a pilipala account and start generating with prepaid credits.",
         loginFailed: "Sign in failed",
@@ -443,6 +443,8 @@ export default {
         showcaseHint: "Prompt & style demos · not a social feed",
         showcaseSearch: "Search prompts or styles",
         showcaseTabAll: "All",
+        showcaseUseThis: "Use this",
+        showcaseMakeSame: "Make similar",
         showcaseFallback: "From the prompt library",
         recent: {
             title: "Recent projects",

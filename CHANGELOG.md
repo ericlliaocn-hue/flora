@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [调整] Studio 首页与壳层：默认关闭全宽充值倒计时条；压缩新建 Hero 与区块间距；圆角高对比「+」、八宫格入口、16:9 特色卡片与能力精选吸顶筛选；展示卡悬停露出「用这个/做同款」；侧栏 240px 与顶栏登录实心胶囊样式。
 + [修复] Studio 首页：活动条白底 CTA 文案在 antd reset 下恢复深色可读（`button` 上 Tailwind 文字色被未分层 `color: inherit` 压过）；Hero 新建画布按钮改为深色主按钮样式，避免大块白底突兀。
 + [调整] 清除仓库内残留的 **flora** 品牌与 `FLORA_*` 配置回退：文档/README/runbook/ADR/feature brief 统一为 pilipala；运行时仅 `PILIPALA_*`，默认 `pilipala-token`、`pilipala.jobs*`、本地 TOS `pilipala-dev`、Postgres 默认库 `pilipala`；仅保留 localStorage `flora:` 迁移与火山 TOS 历史桶名（如 `flora-media-prod`）配置说明。部署需重建 Rabbit 队列、切换客户端 token 头、并按环境对齐数据库名。
 + [调整] 完成 Java 后端命名切换：包名 `com.pilipala` → `art.pilipala`（源码、测试、MyBatis `@MapperScan`、日志包名），Maven `groupId` 对齐为 `art.pilipala`，可执行 jar 产出 `pilipala-api.jar` / `pilipala-worker.jar`（替代 `flora-api.jar` / `flora-worker.jar`）。部署时需在主机上把 systemd `ExecStart` 中的 jar 路径改为新文件名（`/etc/systemd/system/flora-*.service` 的 unit 名可暂不改）。

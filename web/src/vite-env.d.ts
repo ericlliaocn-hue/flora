@@ -13,4 +13,6 @@ interface ImportMetaEnv {
     readonly VITE_ANALYTICS_BAIDU_ID?: string;
     /** ISO 8601 deadline for the studio prepaid promo countdown strip */
     readonly VITE_STUDIO_PROMO_END_AT?: string;
+    /** Set to `true` to show the full-width studio prepaid countdown strip (default off). */
+    readonly VITE_STUDIO_PROMO_STRIP?: string;
 }
