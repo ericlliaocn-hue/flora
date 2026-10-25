@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] WP16：z-pay 支付宝 mapi 充值（套餐下单、验签 webhook、查单补单、Admin 退款）与 `/billing/recharge/result` 结果页。
 + [调整] 前端产品品牌由「无限画布 / Infinite Canvas」替换为 flora：页面标题与主文案、本地存储库名与键前缀、画布/素材/配置导出文件的 `app` 标识、默认 WebDAV 目录、主题样式变量与版本检查地址均改为 flora。
 
 ## v0.20.0 - 2026-10-10

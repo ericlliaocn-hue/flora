@@ -46,6 +46,8 @@ WP13 工程文档对齐（MyBatis-Plus + 领域分包；docs-first，不阻塞�
   ↓
 WP14 MyBatis-Plus 代码迁移（[brief](./feature-briefs/2026-10-25-wp14-mybatis-plus-code-migration.md)）
 WP15 数据分析事件字典与报表口径（docs-first；可与 WP14 并行，不互相阻塞）
+  ↓
+WP16 z-pay 支付宝充值（billing / `recharge_order`；worker 零改动）
 ```
 
 WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地冻结。WP7 依赖内部 DTO 稳定，见 [api/gateway-contract.md](./api/gateway-contract.md)。WP13 为工程真相源修正，可与 WP14 ORM 代码迁移、WP15 分析文档分开交付。
@@ -162,6 +164,14 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **做什么**：ADR 0007、ARCHITECTURE analytics 域、`data-model/analytics.md` 事件字典 v0 与必出报表；索引与 DEVELOPMENT 对齐。
 - **不做**：强制第三方 SDK；ads/campaign 表；WP14 ORM 迁移；默认不做 ingest 表（Phase 2 可选）。
 - **完成**：文档与 ADR 0007 一致；字典含约定事件名；报表 R1–R6 口径可执行。
+
+## WP16 — z-pay 支付宝充值（预付费钱包）
+
+- **里程碑**：M4+（C 端自助充值闭环）
+- **Brief**：[2026-10-25-wp16-recharge-zpay-alipay.md](./feature-briefs/2026-10-25-wp16-recharge-zpay-alipay.md)
+- **做什么**：`V9__create_recharge_order.sql`；billing 内 z-pay mapi 下单、验签 webhook、查单补单、套餐充值、Admin 列表与全额退款；入账 `topup` + `recharge_order_id`。
+- **不做**：wxpay；worker 改动；analytics ingest；改 freeze 语义。
+- **完成**：`mvn -pl api -am test` 通过；仓库无真实 `FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY`；`FLORA_PUBLIC_BASE_URL` 仅作配置占位。
 
 ## 每个 WP 的 PR 期望
 

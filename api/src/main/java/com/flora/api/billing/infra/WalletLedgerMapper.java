@@ -13,18 +13,19 @@ import com.flora.api.billing.domain.WalletLedgerEntry;
 @Mapper
 public interface WalletLedgerMapper {
 
-    String COLS = "id, wallet_id, user_id, type, amount, hold_id, job_id, created_at";
+    String COLS = "id, wallet_id, user_id, type, amount, hold_id, job_id, recharge_order_id, created_at";
 
-    @Select("INSERT INTO wallet_ledger (wallet_id, user_id, type, amount, hold_id, job_id) "
-            + "VALUES (#{walletId}, #{userId}, #{type}, #{amount}, #{holdId,jdbcType=OTHER}, #{jobId,jdbcType=OTHER}) "
-            + "RETURNING " + COLS)
+    @Select("INSERT INTO wallet_ledger (wallet_id, user_id, type, amount, hold_id, job_id, recharge_order_id) "
+            + "VALUES (#{walletId}, #{userId}, #{type}, #{amount}, #{holdId,jdbcType=OTHER}, #{jobId,jdbcType=OTHER}, "
+            + "#{rechargeOrderId,jdbcType=OTHER}) RETURNING " + COLS)
     WalletLedgerEntry insert(
             @Param("walletId") UUID walletId,
             @Param("userId") UUID userId,
             @Param("type") String type,
             @Param("amount") long amount,
             @Param("holdId") UUID holdId,
-            @Param("jobId") UUID jobId);
+            @Param("jobId") UUID jobId,
+            @Param("rechargeOrderId") UUID rechargeOrderId);
 
     @Update("UPDATE wallet_ledger SET job_id = #{jobId} WHERE hold_id = #{holdId} AND job_id IS NULL")
     int bindJobId(@Param("holdId") UUID holdId, @Param("jobId") UUID jobId);

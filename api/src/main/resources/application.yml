@@ -57,6 +57,7 @@ sa-token:
 # WP5+ 的 Anytoken hop 才消费这两个值。本阶段的作用是把密钥注入路径
 # 固定成环境变量，仓库里不出现真实 Key。
 flora:
+  public-base-url: ${FLORA_PUBLIC_BASE_URL:}
   # WP11：Admin 运维与配置后台。
   admin:
     # 逗号分隔的初始管理员用户名列表：命中者在注册或登录时自动升为 admin 角色
@@ -89,6 +90,28 @@ flora:
     # 后台扫描 worker 已完成任务并自动 confirm/release 冻结单的间隔（毫秒）与批大小。
     settle-poll-ms: ${FLORA_BILLING_SETTLE_POLL_MS:200}
     settle-batch-size: ${FLORA_BILLING_SETTLE_BATCH_SIZE:50}
+    zpay:
+      api-base: ${FLORA_ZPAY_API_BASE:https://api.z-pay.cn}
+      pid: ${FLORA_ZPAY_PID:}
+      pkey: ${FLORA_ZPAY_PKEY:}
+      cid: ${FLORA_ZPAY_CID:12540}
+    recharge:
+      order-ttl-minutes: ${FLORA_RECHARGE_ORDER_TTL_MINUTES:30}
+      reconcile-poll-ms: ${FLORA_RECHARGE_RECONCILE_POLL_MS:5000}
+      reconcile-batch-size: ${FLORA_RECHARGE_RECONCILE_BATCH_SIZE:50}
+      packages:
+        - id: p10
+          money-fen: 1000
+          credits: 100
+          name: flora credits 100
+        - id: p50
+          money-fen: 5000
+          credits: 550
+          name: flora credits 550
+        - id: p100
+          money-fen: 10000
+          credits: 1200
+          name: flora credits 1200
   # WP8 的火山引擎 TOS。api 只签发短期预签名读地址，字节由 worker 写入。
   storage:
     tos:

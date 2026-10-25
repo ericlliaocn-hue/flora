@@ -19,8 +19,9 @@ public class MybatisWalletLedgerRepository implements WalletLedgerRepository {
 
     @Override
     public WalletLedgerEntry insert(
-            UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId, UUID jobId) {
-        return mapper.insert(walletId, userId, type.value(), amount, holdId, jobId);
+            UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId, UUID jobId,
+            UUID rechargeOrderId) {
+        return mapper.insert(walletId, userId, type.value(), amount, holdId, jobId, rechargeOrderId);
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.flora.api.billing.domain.JobTerminalState;
 import com.flora.api.billing.domain.Wallet;
 import com.flora.api.billing.domain.WalletHold;
 import com.flora.api.billing.domain.WalletHoldStatus;
+import com.flora.api.billing.domain.WalletLedgerEntry;
 import com.flora.api.billing.domain.WalletLedgerType;
 import com.flora.api.billing.infra.WalletHoldRepository;
 import com.flora.api.billing.infra.WalletLedgerRepository;
@@ -67,13 +68,38 @@ public class WalletService {
      */
     @Transactional
     public Wallet credit(UUID userId, long amount) {
+        credit(userId, amount, null);
+        return ensureWallet(userId);
+    }
+
+    /**
+     * 充值：可用余额加 {@code amount}，同时写一条 {@code topup} 流水。
+     *
+     * @param rechargeOrderId 渠道充值订单 id（可选）
+     */
+    @Transactional
+    public WalletLedgerEntry credit(UUID userId, long amount, UUID rechargeOrderId) {
         if (amount <= 0) {
             throw JobException.validation();
         }
         Wallet wallet = ensureWallet(userId);
         wallets.addAvailable(wallet.id(), amount);
-        ledger.insert(wallet.id(), userId, WalletLedgerType.TOPUP, amount, null, null);
-        return wallets.findWallet(wallet.id()).orElse(wallet);
+        return ledger.insert(wallet.id(), userId, WalletLedgerType.TOPUP, amount, null, null, rechargeOrderId);
+    }
+
+    /**
+     * 充值退款扣回：可用减 {@code amount}，写 {@code refund} 流水。
+     */
+    @Transactional
+    public WalletLedgerEntry refundDebit(UUID userId, long amount, UUID rechargeOrderId) {
+        if (amount <= 0) {
+            throw JobException.validation();
+        }
+        Wallet wallet = ensureWallet(userId);
+        if (!wallets.deductAvailable(wallet.id(), amount)) {
+            throw JobException.rechargeNotRefundable();
+        }
+        return ledger.insert(wallet.id(), userId, WalletLedgerType.REFUND, amount, null, null, rechargeOrderId);
     }
 
     /**
@@ -92,7 +118,7 @@ public class WalletService {
             throw JobException.walletInsufficient();
         }
         WalletHold hold = holds.insert(userId, null, amount);
-        ledger.insert(wallet.id(), userId, WalletLedgerType.FREEZE, amount, hold.id(), null);
+        ledger.insert(wallet.id(), userId, WalletLedgerType.FREEZE, amount, hold.id(), null, null);
         return hold;
     }
 
@@ -156,7 +182,7 @@ public class WalletService {
         }
         ledger.insert(wallet.id(), hold.userId(),
                 target == WalletHoldStatus.CONFIRMED ? WalletLedgerType.CONFIRM : WalletLedgerType.RELEASE,
-                hold.amount(), hold.id(), hold.jobId());
+                hold.amount(), hold.id(), hold.jobId(), null);
         return true;
     }
 }

@@ -32,6 +32,9 @@ C 端默认响应 **只** 含 `error_code` + `message`。原文只在 M4 / WP11 
 | `GATEWAY_TIMEOUT` | 网关轮询超时 | 上游异步任务在轮询上限内没进终态（WP12 视频）；**可重试** |
 | `GATEWAY_INVALID_RESPONSE` | 网关响应不合法 | 上游没给出任务 id，无法继续轮询（WP12 视频）；**不可重试** |
 | `UPSTREAM_VIDEO_FAILED` | 上游视频任务失败终态 | 上游明确返回 `failed` / `cancelled` / `error`（WP12 视频）；**不可重试**，原文进 `provider_task` |
+| `RECHARGE_ORDER_NOT_FOUND` | 充值订单不存在或非本人 | WP16 |
+| `RECHARGE_PROVIDER_ERROR` | z-pay 下单/查单/退款失败 | WP16；原文仅日志 |
+| `RECHARGE_NOT_REFUNDABLE` | 订单不可退或余额不足扣回 | WP16 Admin 退款 |
 
 **未识别上游** → 落到 `PROVIDER_UNAVAILABLE` 或 `JOB_FAILED` 一类泛化码，原文入库。禁止把 `e.getMessage()` 填进 `message`。
 

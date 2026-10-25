@@ -80,6 +80,7 @@ The Chinese version contains the complete item-by-item acceptance checklist.
 
 待验收：
 
+- **WP16 充值**：配置 `FLORA_PUBLIC_BASE_URL` 与 z-pay 占位商户 env 后，登录用户可 `GET /api/v1/billing/recharge/packages`、创建 `p10` 订单拿到 `qrcode_url`；模拟验签 webhook 或查单补单后余额增加且 `wallet_ledger` 有 `topup` 与 `recharge_order_id`；`/billing/recharge/result` 轮询展示状态；Admin 列表与退款（余额足够时）扣回并记 `refund` 流水。仓库内不得出现真实 `pid`/`pkey`。
 - 在画布和图像工作台逐项切换 3 档分辨率与 9 种比例，W/H 应与表格一致，重新打开设置后仍选中正确档位；重点检查 1K 的 2:3、16:9、21:9 及对应竖图，以及 4K 的 1:1。
 - 所有 4K 预设提交时均不应触发本地总像素或最长边限制；生成和编辑请求、调用脚本应收到所选像素尺寸。
 - 分辨率为自动时保留比例选择，比例为自动时禁用 W/H；手动输入 W/H 后，对齐开关仍应按原有方式工作。

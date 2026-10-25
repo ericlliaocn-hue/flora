@@ -15,8 +15,9 @@ import java.util.UUID;
  * @param type      流水类型
  * @param amount    金额（正整数）
  * @param holdId    关联冻结单；充值时为 null
- * @param jobId     关联任务；充值时为 null
- * @param createdAt 记账时间
+ * @param jobId            关联任务；充值时为 null
+ * @param rechargeOrderId  关联充值订单；非渠道入账时为 null
+ * @param createdAt        记账时间
  */
 public record WalletLedgerEntry(
         UUID id,
@@ -26,5 +27,6 @@ public record WalletLedgerEntry(
         long amount,
         UUID holdId,
         UUID jobId,
+        UUID rechargeOrderId,
         Instant createdAt) {
 }

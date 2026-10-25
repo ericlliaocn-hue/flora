@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>这是「往用户账上加钱」的唯一入口：注册赠送、运维脚本、未来 WP11 Admin 的
  * 受控加额都走这里，保证任何一笔进账都能在 {@code wallet_ledger} 里查到。
  *
- * <p>本 WP 不暴露 C 端自助充值接口（防生产越权刷钱）。
+ * <p>C 端渠道充值（WP16）在入账时也应经 {@link #topUpForRecharge}，保证流水带 {@code recharge_order_id}。
  */
 @Service
 public class TopUpWallet {
@@ -35,6 +35,12 @@ public class TopUpWallet {
     @Transactional
     public Wallet topUp(UUID userId, long amount) {
         return wallets.credit(userId, amount);
+    }
+
+    @Transactional
+    public Wallet topUpForRecharge(UUID userId, long amount, UUID rechargeOrderId) {
+        wallets.credit(userId, amount, rechargeOrderId);
+        return wallets.ensureWallet(userId);
     }
 
     /**
