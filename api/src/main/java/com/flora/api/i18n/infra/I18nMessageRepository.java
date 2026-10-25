@@ -6,7 +6,7 @@ import java.util.Optional;
 import com.flora.api.i18n.domain.I18nMessage;
 
 /**
- * i18n_message 表的仓储。SQL 只写在 {@link JdbcI18nMessageRepository} 里。
+ * i18n_message 表的仓储。SQL 只写在 {@link MybatisI18nMessageRepository} 里。
  */
 public interface I18nMessageRepository {
 

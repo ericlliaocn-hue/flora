@@ -3,7 +3,7 @@ package com.flora.worker.job.infra;
 import java.util.UUID;
 
 /**
- * outbox_message 的写入契约（worker 侧）。实现在 {@link JdbcWorkerOutboxRepository}。
+ * outbox_message 的写入契约（worker 侧）。实现在 {@link MybatisWorkerOutboxRepository}。
  *
  * <p>worker 只写 pending：重试靠 outbox 机制再次投递，不在 worker 线程里 sleep 重试。
  */

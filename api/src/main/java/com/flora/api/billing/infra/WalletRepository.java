@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.flora.api.billing.domain.Wallet;
 
 /**
- * 钱包余额的存取契约。Postgres 是权威存储，实现在 {@link JdbcWalletRepository}。
+ * 钱包余额的存取契约。Postgres 是权威存储，实现在 {@link MybatisWalletRepository}。
  *
  * <p>定义成接口是为了让应用层用例能在没有数据库的情况下被测试。
  * 余额变动方法都带守卫条件：更新 0 行表示余额不足，返回 false，调用方负责回滚。

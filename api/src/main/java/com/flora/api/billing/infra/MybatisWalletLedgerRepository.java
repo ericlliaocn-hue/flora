@@ -1,0 +1,40 @@
+package com.flora.api.billing.infra;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Repository;
+
+import com.flora.api.billing.domain.WalletLedgerEntry;
+import com.flora.api.billing.domain.WalletLedgerType;
+
+@Repository
+public class MybatisWalletLedgerRepository implements WalletLedgerRepository {
+
+    private final WalletLedgerMapper mapper;
+
+    public MybatisWalletLedgerRepository(WalletLedgerMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Override
+    public WalletLedgerEntry insert(
+            UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId, UUID jobId) {
+        return mapper.insert(walletId, userId, type.value(), amount, holdId, jobId);
+    }
+
+    @Override
+    public boolean bindJobId(UUID holdId, UUID jobId) {
+        return mapper.bindJobId(holdId, jobId) > 0;
+    }
+
+    @Override
+    public List<WalletLedgerEntry> findLedgerByUserId(UUID userId) {
+        return mapper.findLedgerByUserId(userId);
+    }
+
+    @Override
+    public List<WalletLedgerEntry> findRecentByUserId(UUID userId, int limit) {
+        return mapper.findRecentByUserId(userId, limit);
+    }
+}

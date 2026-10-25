@@ -26,7 +26,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
-        <!-- worker 直连 Postgres：claim / complete 两段短事务，JDBC 直连，不引入 ORM。 -->
+        <!-- 持久化：MyBatis-Plus 3.5.17（ADR 0006 / WP14）。 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>

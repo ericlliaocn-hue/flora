@@ -3,7 +3,7 @@ package com.flora.worker.job.infra;
 import java.util.UUID;
 
 /**
- * provider_task 表的写入契约（worker 侧）。实现在 {@link JdbcProviderTaskRepository}。
+ * provider_task 表的写入契约（worker 侧）。实现在 {@link MybatisProviderTaskRepository}。
  *
  * <p>只有 worker 写 provider_task；api 与 C 端只读 job / job_step。
  */

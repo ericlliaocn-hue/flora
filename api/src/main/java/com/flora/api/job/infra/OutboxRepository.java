@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.flora.api.job.domain.OutboxMessage;
 
 /**
- * outbox_message 表的存取契约。实现在 {@link JdbcOutboxRepository}。
+ * outbox_message 表的存取契约。实现在 {@link MybatisOutboxRepository}。
  *
  * <p>outbox 只负责「事务内写、事务外投递」；投递语义由
  * {@code JobMessageTransport} 与 dispatcher 决定。

@@ -7,7 +7,7 @@ import com.flora.api.job.domain.JobStep;
 import com.flora.api.job.domain.JobStepStatus;
 
 /**
- * job_step 表的存取契约。实现在 {@link JdbcJobStepRepository}。
+ * job_step 表的存取契约。实现在 {@link MybatisJobStepRepository}。
  *
  * <p>一次 attempt 一行：claim 时插入 running，收尾时写终态。
  */

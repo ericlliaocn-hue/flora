@@ -41,7 +41,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
-        <!-- 持久化目标：MyBatis-Plus（ADR 0006）。当前仍可能使用 spring-jdbc / JdbcTemplate 过渡；迁移完成前勿再写「禁止 ORM」。 -->
+        <!-- 持久化：MyBatis-Plus 3.5.17（ADR 0006 / WP14）。 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
