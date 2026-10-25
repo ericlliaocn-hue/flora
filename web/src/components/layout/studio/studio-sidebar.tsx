@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { PilipalaLogo } from "@/components/brand/pilipala-logo";
 import { APP_VERSION, DOCS_URL } from "@/constant/env";
 import { studioNavGroups, type StudioNavItem } from "@/lib/studio-nav";
 import { cn } from "@/lib/utils";
@@ -74,12 +75,7 @@ export function StudioSidebar({ onAgent, onPlugins, className }: StudioSidebarPr
             aria-label={t("studio.sidebar.label")}
         >
             <Link to="/" className="mb-3 flex items-center gap-2.5 px-2 py-1">
-                <span
-                    className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-white/[0.12] bg-gradient-to-br from-[#1f4a47] to-[#0f2828] text-[15px] font-bold tracking-tight text-white"
-                    aria-hidden="true"
-                >
-                    p
-                </span>
+                <PilipalaLogo variant="mark" className="h-8 w-11 shrink-0" />
                 <span className="min-w-0 text-[16px] font-semibold leading-tight tracking-tight text-neutral-100">
                     pilipala
                     <small className="mt-0.5 block text-[10.5px] font-normal text-neutral-500">{t("studio.sidebar.tagline")}</small>

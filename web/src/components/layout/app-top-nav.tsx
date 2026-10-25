@@ -3,6 +3,7 @@ import { Button, Tooltip } from "antd";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { PilipalaLogo } from "@/components/brand/pilipala-logo";
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { AuthModal } from "@/components/auth/auth-modal";
 import { AppConfigModal } from "@/components/layout/app-config-modal";
@@ -40,13 +41,7 @@ export function AppTopNav() {
                     <div className="mx-auto flex h-full max-w-7xl items-stretch justify-between gap-5 px-6">
                         <div className="flex min-w-0 items-center">
                             <Link to="/" className="flex h-full shrink-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300">
-                                <span
-                                    className="size-5 shrink-0 bg-current"
-                                    style={{
-                                        mask: "url(/logo.svg) center / contain no-repeat",
-                                        WebkitMask: "url(/logo.svg) center / contain no-repeat",
-                                    }}
-                                />
+                                <PilipalaLogo variant="mark" className="h-5 w-7 shrink-0 text-stone-950 dark:text-stone-100" />
                                 <span className="text-base font-medium">{t("meta.title")}</span>
                             </Link>
 
