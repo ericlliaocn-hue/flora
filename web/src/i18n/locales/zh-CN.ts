@@ -426,6 +426,7 @@ export default {
             copy: "充值即得额外画布算力",
             cta: "去充值",
             dismiss: "关闭提示",
+            countdownLabel: "剩余 {{days}} 天 {{hours}} 小时 {{minutes}} 分 {{seconds}} 秒",
         },
         recharge: {
             unavailable: "充值套餐暂不可用，请稍后再试。",

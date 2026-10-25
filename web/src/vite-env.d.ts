@@ -11,4 +11,6 @@ interface ImportMetaEnv {
     readonly VITE_ANALYTICS_GA4_ID?: string;
     // Baidu Analytics site ID
     readonly VITE_ANALYTICS_BAIDU_ID?: string;
+    /** ISO 8601 deadline for the studio prepaid promo countdown strip */
+    readonly VITE_STUDIO_PROMO_END_AT?: string;
 }

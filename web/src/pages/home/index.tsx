@@ -13,7 +13,7 @@ import { useAgentStore } from "@/stores/use-agent-store";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType } from "@/types/canvas";
 
-const showcaseAspects = ["aspect-[4/5]", "aspect-[3/4]", "aspect-square", "aspect-[5/4]", "aspect-[2/3]", "aspect-[16/10]"] as const;
+const showcaseAspects = ["aspect-[16/10]", "aspect-[5/4]", "aspect-[4/3]", "aspect-[3/2]", "aspect-video", "aspect-[16/9]"] as const;
 
 const capabilityGradients = [
     "from-[#1a2a3a] via-[#243550] to-[#1a2838]",
@@ -92,10 +92,10 @@ export default function IndexPage() {
     }, [promptShowcase, showcaseQuery, showcaseTab]);
 
     return (
-        <main className="h-full overflow-y-auto bg-[#0b0b0b] px-3 pb-14 pt-2 text-neutral-100 md:px-4">
-            <div className="mx-auto max-w-[1180px]">
+        <main className="h-full overflow-y-auto bg-[#0b0b0b] px-4 pb-16 pt-5 text-neutral-100 md:px-8 md:pt-7 lg:px-10">
+            <div className="mx-auto w-full max-w-[1520px]">
                 <section
-                    className="relative flex min-h-[440px] flex-col items-center justify-center overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#121212] px-6 py-10 md:min-h-[480px] md:px-10"
+                    className="relative flex min-h-[440px] flex-col items-center justify-center overflow-hidden rounded-[20px] border border-white/[0.08] bg-[#121212] px-6 py-12 md:min-h-[500px] md:px-10 md:py-14"
                     aria-label={t("home.hero.label")}
                 >
                     <div
@@ -127,7 +127,7 @@ export default function IndexPage() {
                     </p>
                 </section>
 
-                <div className="-mt-1 mb-8 grid grid-cols-4 gap-2.5 sm:grid-cols-8 md:gap-3" aria-label={t("home.chips.label")}>
+                <div className="mt-10 mb-14 grid grid-cols-4 gap-3 sm:grid-cols-8 md:mt-12 md:gap-4" aria-label={t("home.chips.label")}>
                     {toolTiles.map((tile) => {
                         const Icon = tile.icon;
                         const inner = (
@@ -161,8 +161,8 @@ export default function IndexPage() {
                     })}
                 </div>
 
-                <section className="mb-10" aria-labelledby="home-recent-title">
-                    <div className="mb-3.5 flex items-center justify-between px-0.5">
+                <section className="mb-14" aria-labelledby="home-recent-title">
+                    <div className="mb-5 flex items-center justify-between px-0.5">
                         <h2 id="home-recent-title" className="text-[15px] font-semibold tracking-tight">{t("home.recent.title")}</h2>
                         <Link to="/canvas" className="inline-flex items-center gap-0.5 text-[12.5px] text-neutral-500 transition hover:text-neutral-200">
                             {t("home.recent.viewAll")}
@@ -182,8 +182,8 @@ export default function IndexPage() {
                     )}
                 </section>
 
-                <section className="mb-10">
-                    <div className="mb-3.5 flex items-baseline justify-between px-0.5">
+                <section className="mb-14">
+                    <div className="mb-5 flex items-baseline justify-between px-0.5">
                         <h2 className="text-[15px] font-semibold tracking-tight">{t("home.features.title")}</h2>
                         <span className="text-[12px] text-neutral-500">{t("home.features.hint")}</span>
                     </div>
@@ -217,8 +217,8 @@ export default function IndexPage() {
                     </div>
                 </section>
 
-                <section className="mb-10" id="showcase" aria-labelledby="home-showcase-title">
-                    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <section className="mb-14" id="showcase" aria-labelledby="home-showcase-title">
+                    <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 id="home-showcase-title" className="text-[15px] font-semibold tracking-tight">{t("home.showcaseTitle")}</h2>
                             <p className="mt-0.5 text-[12px] text-neutral-500">{t("home.showcaseHint")}</p>
@@ -232,7 +232,7 @@ export default function IndexPage() {
                             className="max-w-xs rounded-full border-white/[0.1] bg-[#141414] text-[13px]"
                         />
                     </div>
-                    <div className="mb-3 flex flex-wrap gap-1.5">
+                    <div className="mb-5 flex flex-wrap gap-2">
                         {showcaseTabs.map((tab) => (
                             <button
                                 key={tab}
@@ -247,7 +247,7 @@ export default function IndexPage() {
                             </button>
                         ))}
                     </div>
-                    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                         {filteredShowcase.map((item, index) => (
                             <button
                                 key={item.id}
