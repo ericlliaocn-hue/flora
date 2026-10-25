@@ -2,6 +2,10 @@ import { cn } from "@/lib/utils";
 
 const CORAL = "#E8867A";
 
+/** Concept D mark: one continuous horizontal dual-loop ribbon (viewBox 0 0 56 40). */
+const MARK_RIBBON_PATH =
+    "M11 32.2V26.4C11 26.4 9.4 19.6 12.6 15.4C15.4 11.8 20.2 10.4 24.8 12.2C27 13.2 27.9 15.8 27.9 18.4C27.9 15.8 28.8 13.2 31 12.2C35.6 10.4 40.4 11.8 43.2 15.4C46.4 19.6 44.8 26.4 44.8 26.4V32.2";
+
 type PilipalaLogoProps = {
     variant?: "mark" | "lockup";
     className?: string;
@@ -12,14 +16,7 @@ function MarkPaths() {
     return (
         <>
             <path
-                d="M12.4 35.6V14.2C12.4 6.4 20.6 2.8 27.4 6.6C32.6 9.8 33.6 15.8 30.2 20C28 22.8 24.2 23.6 20.8 21.8C17.2 20 12.4 17.2 12.4 14.2"
-                stroke="currentColor"
-                strokeWidth="4.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M43.6 35.6V14.2C43.6 6.4 35.4 2.8 28.6 6.6C23.4 9.8 22.4 15.8 25.8 20C28 22.8 31.8 23.6 35.2 21.8C38.8 20 43.6 17.2 43.6 14.2"
+                d={MARK_RIBBON_PATH}
                 stroke="currentColor"
                 strokeWidth="4.8"
                 strokeLinecap="round"
