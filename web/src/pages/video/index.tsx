@@ -16,7 +16,7 @@ import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { deleteStoredMedia, resolveMediaUrl } from "@/services/file-storage";
 import { resolveImageUrl, ensureImagePreview, getImagePreviewRevision, previewUrlFor, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { createVideoGenerationTask, pollVideoGenerationTask, storeGeneratedVideo, type VideoGenerationTask } from "@/services/api/video";
-import { listFloraJobHistory, type FloraJobHistoryItem } from "@/services/api/flora-cloud";
+import { listPilipalaJobHistory, type PilipalaJobHistoryItem } from "@/services/api/pilipala-cloud";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useWorkbenchAgentStore } from "@/stores/use-workbench-agent-store";
@@ -66,8 +66,8 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "videoModel" | "size" | "vqu
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
-const LOG_STORE_KEY = "flora:video_generation_logs";
-const logStore = localforage.createInstance({ name: "flora", storeName: "video_generation_logs" });
+const LOG_STORE_KEY = "pilipala:video_generation_logs";
+const logStore = localforage.createInstance({ name: "pilipala", storeName: "video_generation_logs" });
 
 export default function VideoPage() {
     const { message } = App.useApp();
@@ -126,7 +126,7 @@ export default function VideoPage() {
             return;
         }
         try {
-            const items = await listFloraJobHistory({ limit: 50 });
+            const items = await listPilipalaJobHistory({ limit: 50 });
             setCloudLogs(items.filter((item) => item.capability === "video.generate").map(cloudHistoryToLog));
         } catch {
             // 云端历史拉不到不影响本地记录，静默忽略。
@@ -797,7 +797,7 @@ function buildLog({ prompt, model, config, references, durationMs, status, task,
 }
 
 /** 云端视频任务历史 → 本地生成记录形状。result_urls 是后端现签的 TOS 读地址。 */
-function cloudHistoryToLog(item: FloraJobHistoryItem): GenerationLog {
+function cloudHistoryToLog(item: PilipalaJobHistoryItem): GenerationLog {
     const createdAt = Date.parse(item.created_at) || Date.now();
     const succeeded = item.status === "succeeded";
     const resultUrl = item.result_urls?.[0];

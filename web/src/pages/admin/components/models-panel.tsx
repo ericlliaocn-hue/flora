@@ -3,8 +3,8 @@ import { App, Button, Empty, Input, InputNumber, Space, Switch, Table } from "an
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { FloraApiError } from "@/services/api/flora-client";
-import { adminUpdateModel, fetchAdminModels, type FloraModelDisplayConfig } from "@/services/api/flora-admin";
+import { PilipalaApiError } from "@/services/api/pilipala-client";
+import { adminUpdateModel, fetchAdminModels, type PilipalaModelDisplayConfig } from "@/services/api/pilipala-admin";
 
 type Draft = { display_name: string; sort_order: number };
 
@@ -16,7 +16,7 @@ type Draft = { display_name: string; sort_order: number };
 export function ModelsPanel({ onForbidden }: { onForbidden: () => void }) {
     const { t } = useTranslation();
     const { message } = App.useApp();
-    const [models, setModels] = useState<FloraModelDisplayConfig[]>([]);
+    const [models, setModels] = useState<PilipalaModelDisplayConfig[]>([]);
     const [loading, setLoading] = useState(false);
     const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
@@ -29,7 +29,7 @@ export function ModelsPanel({ onForbidden }: { onForbidden: () => void }) {
                 Object.fromEntries(rows.map((row) => [row.model, { display_name: row.display_name, sort_order: row.sort_order }])),
             );
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -43,7 +43,7 @@ export function ModelsPanel({ onForbidden }: { onForbidden: () => void }) {
         void load();
     }, [load]);
 
-    const update = async (model: FloraModelDisplayConfig, enabled: boolean) => {
+    const update = async (model: PilipalaModelDisplayConfig, enabled: boolean) => {
         const draft = drafts[model.model] ?? { display_name: model.display_name, sort_order: model.sort_order };
         try {
             await adminUpdateModel(model.model, {
@@ -55,7 +55,7 @@ export function ModelsPanel({ onForbidden }: { onForbidden: () => void }) {
             message.success(t("admin.models.saved"));
             await load();
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -70,7 +70,7 @@ export function ModelsPanel({ onForbidden }: { onForbidden: () => void }) {
                     {t("common.refresh")}
                 </Button>
             </div>
-            <Table<FloraModelDisplayConfig>
+            <Table<PilipalaModelDisplayConfig>
                 rowKey="id"
                 size="small"
                 loading={loading}

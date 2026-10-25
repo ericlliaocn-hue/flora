@@ -2,9 +2,9 @@
 
 本文档用于约束本项目中的 AI / 自动化开发行为。开发时优先遵循本文件，其次遵循用户当前消息。
 
-## flora 工程文档（必读）
+## pilipala 工程文档（必读）
 
-本仓库产品品牌是 **flora**（infinite-canvas 的白标 fork）。架构、里程碑、冻结技术栈、ADR 与协作流程以 **`docs/engineering/`** 为准，不要只根据当前「前端直连供应商」的代码现状倒推目标架构。
+本仓库产品品牌是 **pilipala**（官网 https://pilipala.art，infinite-canvas 的白标 fork）。架构、里程碑、冻结技术栈、ADR 与协作流程以 **`docs/engineering/`** 为准，不要只根据当前「前端直连供应商」的代码现状倒推目标架构。
 
 - 入口：[docs/engineering/README.md](docs/engineering/README.md)
 - 大改动（新表、新 API、新进程、改任务/计费/品牌/错误合同、改栈）**必须先写** [feature brief](docs/engineering/feature-briefs/_TEMPLATE.md)，再实现、再开 PR；禁止直接开写或只凭聊天记录扩范围。

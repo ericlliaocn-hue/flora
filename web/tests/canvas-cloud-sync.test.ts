@@ -11,7 +11,7 @@ Object.defineProperty(globalThis, "localStorage", {
         removeItem: (key: string) => values.delete(key),
     },
 });
-values.set("flora:auth_token", "test-token");
+values.set("pilipala:auth_token", "test-token");
 
 const { useCanvasStore } = await import("../src/stores/canvas/use-canvas-store");
 
@@ -81,7 +81,7 @@ test("a failing save marks the sync status as error instead of pretending it syn
 });
 
 test("without a token the sync stays local and no request is sent", async () => {
-    values.delete("flora:auth_token");
+    values.delete("pilipala:auth_token");
     useCanvasStore.setState({ projects: [localProject(CLOUD_ID, "画布")] });
     const { calls, impl } = createMockFetch(() => json({ ok: true, data: [], error_code: null, message: null }));
 
@@ -90,7 +90,7 @@ test("without a token the sync stays local and no request is sent", async () => 
 
     expect(await useCanvasStore.getState().saveProjectToCloud(CLOUD_ID, impl)).toBeNull();
     expect(calls.length).toBe(0);
-    values.set("flora:auth_token", "test-token");
+    values.set("pilipala:auth_token", "test-token");
 });
 
 test("the cloud project list merges into the local list and records the versions", async () => {

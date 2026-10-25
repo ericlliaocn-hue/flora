@@ -81,7 +81,7 @@ export function StudioSidebar({ onAgent, onPlugins, className }: StudioSidebarPr
                     f
                 </span>
                 <span className="text-[17px] font-semibold tracking-tight text-neutral-100">
-                    flora
+                    pilipala
                     <small className="mt-0.5 block text-[10.5px] font-normal tracking-wide text-neutral-500">{t("studio.sidebar.tagline")}</small>
                 </span>
             </Link>

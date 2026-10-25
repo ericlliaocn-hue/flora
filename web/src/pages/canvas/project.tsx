@@ -44,7 +44,7 @@ import { CanvasSidePanel } from "@/components/canvas/canvas-side-panel";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { useAgentStore } from "@/stores/use-agent-store";
 import { useAuthStore } from "@/stores/use-auth-store";
-import { isCloudProjectId, toCanvasDataSnapshot } from "@/services/api/flora-cloud";
+import { isCloudProjectId, toCanvasDataSnapshot } from "@/services/api/pilipala-cloud";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useAgentBridge } from "@/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";

@@ -3,8 +3,8 @@ import { App, Button, Empty, Input, Modal, Select, Table } from "antd";
 import { RefreshCw, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { FloraApiError } from "@/services/api/flora-client";
-import { adminUpsertI18nMessage, fetchAdminI18nMessages, type FloraI18nMessage } from "@/services/api/flora-admin";
+import { PilipalaApiError } from "@/services/api/pilipala-client";
+import { adminUpsertI18nMessage, fetchAdminI18nMessages, type PilipalaI18nMessage } from "@/services/api/pilipala-admin";
 
 type Draft = { key: string; locale: "zh" | "en"; template: string };
 
@@ -19,7 +19,7 @@ export function I18nPanel({ onForbidden }: { onForbidden: () => void }) {
     const { t } = useTranslation();
     const { message } = App.useApp();
     const [keyword, setKeyword] = useState("");
-    const [messages, setMessages] = useState<FloraI18nMessage[]>([]);
+    const [messages, setMessages] = useState<PilipalaI18nMessage[]>([]);
     const [loading, setLoading] = useState(false);
     const [draft, setDraft] = useState<Draft | null>(null);
     const [saving, setSaving] = useState(false);
@@ -29,7 +29,7 @@ export function I18nPanel({ onForbidden }: { onForbidden: () => void }) {
         try {
             setMessages(await fetchAdminI18nMessages(keyword.trim() || undefined));
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -52,7 +52,7 @@ export function I18nPanel({ onForbidden }: { onForbidden: () => void }) {
             setDraft(null);
             await load();
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -80,7 +80,7 @@ export function I18nPanel({ onForbidden }: { onForbidden: () => void }) {
                     {t("admin.i18n.add")}
                 </Button>
             </div>
-            <Table<FloraI18nMessage>
+            <Table<PilipalaI18nMessage>
                 rowKey="id"
                 size="small"
                 loading={loading}

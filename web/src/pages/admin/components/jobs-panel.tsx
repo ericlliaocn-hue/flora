@@ -3,8 +3,8 @@ import { App, Button, Empty, Modal, Select, Space, Table, Tag } from "antd";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { FloraApiError } from "@/services/api/flora-client";
-import { adminRetryJob, fetchAdminJobs, type FloraAdminJob } from "@/services/api/flora-admin";
+import { PilipalaApiError } from "@/services/api/pilipala-client";
+import { adminRetryJob, fetchAdminJobs, type PilipalaAdminJob } from "@/services/api/pilipala-admin";
 
 const JOB_STATUSES = ["dead", "failed", "running", "queued", "succeeded", "cancelled"] as const;
 
@@ -17,16 +17,16 @@ export function JobsPanel({ onForbidden }: { onForbidden: () => void }) {
     const { t } = useTranslation();
     const { message } = App.useApp();
     const [status, setStatus] = useState<string | undefined>(undefined);
-    const [jobs, setJobs] = useState<FloraAdminJob[]>([]);
+    const [jobs, setJobs] = useState<PilipalaAdminJob[]>([]);
     const [loading, setLoading] = useState(false);
-    const [detail, setDetail] = useState<FloraAdminJob | null>(null);
+    const [detail, setDetail] = useState<PilipalaAdminJob | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
         try {
             setJobs(await fetchAdminJobs({ status, limit: 50 }));
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -40,14 +40,14 @@ export function JobsPanel({ onForbidden }: { onForbidden: () => void }) {
         void load();
     }, [load]);
 
-    const retry = async (job: FloraAdminJob) => {
+    const retry = async (job: PilipalaAdminJob) => {
         try {
             const updated = await adminRetryJob(job.job_id);
             message.success(t("admin.jobs.retryDone"));
             setDetail((current) => (current && current.job_id === updated.job_id ? updated : current));
             await load();
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -70,7 +70,7 @@ export function JobsPanel({ onForbidden }: { onForbidden: () => void }) {
                     {t("common.refresh")}
                 </Button>
             </div>
-            <Table<FloraAdminJob>
+            <Table<PilipalaAdminJob>
                 rowKey="job_id"
                 size="small"
                 loading={loading}

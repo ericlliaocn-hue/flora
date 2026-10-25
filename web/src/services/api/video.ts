@@ -7,7 +7,7 @@ import { clampVideoSeconds, computeVideoSize, inferVideoRatio } from "@/lib/medi
 import { getMediaBlob, resolveMediaUrl, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
 import { boolConfig, buildApiUrl, modelOptionName, resolveModelRequestConfig, resolveModelScript, withLocalProxy, type AiConfig } from "@/stores/use-config-store";
-import { getFloraJob, getFloraJobResult, submitFloraVideoJob, usesFloraManagedVideoChannel } from "./flora-jobs";
+import { getPilipalaJob, getPilipalaJobResult, submitPilipalaVideoJob, usesPilipalaManagedVideoChannel } from "./pilipala-jobs";
 import { runModelPlugin } from "./model-plugin";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
@@ -20,7 +20,7 @@ type VideoMediaOptions = RequestOptions & { videos?: ReferenceVideo[]; audios?: 
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
 export type VideoGenerationResult = { blob?: Blob; url?: string; mimeType?: string };
-export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin" | "flora"; model: string };
+export type VideoGenerationTask = { id: string; provider: "openai" | "gemini" | "plugin" | "pilipala"; model: string };
 type GeminiInlineData = { bytesBase64Encoded: string; mimeType: string };
 type GeminiVideoOperation = {
     name?: string;
@@ -71,10 +71,10 @@ function videoTaskFailed(message: string) {
 }
 
 export async function createVideoGenerationTask(config: AiConfig, prompt: string, references: ReferenceImage[] = [], options?: VideoMediaOptions): Promise<VideoGenerationTask> {
-    // WP12：托管云端的 Seedance 视频走 flora 后端队列，浏览器不直连供应商。
-    if (usesFloraManagedVideoChannel(config)) {
-        const submitted = await submitFloraVideoJob(config, prompt);
-        return { id: submitted.jobId, provider: "flora", model: submitted.model };
+    // WP12：托管云端的 Seedance 视频走 pilipala 后端队列，浏览器不直连供应商。
+    if (usesPilipalaManagedVideoChannel(config)) {
+        const submitted = await submitPilipalaVideoJob(config, prompt);
+        return { id: submitted.jobId, provider: "pilipala", model: submitted.model };
     }
     const selectedModel = (config.model || config.videoModel).trim();
     const requestConfig = resolveModelRequestConfig(config, selectedModel);
@@ -86,8 +86,9 @@ export async function createVideoGenerationTask(config: AiConfig, prompt: string
 }
 
 export async function pollVideoGenerationTask(config: AiConfig, task: VideoGenerationTask, options?: RequestOptions): Promise<VideoGenerationTaskState> {
-    if (task.provider === "flora") {
-        return pollFloraVideoTask(task);
+    const managedProvider = task.provider as string;
+    if (managedProvider === "pilipala" || managedProvider === "flora") {
+        return pollPilipalaVideoTask(task);
     }
     if (task.provider === "plugin") {
         const result = pluginVideoResults.get(task.id);
@@ -100,14 +101,14 @@ export async function pollVideoGenerationTask(config: AiConfig, task: VideoGener
 }
 
 /**
- * 轮询托管视频任务（WP12）：状态在 flora 后端，产物是现签的 TOS 读地址。
+ * 轮询托管视频任务（WP12）：状态在 pilipala 后端，产物是现签的 TOS 读地址。
  *
  * <p>失败文案用后端返回的本地化 message，不向界面暴露上游原文（ADR 0005）。
  */
-async function pollFloraVideoTask(task: VideoGenerationTask): Promise<VideoGenerationTaskState> {
-    const job = await getFloraJob(task.id);
+async function pollPilipalaVideoTask(task: VideoGenerationTask): Promise<VideoGenerationTaskState> {
+    const job = await getPilipalaJob(task.id);
     if (job.status === "succeeded") {
-        const result = await getFloraJobResult(task.id);
+        const result = await getPilipalaJobResult(task.id);
         const url = result.outputs.find((output) => output.type === "video")?.url || result.outputs.find((output) => Boolean(output.url))?.url;
         if (!url) {
             return { status: "failed", error: apiText("videoGenerationFailed") };

@@ -1,7 +1,7 @@
 # 本地 profile：只放非密钥的开发默认值。
 logging:
   level:
-    com.flora: DEBUG
+    com.pilipala: DEBUG
 
 spring:
   datasource:
@@ -21,7 +21,7 @@ spring:
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
-flora:
+pilipala:
   gateway:
     # 本地默认走 stub：不发外部请求，用确定性假上游跑通全链路。
     mode: ${FLORA_GATEWAY_MODE:stub}

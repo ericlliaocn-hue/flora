@@ -46,7 +46,7 @@ type SourceCache = PromptSourceStatus & {
 };
 
 const cacheTtlMs = 1000 * 60 * 60;
-const promptCacheStore = localforage.createInstance({ name: "flora", storeName: "prompt_cache" });
+const promptCacheStore = localforage.createInstance({ name: "pilipala", storeName: "prompt_cache" });
 const loadingSources = new Map<string, Promise<PromptSourceRefreshResult>>();
 
 function enabledSources() {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { fetchRechargeOrder } from "@/services/api/flora-recharge";
+import { fetchRechargeOrder } from "@/services/api/pilipala-recharge";
 
 const POLL_MS = 3000;
 

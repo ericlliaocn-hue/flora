@@ -278,7 +278,7 @@ export default function IndexPage() {
                 <footer className="mt-2 border-t border-white/[0.08] px-1 pt-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <p className="text-[13px] text-neutral-400">
-                            <strong className="font-semibold text-neutral-100">flora</strong>
+                            <strong className="font-semibold text-neutral-100">pilipala</strong>
                             {t("home.footer.brand")}
                         </p>
                         <div className="flex flex-wrap gap-4 text-[12.5px] text-neutral-500">

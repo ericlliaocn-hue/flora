@@ -1,12 +1,13 @@
 import { saveAs } from "file-saver";
 
+import { APP_PACKAGE_ID, isKnownAppPackage } from "@/lib/app-package";
 import { createZip, readZip } from "@/lib/zip";
 import { getMediaBlob, setMediaBlob } from "@/services/file-storage";
 import { getImageBlob, setImageBlob } from "@/services/image-storage";
 import type { Asset } from "@/stores/use-asset-store";
 
 type AssetExportFile = {
-    app: "flora";
+    app: "pilipala";
     version: 1;
     exportedAt: string;
     assets: Asset[];
@@ -37,7 +38,7 @@ export async function exportAssets(assets: Asset[], filename: string) {
         }),
     );
 
-    const data: AssetExportFile = { app: "flora", version: 1, exportedAt: new Date().toISOString(), assets, files };
+    const data: AssetExportFile = { app: APP_PACKAGE_ID, version: 1, exportedAt: new Date().toISOString(), assets, files };
     const zip = await createZip([{ name: "assets.json", data: JSON.stringify(data, null, 2) }, ...zipFiles]);
     saveAs(zip, filename);
 }
@@ -47,7 +48,7 @@ export async function readAssetPackage(file: File) {
     const assetFile = zip.get("assets.json");
     if (!assetFile) throw new Error("missing assets.json");
     const data = JSON.parse(await assetFile.text()) as AssetExportFile;
-    if (data.app !== "flora") throw new Error("invalid asset package");
+    if (!isKnownAppPackage(data.app)) throw new Error("invalid asset package");
     await Promise.all(
         data.files.map(async (item) => {
             const blob = zip.get(item.path);

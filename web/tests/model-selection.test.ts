@@ -18,7 +18,7 @@ afterAll(() => {
     else Reflect.deleteProperty(globalThis, "localStorage");
 });
 
-const { defaultConfig, resolveModelForCapability, useConfigStore, FLORA_REMOTE_IMAGE_MODELS } = await import("../src/stores/use-config-store");
+const { defaultConfig, resolveModelForCapability, useConfigStore, PILIPALA_REMOTE_IMAGE_MODELS } = await import("../src/stores/use-config-store");
 const { buildGenerationConfig } = await import("../src/lib/canvas/canvas-generation-helpers");
 const { CanvasNodeType } = await import("../src/types/canvas");
 
@@ -101,7 +101,7 @@ test("unavailable explicit selections are preserved for every generation capabil
 
 test("the managed cloud mode needs no local provider key for the built-in image models", () => {
     const managed: AiConfig = { ...defaultConfig, channelMode: "remote", imageModel: "gpt-image-1", model: "gpt-image-1", channels: [] };
-    for (const model of FLORA_REMOTE_IMAGE_MODELS) {
+    for (const model of PILIPALA_REMOTE_IMAGE_MODELS) {
         expect(ready(managed, model.name)).toBe(true);
     }
 });

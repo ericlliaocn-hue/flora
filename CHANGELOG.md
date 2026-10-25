@@ -2,13 +2,13 @@
 
 ## Unreleased
 
++ [调整] 全仓库产品品牌由 flora 更名为 **pilipala**（官网 https://pilipala.art）：前端文案与 i18n、npm `pilipala`、Java `com.pilipala` / `pilipala-*` 构件（打包 jar 仍为 `flora-api.jar` / `flora-worker.jar`）、`pilipala.*` 配置前缀、`PILIPALA_*` 环境变量（仍回读 `FLORA_*`）、`pilipala:` localStorage 键（启动时从 `flora:` 迁移）；导出包 `app` 为 pilipala（仍接受旧 flora 包）。**未设 env 时** Rabbit 拓扑默认仍为 `flora.jobs*`，Sa-Token 默认仍为 `flora-token`，TOS 未配置 bucket 默认仍为 `flora-dev`。Postgres 默认库名/账号仍为 `flora`；GitHub 仓库名未改。
 + [调整] Studio 首页对齐 LibTV 节奏：压缩 Hero 高度；最近项目/特色功能标题与卡片强化（大插图、角标）；能力精选桌面固定一行 4 张大卡片（16:9）。
 + [调整] Studio 首页：活动条倒计时改为可配置截止时间的真实秒级倒计时（过期自动隐藏）；Hero/能力行/区块间距加大；能力精选栅格放宽至宽屏多列并采用偏横向卡片比例。
 + [调整] Studio 首页视觉贴近 LibTV：方形 Hero 新建按钮、图标能力行、青绿活动条与圆角顶栏、最近项目横滑与能力亮点卡片、能力精选栅格与搜索筛选；侧栏底部改为版本与预付费提示。
 + [调整] 官网首页改版为深色 Studio 壳层：左侧导航、右侧工具顶栏、大画布 Hero、能力亮点与精选作品瀑布流（mockup v5）。
 + [新增] WP16：z-pay 支付宝 mapi 充值（套餐下单、验签 webhook、查单补单、Admin 退款）与 `/billing/recharge/result` 结果页。
-+ [调整] 文档登记生产 `FLORA_PUBLIC_BASE_URL=https://pilipala.art`（仍仅经 env 配置，代码不写死）。
-+ [调整] 前端产品品牌由「无限画布 / Infinite Canvas」替换为 flora：页面标题与主文案、本地存储库名与键前缀、画布/素材/配置导出文件的 `app` 标识、默认 WebDAV 目录、主题样式变量与版本检查地址均改为 flora。
++ [调整] 文档登记生产公网根 URL 为 https://pilipala.art（经 `PILIPALA_PUBLIC_BASE_URL` / 兼容 `FLORA_PUBLIC_BASE_URL` 配置，代码不写死）。
 
 ## v0.20.0 - 2026-10-10
 
