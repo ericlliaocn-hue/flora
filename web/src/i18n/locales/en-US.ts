@@ -396,7 +396,8 @@ export default {
         sidebar: {
             label: "Main navigation",
             tagline: "Canvas workbench",
-            foot: "Prepaid · no community feed",
+            version: "v{{version}}",
+            prepaidTip: "Prepaid credits · charged only on success",
         },
         nav: {
             browse: "Browse",
@@ -437,9 +438,25 @@ export default {
         start: "Get started",
         openCanvas: "Open canvas",
         createCanvas: "New canvas project",
-        showcaseTitle: "Curated work",
-        showcaseHint: "Product showcase · not a social feed",
+        showcaseTitle: "Capability picks",
+        showcaseHint: "Prompt & style demos · not a social feed",
+        showcaseSearch: "Search prompts or styles",
+        showcaseTabAll: "All",
         showcaseFallback: "From the prompt library",
+        recent: {
+            title: "Recent projects",
+            viewAll: "View all",
+            empty: "No canvas projects yet — use New canvas above to start",
+            untitled: "Untitled",
+            updated: "Updated {{date}}",
+        },
+        capabilities: {
+            canvas: { title: "Infinite canvas", body: "Generate, connect, and remix in one view" },
+            image: { title: "Image workbench", body: "Text-to-image and edits, flow back to canvas" },
+            video: { title: "Video generation", body: "Clips and shots through the unified gateway" },
+            prompts: { title: "Prompt library", body: "Save reliable styles and parameters" },
+            agent: { title: "Agent", body: "Orchestrate tasks in canvas context" },
+        },
         showcaseDescription: "Save reliable prompts, visual references, and generated images so your next creation starts from proven ideas.",
         viewPrompts: "View prompt library",
         hero: {

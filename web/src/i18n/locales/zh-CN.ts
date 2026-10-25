@@ -396,7 +396,8 @@ export default {
         sidebar: {
             label: "主导航",
             tagline: "画布工作台",
-            foot: "预付费 · 非社区广场",
+            version: "v{{version}}",
+            prepaidTip: "预付费额度 · 任务成功才扣费",
         },
         nav: {
             browse: "浏览",
@@ -437,9 +438,25 @@ export default {
         start: "开始使用",
         openCanvas: "打开画布",
         createCanvas: "新建画布创作",
-        showcaseTitle: "精选作品",
-        showcaseHint: "产品能力示意 · 非社区广场",
+        showcaseTitle: "能力精选",
+        showcaseHint: "提示词与风格示意 · 非社交广场",
+        showcaseSearch: "搜索提示词或风格",
+        showcaseTabAll: "全部",
         showcaseFallback: "提示词库精选",
+        recent: {
+            title: "最近项目",
+            viewAll: "查看全部",
+            empty: "还没有画布项目，点击上方「新建画布创作」开始",
+            untitled: "未命名",
+            updated: "更新于 {{date}}",
+        },
+        capabilities: {
+            canvas: { title: "无限画布", body: "生成、连接、重组，一屏连续推演" },
+            image: { title: "生图工作台", body: "文生图与编辑，结果可回流画布" },
+            video: { title: "视频生成", body: "镜头与片段生成，接入统一网关" },
+            prompts: { title: "提示词库", body: "沉淀稳定出图的风格与参数" },
+            agent: { title: "Agent", body: "在画布上下文中协助编排与执行" },
+        },
         showcaseDescription: "收藏稳定出图的提示词、参考风格和结果图片，让下一次创作从已有经验开始。",
         viewPrompts: "查看提示词库",
         hero: {
