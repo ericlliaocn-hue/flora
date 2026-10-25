@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test;
  */
 class TosV4SignerTest {
 
-    private static final String SECRET_KEY = "flora-local-sk";
+    private static final String SECRET_KEY = "pilipala-local-sk";
     private static final String REGION = "cn-beijing";
     private static final String DATE = "20261024";
 
     @Test
     void derivedSigningKeyMatchesTheSharedVector() {
         assertThat(TosV4Signer.hex(TosV4Signer.deriveSigningKey(SECRET_KEY, DATE, REGION)))
-                .isEqualTo("8de685c0a1d681a8c98a1ed0c361b45d0012ec2942a638c1bc9ac68aff490a5e");
+                .isEqualTo("b15386b40b371aaf262cb95a45ffb5e6f6aa469db8a9671212648e385473fe81");
     }
 
     @Test

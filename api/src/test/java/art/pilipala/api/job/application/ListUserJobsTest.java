@@ -31,8 +31,8 @@ class ListUserJobsTest {
             mapper,
             new HoldSettlement(new WalletService(wallets, wallets, wallets)),
             new JobCostPolicy(new BillingProperties(10, 0, 200, 50)),
-            new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing", "flora-dev",
-                    "flora-local-ak", "flora-local-sk", 900, 15000, "/tmp/flora-tos")),
+            new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing", "pilipala-dev",
+                    "pilipala-local-ak", "pilipala-local-sk", 900, 15000, "/tmp/pilipala-tos")),
             new I18nMessageService(new InMemoryI18nMessageRepository()));
 
     private final UUID owner = UUID.randomUUID();
@@ -57,7 +57,7 @@ class ListUserJobsTest {
         JobHistoryItemView item = service.list(owner, 50, "zh").get(0);
 
         assertThat(item.resultUrls()).hasSize(1);
-        assertThat(item.resultUrls().get(0)).startsWith("http://127.0.0.1:18080/flora-dev/anytoken/img/a/1.png?");
+        assertThat(item.resultUrls().get(0)).startsWith("http://127.0.0.1:18080/pilipala-dev/anytoken/img/a/1.png?");
         assertThat(item.costCredits()).isEqualTo(10);
         assertThat(item.finishedAt()).isNotNull();
     }

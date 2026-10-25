@@ -23,7 +23,7 @@ const { resolvePilipalaVideoModel, submitPilipalaVideoJob, usesPilipalaManagedVi
 const { fromCloudAssetToStoreAsset } = await import("../src/services/api/pilipala-cloud");
 
 const JOB_ID = "22222222-2222-2222-2222-222222222222";
-const VIDEO_URL = "http://127.0.0.1:18080/flora-dev/anytoken/vid/abc/1.mp4?X-Tos-Signature=abc";
+const VIDEO_URL = "http://127.0.0.1:18080/pilipala-dev/anytoken/vid/abc/1.mp4?X-Tos-Signature=abc";
 
 const remoteConfig = { ...defaultConfig, channelMode: "remote" as const, model: "seedance2", videoModel: "seedance2" };
 

@@ -99,7 +99,7 @@ test("a business failure carries the stable error code instead of the raw payloa
 test("the cloud token is sent as the pilipala auth header", async () => {
     const { calls, impl } = createMockFetch(() => json({ ok: true, data: [], error_code: null, message: null }));
     await listCloudProjects({ fetchImpl: impl });
-    expect(calls[0].headers["flora-token"]).toBe("test-token");
+    expect(calls[0].headers["pilipala-token"]).toBe("test-token");
 });
 
 test("only a backend uuid is treated as a cloud project id", () => {

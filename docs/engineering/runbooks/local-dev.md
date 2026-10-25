@@ -32,7 +32,7 @@ Docker 只构建/运行现有前端镜像时，同样 **不是** flora 业务栈
 
 WP1 落了进程骨架与健康检查；WP3 起 `api` 需要 Postgres 与 Redis（Flyway 迁移要连 Postgres，Sa-Token 会话存 Redis）；WP4 起 `api` 还要 RabbitMQ（outbox dispatcher 要把 pending 消息投递出去）。
 
-WP5 起 `worker` 也需要 Postgres + Redis + RabbitMQ：它直连 Postgres 做 claim / complete 两段短事务，用 Redis 短锁 `job:lease:{job_id}` 防同一个 job 被两个 worker 并发跑，并监听 `flora.jobs.execute` 消费。
+WP5 起 `worker` 也需要 Postgres + Redis + RabbitMQ：它直连 Postgres 做 claim / complete 两段短事务，用 Redis 短锁 `job:lease:{job_id}` 防同一个 job 被两个 worker 并发跑，并监听 `pilipala.jobs.execute` 消费。
 
 > broker 没起时，两个进程的 `/actuator/health` 都会因为 RabbitMQ 健康探针而报 **DOWN**（HTTP 503）。这是已知且预期的：WP4 之后 `api` 真的需要 broker，WP5 之后 `worker` 也真的需要 broker。
 
@@ -46,9 +46,9 @@ macOS + Homebrew：
 brew install postgresql@14
 brew services start postgresql@14
 # 建库建号（用你已有的超级用户执行）
-createuser flora
-createdb -O flora flora
-psql -d flora -c "ALTER ROLE flora WITH PASSWORD 'replace-me'"
+createuser pilipala
+createdb -O pilipala pilipala
+psql -d pilipala -c "ALTER ROLE pilipala WITH PASSWORD 'replace-me'"
 
 brew install redis
 brew services start redis
@@ -74,10 +74,10 @@ compose 的宿主机端口可用 `FLORA_DEPS_POSTGRES_PORT` / `FLORA_DEPS_REDIS_
 
 ```bash
 export FLORA_API_PORT=8080
-export FLORA_TOKEN_NAME=flora-token
+export FLORA_TOKEN_NAME=pilipala-token
 export FLORA_TOKEN_TIMEOUT=2592000
-export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/flora
-export SPRING_DATASOURCE_USERNAME=flora
+export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/pilipala
+export SPRING_DATASOURCE_USERNAME=pilipala
 export SPRING_DATASOURCE_PASSWORD=replace-me
 export SPRING_DATA_REDIS_HOST=127.0.0.1
 export SPRING_DATA_REDIS_PORT=6379
@@ -91,10 +91,10 @@ export SPRING_RABBITMQ_PASSWORD=guest
 
 # WP4：Job 域（队列名只是传输配置，不是 job 表的列）
 export FLORA_JOB_TRANSPORT=rabbit          # rabbit | fake（fake = 内存假 transport，本地无 broker 演练用）
-export FLORA_JOB_EXCHANGE=flora.jobs
+export FLORA_JOB_EXCHANGE=pilipala.jobs
 export FLORA_JOB_ROUTING_KEY=job.execute
-export FLORA_JOB_QUEUE=flora.jobs.execute
-export FLORA_JOB_DEAD_LETTER_QUEUE=flora.jobs.execute.dlq
+export FLORA_JOB_QUEUE=pilipala.jobs.execute
+export FLORA_JOB_DEAD_LETTER_QUEUE=pilipala.jobs.execute.dlq
 export FLORA_JOB_LEASE_TTL_SECONDS=60      # worker 领取 job 的 Redis 短锁 TTL
 export FLORA_OUTBOX_POLL_MS=500            # outbox 轮询间隔
 export FLORA_OUTBOX_BATCH_SIZE=50          # 单轮最多投递多少条
@@ -118,12 +118,12 @@ export FLORA_BILLING_SETTLE_BATCH_SIZE=50   # 单轮最多结算多少张冻结�
 export FLORA_TOS_MODE=stub                  # stub（本地零密钥，写 local-dir）| http（真实火山 TOS）
 export FLORA_TOS_ENDPOINT=https://tos-cn-beijing.volces.com
 export FLORA_TOS_REGION=cn-beijing
-export FLORA_TOS_BUCKET=flora-dev
+export FLORA_TOS_BUCKET=pilipala-dev
 export FLORA_TOS_ACCESS_KEY=                # 由环境变量注入，勿入库
 export FLORA_TOS_SECRET_KEY=                # 由环境变量注入，勿入库
 export FLORA_TOS_PRESIGN_TTL_SECONDS=900    # 预签名读地址有效期（60..86400）
 export FLORA_TOS_TIMEOUT_MS=15000
-export FLORA_TOS_LOCAL_DIR=/tmp/flora-tos   # stub 模式的落盘根目录
+export FLORA_TOS_LOCAL_DIR=/tmp/pilipala-tos   # stub 模式的落盘根目录
 ```
 
 WP10：真实火山引擎 **华南区** 公网 TOS。公网 endpoint 强制 **Virtual-Host 虚拟主机风格**
@@ -237,7 +237,7 @@ TOKEN=$(curl -s -X POST $API/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 带 token 读当前用户
-curl -s $API/me -H "flora-token: $TOKEN"
+curl -s $API/me -H "pilipala-token: $TOKEN"
 # {"ok":true,"data":{"user_id":"...","username":"alice","locale":"zh"},"error_code":null,"message":null}
 
 # 不带 token → UNAUTHORIZED
@@ -254,16 +254,16 @@ curl -s -X POST $API/login -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"wrongpass1"}'
 
 # 登出后旧 token 立即失效
-curl -s -X POST $API/logout -H "flora-token: $TOKEN"
-curl -s $API/me -H "flora-token: $TOKEN"   # → UNAUTHORIZED
+curl -s -X POST $API/logout -H "pilipala-token: $TOKEN"
+curl -s $API/me -H "pilipala-token: $TOKEN"   # → UNAUTHORIZED
 ```
 
-会话确实落在 Redis 里（键前缀 `flora-token:`）：
+会话确实落在 Redis 里（键前缀 `pilipala-token:`）：
 
 ```bash
-redis-cli --scan --pattern 'flora-token:*'
-# flora-token:login:token:<uuid>
-# flora-token:login:session:<user_id>
+redis-cli --scan --pattern 'pilipala-token:*'
+# pilipala-token:login:token:<uuid>
+# pilipala-token:login:session:<user_id>
 ```
 
 ### 5. curl 验收（WP4 任务接口）
@@ -277,33 +277,33 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # submit：写 job(queued) + outbox(pending) + 幂等记录；WP6 起还会冻结余额并返回 hold_id
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{"prompt":"hi"}}'
 # {"ok":true,"data":{"job_id":"...","status":"queued","hold_id":"..."},"error_code":null,"message":null}
 # 余额不足时 → {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}（不入队）
 
 # 同一个 idempotency_key + 同一个 body → 返回同一个 job_id，不二次入队
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{"prompt":"hi"}}'
 
 # 同一个 key + 不同的 body → IDEMPOTENCY_CONFLICT
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{"prompt":"别的"}}'
 # {"ok":false,"data":null,"error_code":"IDEMPOTENCY_CONFLICT","message":"同一个幂等键对应了不同的请求内容。"}
 
 # query
-curl -s $API/jobs/$JOB_ID -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_ID -H "pilipala-token: $TOKEN"
 # {"ok":true,"data":{"job_id":"...","status":"queued","attempt":0,"max_attempts":3,"error_code":null,"message":null,"updated_at":"..."}}
 
 # result（未成功时 outputs 为空）
-curl -s $API/jobs/$JOB_ID/result -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_ID/result -H "pilipala-token: $TOKEN"
 
 # cancel：queued 直接变 cancelled，终态幂等
-curl -s -X POST $API/jobs/$JOB_ID/cancel -H "flora-token: $TOKEN"
+curl -s -X POST $API/jobs/$JOB_ID/cancel -H "pilipala-token: $TOKEN"
 # {"ok":true,"data":{"job_id":"...","status":"cancelled","attempt":0,"max_attempts":3,"error_code":"JOB_CANCELLED","message":"任务已取消。", ...}}
 
 # 别人的 job / 不存在的 job → JOB_NOT_FOUND（不泄露存在性）
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN"
 # {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"任务不存在。"}
 
 # 不带 token → UNAUTHORIZED
@@ -315,7 +315,7 @@ curl -s -X POST $API/jobs/submit -H 'Content-Type: application/json' \
 库里能看到 outbox 被投出去（`status` 从 `pending` 变 `sent`）：
 
 ```bash
-psql -d flora -c "SELECT id, aggregate_id, payload, status, sent_at FROM outbox_message ORDER BY created_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT id, aggregate_id, payload, status, sent_at FROM outbox_message ORDER BY created_at DESC LIMIT 5;"
 ```
 
 消息体只有 `job_id` 与传输层 `event_id`，没有 params、没有图片、没有钱包额（ADR 0003）：
@@ -328,8 +328,8 @@ RabbitMQ 侧能看到 exchange / queue / 死信队列：
 
 ```bash
 rabbitmqctl list_queues name messages consumers
-# flora.jobs.execute        1  0
-# flora.jobs.execute.dlq    0  0
+# pilipala.jobs.execute        1  0
+# pilipala.jobs.execute.dlq    0  0
 ```
 
 ### 6. WP5 双进程端到端（api + worker）
@@ -343,55 +343,55 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 1) 正常任务（stub 默认成功）：submit 后被 worker 消费 → succeeded
-JOB_OK=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_OK=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp5-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"a quiet garden"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 1
-curl -s $API/jobs/$JOB_OK -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_OK -H "pilipala-token: $TOKEN"
 # → status="succeeded", attempt=1, error_code=null
-curl -s $API/jobs/$JOB_OK/result -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_OK/result -H "pilipala-token: $TOKEN"
 # → status="succeeded", outputs=[{"type":"image","object_key":"anytoken/img/...","url":null}]
 
 # 2) 上游暂时不可用（stub_outcome=provider_unavailable）：自动重试 3 次后进 dead + 死信队列
-JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp5-retry-1","capability":"image.generate","model":"demo","params":{"prompt":"fail","stub_outcome":"provider_unavailable"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 3
-curl -s $API/jobs/$JOB_RETRY -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_RETRY -H "pilipala-token: $TOKEN"
 # → status="dead", attempt=3, max_attempts=3, error_code="PROVIDER_UNAVAILABLE", message="生成服务暂时不可用，请稍后重试。"
 
 # 3) 不可重试业务失败（stub_outcome=job_failed）：attempt=1 直接进 dead
-JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp5-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_outcome":"job_failed"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 1
-curl -s $API/jobs/$JOB_FAIL -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_FAIL -H "pilipala-token: $TOKEN"
 # → status="dead", attempt=1, error_code="JOB_FAILED", message="任务执行失败。"
 
 # 4) 运行中取消：stub_delay_ms 让上游慢一点，取消意图优先于本次 attempt 的结果
-JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp5-cancel-1","capability":"image.generate","model":"demo","params":{"prompt":"slow","stub_delay_ms":4000}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 2
-curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "flora-token: $TOKEN"   # 运行中取消：先记意图
+curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "pilipala-token: $TOKEN"   # 运行中取消：先记意图
 sleep 4
-curl -s $API/jobs/$JOB_CANCEL -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_CANCEL -H "pilipala-token: $TOKEN"
 # → status="cancelled", error_code="JOB_CANCELLED"（即使上游这次成功也收敛为 cancelled）
 ```
 
 上游原文只进 `provider_task`，`job_step` 通过 `provider_task_id` 关联：
 
 ```bash
-psql -d flora -c "SELECT job_id, job_step_id, upstream_request_id, raw_status, raw_body FROM provider_task ORDER BY created_at DESC LIMIT 5;"
-psql -d flora -c "SELECT job_id, attempt, status, error_code, provider_task_id FROM job_step ORDER BY started_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT job_id, job_step_id, upstream_request_id, raw_status, raw_body FROM provider_task ORDER BY created_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT job_id, attempt, status, error_code, provider_task_id FROM job_step ORDER BY started_at DESC LIMIT 5;"
 ```
 
 死信队列里能看到 dead 的消息：
 
 ```bash
 rabbitmqctl list_queues name messages consumers
-# flora.jobs.execute        0  1
-# flora.jobs.execute.dlq    2  0
+# pilipala.jobs.execute        0  1
+# pilipala.jobs.execute.dlq    2  0
 ```
 
 Redis 短锁在消费期间是真实存在的（跑完就释放）：
@@ -410,7 +410,7 @@ redis-cli --scan --pattern 'job:lease:*'
 否则余额和流水对不上）：
 
 ```bash
-psql -d flora -c "
+psql -d pilipala -c "
 WITH w AS (
     INSERT INTO wallet (user_id, available, frozen)
     SELECT id, 100, 0 FROM users WHERE username = 'bob'
@@ -433,69 +433,69 @@ TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 1) 新用户余额为 0（initial-credits 默认 0）
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # {"ok":true,"data":{"user_id":"...","available":0,"frozen":0,"updated_at":"..."},"error_code":null,"message":null}
 
 # 2) 余额不足时 submit → WALLET_INSUFFICIENT，且不入队（job / wallet_hold / wallet_ledger / outbox / 幂等记录都是 0 行）
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}'
 # {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}
 
 # 3) 充值 100（上面的 psql），然后用**同一个** idempotency_key 重新提交
-psql -d flora -c "..."   # 见本节开头的充值 SQL
-JOB_OK=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+psql -d pilipala -c "..."   # 见本节开头的充值 SQL
+JOB_OK=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 # 提交瞬间：available=90 frozen=10，hold_id 非空
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 
 # 4) 成功 → 自动 confirm（冻结转实扣）
 sleep 2
-curl -s $API/jobs/$JOB_OK -H "flora-token: $TOKEN"     # status="succeeded"
-curl -s $API/wallet -H "flora-token: $TOKEN"            # available=90 frozen=0
+curl -s $API/jobs/$JOB_OK -H "pilipala-token: $TOKEN"     # status="succeeded"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"            # available=90 frozen=0
 
 # 5) 同 key 同 body 重放：同一个 job_id、同一个 hold_id，不二次冻结
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}'
 
 # 6) 不可重试失败（stub_outcome=job_failed）：dead → 自动 release（失败不吞冻）
-JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_outcome":"job_failed"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 2
-curl -s $API/jobs/$JOB_FAIL -H "flora-token: $TOKEN"   # status="dead", error_code="JOB_FAILED"
-curl -s $API/wallet -H "flora-token: $TOKEN"            # available 回到扣费前
+curl -s $API/jobs/$JOB_FAIL -H "pilipala-token: $TOKEN"   # status="dead", error_code="JOB_FAILED"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"            # available 回到扣费前
 
 # 7) 可重试失败（stub_outcome=provider_unavailable）：重试期间 hold 保持 frozen，不重冻也不释放
-JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_RETRY=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-retry-1","capability":"image.generate","model":"demo","params":{"prompt":"retry","stub_outcome":"provider_unavailable"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 1
-curl -s $API/wallet -H "flora-token: $TOKEN"            # available=80 frozen=10（还冻着）
+curl -s $API/wallet -H "pilipala-token: $TOKEN"            # available=80 frozen=10（还冻着）
 sleep 4
-curl -s $API/jobs/$JOB_RETRY -H "flora-token: $TOKEN"   # status="dead", attempt=3
-curl -s $API/wallet -H "flora-token: $TOKEN"            # available 回到扣费前，frozen=0
+curl -s $API/jobs/$JOB_RETRY -H "pilipala-token: $TOKEN"   # status="dead", attempt=3
+curl -s $API/wallet -H "pilipala-token: $TOKEN"            # available 回到扣费前，frozen=0
 
 # 8) 运行中取消（stub_delay_ms=3000）：cancelled → 自动 release
-JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-cancel-1","capability":"image.generate","model":"demo","params":{"prompt":"slow","stub_delay_ms":3000}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
-curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "flora-token: $TOKEN"
+curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "pilipala-token: $TOKEN"
 sleep 4
-curl -s $API/jobs/$JOB_CANCEL -H "flora-token: $TOKEN"  # status="cancelled", error_code="JOB_CANCELLED"
-curl -s $API/wallet -H "flora-token: $TOKEN"             # available 回到扣费前，frozen=0
+curl -s $API/jobs/$JOB_CANCEL -H "pilipala-token: $TOKEN"  # status="cancelled", error_code="JOB_CANCELLED"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"             # available 回到扣费前，frozen=0
 ```
 
 对账（三张表 + 流水不变量）：
 
 ```bash
-psql -d flora -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
-psql -d flora -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
-psql -d flora -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
+psql -d pilipala -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
 
 # available == Σ(topup) - Σ(freeze) + Σ(release)
 # frozen    == Σ(freeze) - Σ(confirm) - Σ(release) == Σ(status='frozen' 的 hold.amount)
-psql -d flora -c "
+psql -d pilipala -c "
 SELECT w.available,
        COALESCE(SUM(l.amount) FILTER (WHERE l.type='topup'),0)
      - COALESCE(SUM(l.amount) FILTER (WHERE l.type='freeze'),0)
@@ -522,35 +522,35 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 1) 提交一个会成功的任务（余额要先充够，见第 7 节）
-JOB=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp8-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"a quiet garden"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 2
 
 # 2) result：object_key 是 TOS 对象键，url 是短期签名读地址
-curl -s $API/jobs/$JOB/result -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB/result -H "pilipala-token: $TOKEN"
 # {"ok":true,"data":{"job_id":"...","status":"succeeded","outputs":[
 #   {"type":"image","object_key":"anytoken/img/<job_id>/1.png",
-#    "url":"http://127.0.0.1:18080/flora-dev/anytoken/img/<job_id>/1.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Credential=...&X-Tos-Date=...&X-Tos-Expires=900&X-Tos-SignedHeaders=host&X-Tos-Signature=..."}],"error_code":null,"message":null}}
+#    "url":"http://127.0.0.1:18080/pilipala-dev/anytoken/img/<job_id>/1.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Credential=...&X-Tos-Date=...&X-Tos-Expires=900&X-Tos-SignedHeaders=host&X-Tos-Signature=..."}],"error_code":null,"message":null}}
 
 # 3) 落盘核验：文件真的写出来了，且是合法 PNG（文件头 89 50 4e 47）
-ls -l /tmp/flora-tos/flora-dev/anytoken/img/$JOB/1.png
-xxd -l 8 /tmp/flora-tos/flora-dev/anytoken/img/$JOB/1.png
+ls -l /tmp/pilipala-tos/pilipala-dev/anytoken/img/$JOB/1.png
+xxd -l 8 /tmp/pilipala-tos/pilipala-dev/anytoken/img/$JOB/1.png
 # 89504e47 0d0a1a0a
 
 # 4) 取回字节：把签名 URL 指到本地文件服务上就能真的 GET 回来
-python3 -m http.server 18080 --directory /tmp/flora-tos &
+python3 -m http.server 18080 --directory /tmp/pilipala-tos &
 # 用 FLORA_TOS_ENDPOINT=http://127.0.0.1:18080 重启 api 后，签名 URL 直接可访问：
 # curl -s "$URL" -o /tmp/fetched.png && xxd -l 8 /tmp/fetched.png
 
 # 5) TOS 故障：不吞冻、不假成功 → 重试 3 次后 dead，钱包冻结额自动退回
-JOB_TOS_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_TOS_FAIL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp8-tos-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_tos_outcome":"unavailable"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 4
-curl -s $API/jobs/$JOB_TOS_FAIL -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_TOS_FAIL -H "pilipala-token: $TOKEN"
 # → status="dead", attempt=3, error_code="PROVIDER_UNAVAILABLE"
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → available 回到扣费前，frozen=0（失败不吞冻）
 ```
 
@@ -572,43 +572,43 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 1) 缺词条回退：查一个不存在的 job → JOB_NOT_FOUND
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN"
 # {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"任务不存在。"}
 
 # 2) Accept-Language 决定语言
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN" -H 'Accept-Language: en-US'
 # {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"The task does not exist."}
 
 # 3) 用户偏好优先于请求头：users.locale='en' 后，不带 Accept-Language 也是英文
-psql -d flora -c "UPDATE users SET locale='en' WHERE username='bob';"
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN"
+psql -d pilipala -c "UPDATE users SET locale='en' WHERE username='bob';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN"
 # → message="The task does not exist."
-psql -d flora -c "UPDATE users SET locale=NULL WHERE username='bob';"   # 还原
+psql -d pilipala -c "UPDATE users SET locale=NULL WHERE username='bob';"   # 还原
 
 # 4) 改词条即时生效：改完直接再 curl，**不要重启 api**
-psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值或换一台机器。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+psql -d pilipala -c "UPDATE i18n_message SET template='账户余额不足，请先充值或换一台机器。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp9-1","capability":"image.generate","model":"demo","params":{}}'
 # {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值或换一台机器。"}
-psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"   # 还原
+psql -d pilipala -c "UPDATE i18n_message SET template='账户余额不足，请先充值。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"   # 还原
 
 # 5) 缺词条回退链：DB(en) → DB(zh) → 内置种子
-psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='en';"
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+psql -d pilipala -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='en';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN" -H 'Accept-Language: en-US'
 # → message="任务不存在。"（DB 里 en 那条没了，回退到 zh 那条）
-psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='zh';"
-curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "flora-token: $TOKEN" -H 'Accept-Language: en-US'
+psql -d pilipala -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='zh';"
+curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN" -H 'Accept-Language: en-US'
 # → message="The task does not exist."（表里两条都没了，回退到内置种子）
 
 # 还原种子
-psql -d flora -c "
+psql -d pilipala -c "
 INSERT INTO i18n_message (key, locale, template) VALUES
   ('JOB_NOT_FOUND', 'zh', '任务不存在。'),
   ('JOB_NOT_FOUND', 'en', 'The task does not exist.')
 ON CONFLICT (key, locale) DO NOTHING;"
 
 # 6) 词条现状
-psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
+psql -d pilipala -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
 ```
 
 ### 11. WP7 前端联调（登录 + 钱包 + 生图闭环）
@@ -623,7 +623,7 @@ WP7 起前端默认走 **托管云端模式**：浏览器只跟 flora 的 `api` 
 | --- | --- | --- |
 | `api` | 8080 | 见第 3 节 |
 | `worker` | 8081 | 见第 3 节，不起 worker job 不会被消费 |
-| 本地 TOS 文件桶 | 18080 | stub 模式的落盘目录 `/tmp/flora-tos` |
+| 本地 TOS 文件桶 | 18080 | stub 模式的落盘目录 `/tmp/pilipala-tos` |
 | Vite dev server | 3000 | `web/` 下 `bun run dev` |
 
 本地桶要带 CORS 头，否则浏览器 `fetch` 签名地址会被拦（前端会退化成直链渲染，
@@ -632,7 +632,7 @@ WP7 起前端默认走 **托管云端模式**：浏览器只跟 flora 的 `api` 
 ```bash
 python3 -c "
 import http.server, os
-os.chdir('/tmp/flora-tos')
+os.chdir('/tmp/pilipala-tos')
 class H(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -642,7 +642,7 @@ http.server.HTTPServer(('127.0.0.1', 18080), H).serve_forever()
 ```
 
 `api` 的 TOS 端点指到它：`FLORA_TOS_MODE=stub`、`FLORA_TOS_ENDPOINT=http://127.0.0.1:18080`、
-`FLORA_TOS_BUCKET=flora-dev`、`FLORA_TOS_LOCAL_DIR=/tmp/flora-tos`（默认值即可）。
+`FLORA_TOS_BUCKET=pilipala-dev`、`FLORA_TOS_LOCAL_DIR=/tmp/pilipala-tos`（默认值即可）。
 
 前端：
 
@@ -659,7 +659,7 @@ Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（`VITE_API_PROX
 
 1. 打开 <http://localhost:3000>，右上角点「登录 / 注册」→ 注册一个账号
    （用户名 `^[a-zA-Z0-9_]{3,32}$`，密码 ≥ 8 位）。成功后顶栏出现 **钱包余额** 与用户名。
-   令牌存 localStorage 的 `flora:auth_token`，请求头名是 `flora-token`。
+   令牌存 localStorage 的 `flora:auth_token`，请求头名是 `pilipala-token`。
 2. 余额不够时生图会被拦：报错是后端返回的本地化短句「账户余额不足，请先充值。」，
    `error_code` 是 `WALLET_INSUFFICIENT`，**不入队也不冻结**。本地加余额只能用第 7 节的运维 SQL。
 3. 余额够时点「开始生成」：前端 `POST /api/v1/jobs/submit` → 每 800ms 轮询
@@ -684,7 +684,7 @@ Vite dev server 会把 `/api` 代理到 `http://localhost:8080`（`VITE_API_PROX
 
 #### 11.3 等价的 curl 验收
 
-前端把令牌放在 localStorage（`flora:auth_token`），请求头是 `flora-token`。
+前端把令牌放在 localStorage（`flora:auth_token`），请求头是 `pilipala-token`。
 用 curl 走同一条链路：
 
 ```bash
@@ -694,19 +694,19 @@ TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 钱包余额（顶栏显示的就是它）
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 
 # submit（params 只放已物化参数：不要塞整张画布或参考图 base64）
-JOB=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp7-1","capability":"image.generate","model":"gpt-image-1","params":{"prompt":"a quiet garden","size":"auto","quality":"auto"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 
 # 轮询 query → result
-curl -s $API/jobs/$JOB -H "flora-token: $TOKEN"
-curl -s $API/jobs/$JOB/result -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB -H "pilipala-token: $TOKEN"
+curl -s $API/jobs/$JOB/result -H "pilipala-token: $TOKEN"
 
 # 取消
-curl -s -X POST $API/jobs/$JOB/cancel -H "flora-token: $TOKEN"
+curl -s -X POST $API/jobs/$JOB/cancel -H "pilipala-token: $TOKEN"
 ```
 
 ### 12. WP10 跨会话 / 换浏览器云端持久化验证
@@ -721,30 +721,30 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # 1) 建云端画布项目
-PROJECT_ID=$(curl -s -X POST $API/projects -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+PROJECT_ID=$(curl -s -X POST $API/projects -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"wp10 画布","canvas_data":{"nodes":[],"connections":[]}}' \
   | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 
 # 2) 存画布快照（每次成功更新 version +1）
-curl -s -X PUT $API/projects/$PROJECT_ID -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X PUT $API/projects/$PROJECT_ID -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"name":"wp10 画布","canvas_data":{"nodes":[{"id":"n1","type":"text","title":"hi","position":{"x":0,"y":0},"width":200,"height":100}],"connections":[]}}'
 # → data.version = 2
 
 # 3) 项目摘要列表：**不含** canvas_data
-curl -s $API/projects -H "flora-token: $TOKEN"
+curl -s $API/projects -H "pilipala-token: $TOKEN"
 
 # 4) 项目详情：含 canvas_data
-curl -s $API/projects/$PROJECT_ID -H "flora-token: $TOKEN"
+curl -s $API/projects/$PROJECT_ID -H "pilipala-token: $TOKEN"
 
 # 5) 云端素材：自动同步已 succeeded 任务的输出，并现签读地址
-curl -s "$API/assets?limit=100" -H "flora-token: $TOKEN"
+curl -s "$API/assets?limit=100" -H "pilipala-token: $TOKEN"
 # → data[].object_key 是对象键，data[].signed_url 是现签地址（库里不落预签名 URL）
 
 # 6) 生图历史（含 prompt、cost_credits、result_urls 与本地化错误）
-curl -s "$API/jobs/history?limit=50" -H "flora-token: $TOKEN"
+curl -s "$API/jobs/history?limit=50" -H "pilipala-token: $TOKEN"
 
 # 7) 越权：另一个用户访问上面的 project_id → PROJECT_NOT_FOUND（不泄露存在性）
-curl -s $API/projects/$PROJECT_ID -H "flora-token: $OTHER_TOKEN"
+curl -s $API/projects/$PROJECT_ID -H "pilipala-token: $OTHER_TOKEN"
 # → {"ok":false,"data":null,"error_code":"PROJECT_NOT_FOUND","message":"..."}
 ```
 
@@ -762,11 +762,11 @@ curl -s $API/projects/$PROJECT_ID -H "flora-token: $OTHER_TOKEN"
 - **C 端充值（WP16）**：`FLORA_PUBLIC_BASE_URL` 由 env 注入（**代码不写死域名**）。**生产**已确认为 `https://pilipala.art`（无尾 `/`），对应 notify
   `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`、return `https://pilipala.art/billing/recharge/result`。
   **本地**可设为 `http://127.0.0.1:5173`（或你的前端 origin）以便 z-pay 回调打到隧道；`FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY` 仅占位，值放本机 env / vault，**不要**入库。创建订单：
-  `curl -H "flora-token: $TOKEN" -H "Content-Type: application/json" \
+  `curl -H "pilipala-token: $TOKEN" -H "Content-Type: application/json" \
   -d '{"package_id":"p10"}' http://127.0.0.1:8080/api/v1/billing/recharge/orders`。
   未配置时创建订单应返回 `VALIDATION_ERROR`。webhook 路径 `/api/v1/billing/recharge/webhook/zpay` 无需登录。
 - **仍可用运维加额**：SQL、`FLORA_BILLING_INITIAL_CREDITS`、Admin `POST /api/v1/admin/wallets/{userId}/topup`。
-- **TOS 默认是 stub**：WP8 默认 `FLORA_TOS_MODE=stub`，结果字节写本地 `/tmp/flora-tos`，
+- **TOS 默认是 stub**：WP8 默认 `FLORA_TOS_MODE=stub`，结果字节写本地 `/tmp/pilipala-tos`，
   不是真的对象存储；配齐真实火山 TOS 桶与 AK/SK 并设 `FLORA_TOS_MODE=http` 才直连线上 TOS。
 - **签名 URL 是短期的**：默认 TTL 900 秒，过期后前端要重新调 `result` 拿新的地址。
 - **钱包不等于钱**：flora credit 是产品内部的计费单位；人民币支付经 WP16 `recharge_order` 换算为 credit 入账。
@@ -811,10 +811,10 @@ M2 之前如果要补 `docker-compose.flora.yml`，必须在 brief 里列出服�
 | flora 后端进程能起吗？ | WP1：`api` / `worker` 骨架 + `/actuator/health` | WP4+ 接任务链路 |
 | 如何登录 flora 账号？ | WP3：`/api/v1/auth/register`、`/login`、`/logout`、`/me`，会话存 Redis；**WP7 前端已有登录/注册弹窗，顶栏显示登录态** | WP7 前端登录页 |
 | 如何提交托管任务？ | WP5：submit → worker 消费 → succeeded / dead 闭环跑通；WP6 起 submit 会先冻结余额，**但仍没有真上游**；WP7 前端生图按钮已接上这条链路 | WP4–WP7 |
-| 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `flora.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
+| 如何看 RabbitMQ 死信？ | WP5：dead 的消息会进 `pilipala.jobs.execute.dlq`，**但没有重投运营台** | WP4 + 以后的 runbook |
 | 如何看余额 / 扣费？ | WP6：`GET /api/v1/wallet` 查余额；submit 先冻结，成功 confirm、失败 / 取消 release；**WP7 顶栏显示余额，生成后自动刷新** | WP7 前端余额展示 |
 | 如何加测试余额？ | WP6：运维 psql 充值 SQL（必须同时写 topup 流水）或 `FLORA_BILLING_INITIAL_CREDITS`；**没有 C 端自助充值接口** | M4 / WP11 admin |
-| 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/flora-tos`**；WP7 前端直接用这个 url 取字节渲染 | WP7 前端直接用 url 展示图片 |
+| 生成结果存在哪、怎么读？ | WP8：结果字节进火山 TOS，`result[].object_key` 是对象键，`result[].url` 是 api 现签的短期预签名地址；**默认是 stub 模式写本地 `/tmp/pilipala-tos`**；WP7 前端直接用这个 url 取字节渲染 | WP7 前端直接用 url 展示图片 |
 | 错误文案在哪改？ | WP9：C 端 `message` 按 locale 查 `i18n_message` 表，运维 psql 改词条即时生效；**没有 Admin 界面**（WP11） | WP11 运营后台 |
 | 前端生图走哪条路？ | WP7：默认 **托管云端模式**，生图走 flora `api`（不直连供应商、不在浏览器存供应商 Key）；「配置 → 渠道」可切回本地直连 | 全能力托管 |
 | 画布 / 素材 / 生成历史存哪？ | WP10：已登录时画布项目、云端素材、生图历史走 `api` 的 `/api/v1/projects`、`/api/v1/assets`、`/api/v1/jobs/history`，换浏览器登录同一账号可见；**未登录时只存本地并标「本地未同步」**；图片字节仍留浏览器本地，库里只存 TOS 对象键 | WP10 云端持久化 |

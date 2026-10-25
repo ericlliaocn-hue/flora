@@ -7,8 +7,8 @@ const LEGACY_AUTH_TOKEN_KEY = "flora:auth_token";
 /** 登录令牌在 localStorage 里的键：只是一个极小配置，允许用 localStorage。 */
 export const PILIPALA_AUTH_TOKEN_KEY = "pilipala:auth_token";
 
-/** Sa-Token 请求头名，与 api 的 sa-token.token-name 默认一致（生产仍为 flora-token；显式配置 PILIPALA_TOKEN_NAME 后再改前端）。 */
-export const PILIPALA_TOKEN_HEADER = "flora-token";
+/** Sa-Token 请求头名，与 api 的 sa-token.token-name 默认一致。 */
+export const PILIPALA_TOKEN_HEADER = "pilipala-token";
 
 export type PilipalaApiEnvelope<T> = {
     ok: boolean;

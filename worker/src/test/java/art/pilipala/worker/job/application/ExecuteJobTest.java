@@ -40,7 +40,7 @@ class ExecuteJobTest {
 
     private TosObjectStorage tosStorage() {
         return new TosObjectStorageAdapter(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing",
-                "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, tempDir.toString()));
+                "pilipala-dev", "pilipala-local-ak", "pilipala-local-sk", 900, 15000, tempDir.toString()));
     }
 
     /** stub 适配器要等 @TempDir 注入后才能建，所以按方法给。 */

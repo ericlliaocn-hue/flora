@@ -157,7 +157,7 @@ class JobControllerSliceTest {
         when(getJobResult.result(eq(USER), eq(JOB_ID), any()))
                 .thenReturn(new JobResultView(JOB_ID.toString(), "succeeded",
                         List.of(new JobOutput("image", "img/a.png",
-                                "http://127.0.0.1:18080/flora-dev/img/a.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Signature=abc")),
+                                "http://127.0.0.1:18080/pilipala-dev/img/a.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Signature=abc")),
                         null, null));
 
         mockMvc.perform(get("/api/v1/jobs/" + JOB_ID + "/result"))
@@ -166,7 +166,7 @@ class JobControllerSliceTest {
                 .andExpect(jsonPath("$.data.outputs[0].type").value("image"))
                 .andExpect(jsonPath("$.data.outputs[0].object_key").value("img/a.png"))
                 .andExpect(jsonPath("$.data.outputs[0].url").value(
-                        "http://127.0.0.1:18080/flora-dev/img/a.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Signature=abc"));
+                        "http://127.0.0.1:18080/pilipala-dev/img/a.png?X-Tos-Algorithm=TOS4-HMAC-SHA256&X-Tos-Signature=abc"));
     }
 
     @Test

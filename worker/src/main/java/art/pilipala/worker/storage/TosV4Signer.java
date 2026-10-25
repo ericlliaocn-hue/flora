@@ -80,7 +80,7 @@ public final class TosV4Signer {
     /**
      * PUT 的 {@code Authorization} 头。
      *
-     * @param canonicalUri    参与签名的 URI 路径，例如 {@code /flora-dev/anytoken/img/x/1.png}
+     * @param canonicalUri    参与签名的 URI 路径，例如 {@code /pilipala-dev/anytoken/img/x/1.png}
      * @param host            参与签名的 host 头（非默认端口要带端口号）
      * @param contentType     内容类型
      * @param contentSha256   请求体的 SHA-256 十六进制

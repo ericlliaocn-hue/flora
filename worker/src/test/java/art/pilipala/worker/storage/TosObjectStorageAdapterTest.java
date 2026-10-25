@@ -24,10 +24,10 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class TosObjectStorageAdapterTest {
 
-    private static final String ACCESS_KEY = "flora-local-ak";
-    private static final String SECRET_KEY = "flora-local-sk";
+    private static final String ACCESS_KEY = "pilipala-local-ak";
+    private static final String SECRET_KEY = "pilipala-local-sk";
     private static final String REGION = "cn-beijing";
-    private static final String BUCKET = "flora-dev";
+    private static final String BUCKET = "pilipala-dev";
     private static final String OBJECT_KEY = "anytoken/img/x/1.png";
 
     @TempDir
@@ -147,9 +147,9 @@ class TosObjectStorageAdapterTest {
     void loopbackEndpointKeepsPathStyle() {
         TosObjectStorageAdapter.TosTarget target = stubAdapter(tempDir).resolveTarget(OBJECT_KEY);
 
-        assertThat(target.targetUri().toString()).isEqualTo("http://127.0.0.1:18080/flora-dev/anytoken/img/x/1.png");
+        assertThat(target.targetUri().toString()).isEqualTo("http://127.0.0.1:18080/pilipala-dev/anytoken/img/x/1.png");
         assertThat(target.hostHeader()).isEqualTo("127.0.0.1:18080");
-        assertThat(target.canonicalUri()).isEqualTo("/flora-dev/anytoken/img/x/1.png");
+        assertThat(target.canonicalUri()).isEqualTo("/pilipala-dev/anytoken/img/x/1.png");
     }
 
     /** 真实火山域名强制 Virtual-Host Style：路径风格会被网关以 403 InvalidPathAccess 拒绝。 */

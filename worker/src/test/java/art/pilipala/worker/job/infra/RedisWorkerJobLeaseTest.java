@@ -20,7 +20,7 @@ import org.springframework.data.redis.core.ValueOperations;
 class RedisWorkerJobLeaseTest {
 
     private final WorkerJobProperties properties =
-            new WorkerJobProperties("flora.jobs", "job.execute", "flora.jobs.execute", "flora.jobs.execute.dlq", 60);
+            new WorkerJobProperties("pilipala.jobs", "job.execute", "pilipala.jobs.execute", "pilipala.jobs.execute.dlq", 60);
 
     @Test
     void acquiresWithJobScopedKeyAndConfiguredTtl() {

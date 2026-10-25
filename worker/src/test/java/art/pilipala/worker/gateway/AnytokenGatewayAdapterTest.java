@@ -88,7 +88,7 @@ class AnytokenGatewayAdapterTest {
 
         assertThat(result.succeeded()).isTrue();
         assertThat(result.outputObjectKeys()).containsExactly("anytoken/img/" + jobId + "/1.png");
-        java.nio.file.Path stored = tempDir.resolve("flora-dev").resolve("anytoken/img/" + jobId + "/1.png");
+        java.nio.file.Path stored = tempDir.resolve("pilipala-dev").resolve("anytoken/img/" + jobId + "/1.png");
         assertThat(stored).exists();
         assertThat(java.nio.file.Files.readAllBytes(stored)).isEqualTo(MinimalPng.BYTES);
     }
@@ -118,7 +118,7 @@ class AnytokenGatewayAdapterTest {
 
             assertThat(result.succeeded()).isTrue();
             assertThat(result.outputObjectKeys()).containsExactly("img/b64.png");
-            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("img/b64.png")))
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("pilipala-dev").resolve("img/b64.png")))
                     .isEqualTo(MinimalPng.BYTES);
             assertThat(result.rawBodyJson()).doesNotContain(base64);
             assertThat(result.rawBodyJson()).contains("omitted base64 image bytes");
@@ -379,7 +379,7 @@ class AnytokenGatewayAdapterTest {
 
             assertThat(result.succeeded()).isTrue();
             assertThat(result.outputObjectKeys()).containsExactly("anytoken/img/" + jobId + "/7.png");
-            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/img/" + jobId + "/7.png")))
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("pilipala-dev").resolve("anytoken/img/" + jobId + "/7.png")))
                     .isEqualTo(MinimalPng.BYTES);
         } finally {
             server.stop(0);
@@ -471,7 +471,7 @@ class AnytokenGatewayAdapterTest {
 
     private TosObjectStorage tosStorage() {
         return new TosObjectStorageAdapter(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing",
-                "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, tempDir.toString()));
+                "pilipala-dev", "pilipala-local-ak", "pilipala-local-sk", 900, 15000, tempDir.toString()));
     }
 
     private AnytokenRequest request(UUID jobId, int attempt, String paramsJson) {
@@ -570,7 +570,7 @@ class AnytokenGatewayAdapterTest {
 
         assertThat(result.succeeded()).isTrue();
         assertThat(result.outputObjectKeys()).containsExactly("anytoken/vid/" + jobId + "/1.mp4");
-        java.nio.file.Path stored = tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/1.mp4");
+        java.nio.file.Path stored = tempDir.resolve("pilipala-dev").resolve("anytoken/vid/" + jobId + "/1.mp4");
         assertThat(stored).exists();
         assertThat(java.nio.file.Files.readAllBytes(stored)).isEqualTo(MinimalMp4.BYTES);
     }
@@ -617,7 +617,7 @@ class AnytokenGatewayAdapterTest {
             assertThat(body.get("duration").asInt()).isEqualTo(8);
             assertThat(body.get("resolution").asText()).isEqualTo("1080p");
 
-            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/2.mp4")))
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("pilipala-dev").resolve("anytoken/vid/" + jobId + "/2.mp4")))
                     .isEqualTo(MinimalMp4.BYTES);
         } finally {
             server.stop(0);
@@ -680,7 +680,7 @@ class AnytokenGatewayAdapterTest {
 
             assertThat(result.succeeded()).isTrue();
             assertThat(result.outputObjectKeys()).containsExactly("anytoken/vid/" + jobId + "/1.mp4");
-            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("flora-dev").resolve("anytoken/vid/" + jobId + "/1.mp4")))
+            assertThat(java.nio.file.Files.readAllBytes(tempDir.resolve("pilipala-dev").resolve("anytoken/vid/" + jobId + "/1.mp4")))
                     .isEqualTo(MinimalMp4.BYTES);
         } finally {
             server.stop(0);

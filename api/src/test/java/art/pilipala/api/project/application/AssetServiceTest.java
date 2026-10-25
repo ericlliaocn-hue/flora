@@ -25,7 +25,7 @@ class AssetServiceTest {
     private final InMemoryJobStore jobs = new InMemoryJobStore();
     private final ObjectMapper mapper = new ObjectMapper();
     private final TosUrlSigner signer = new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing",
-            "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, "/tmp/flora-tos"));
+            "pilipala-dev", "pilipala-local-ak", "pilipala-local-sk", 900, 15000, "/tmp/pilipala-tos"));
     private final AssetService service = new AssetService(store, jobs, signer, mapper);
 
     private final UUID owner = UUID.randomUUID();
@@ -41,7 +41,7 @@ class AssetServiceTest {
         assertThat(assets.get(0).jobId()).isEqualTo(jobId.toString());
         assertThat(assets.get(0).source()).isEqualTo("generated");
         assertThat(assets.get(0).objectKey()).isEqualTo("anytoken/img/" + owner + "/1.png");
-        assertThat(assets.get(0).signedUrl()).startsWith("http://127.0.0.1:18080/flora-dev/anytoken/img/");
+        assertThat(assets.get(0).signedUrl()).startsWith("http://127.0.0.1:18080/pilipala-dev/anytoken/img/");
     }
 
     @Test

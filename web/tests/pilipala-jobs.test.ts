@@ -23,7 +23,7 @@ const { runPilipalaImageJob } = await import("../src/services/api/pilipala-jobs"
 const { PilipalaApiError } = await import("../src/services/api/pilipala-client");
 
 const JOB_ID = "11111111-1111-1111-1111-111111111111";
-const SIGNED_URL = "http://127.0.0.1:18080/flora-dev/anytoken/img/abc/1.png?X-Tos-Signature=abc";
+const SIGNED_URL = "http://127.0.0.1:18080/pilipala-dev/anytoken/img/abc/1.png?X-Tos-Signature=abc";
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 const config = { ...defaultConfig, channelMode: "remote" as const, model: "gpt-image-1", imageModel: "gpt-image-1" };
@@ -81,7 +81,7 @@ test("a managed image job submits, polls and returns the signed image", async ()
 
     const submit = calls.find((call) => call.url === "/api/v1/jobs/submit");
     expect(submit?.method).toBe("POST");
-    expect(submit?.headers["flora-token"]).toBe("test-token");
+    expect(submit?.headers["pilipala-token"]).toBe("test-token");
     expect(submit?.headers["Accept-Language"]).toBeTruthy();
     expect(submit?.headers.Authorization).toBeUndefined();
 

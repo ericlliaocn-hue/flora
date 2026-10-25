@@ -150,14 +150,14 @@ class ProjectControllerSliceTest {
         when(sessions.currentUserId()).thenReturn(USER.toString());
         when(assets.listUserAssets(eq(USER), eq(100))).thenReturn(List.of(new UserAssetView(
                 ASSET_ID.toString(), null, PROJECT_ID.toString(), "generated", "anytoken/img/a/1.png",
-                "http://127.0.0.1:18080/flora-dev/anytoken/img/a/1.png?X-Tos-Signature=abc", "image/png",
+                "http://127.0.0.1:18080/pilipala-dev/anytoken/img/a/1.png?X-Tos-Signature=abc", "image/png",
                 java.time.Instant.parse("2026-10-24T00:10:00Z"))));
 
         mockMvc.perform(get("/api/v1/assets"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].object_key").value("anytoken/img/a/1.png"))
                 .andExpect(jsonPath("$.data[0].signed_url").value(
-                        "http://127.0.0.1:18080/flora-dev/anytoken/img/a/1.png?X-Tos-Signature=abc"))
+                        "http://127.0.0.1:18080/pilipala-dev/anytoken/img/a/1.png?X-Tos-Signature=abc"))
                 .andExpect(jsonPath("$.data[0].source").value("generated"));
     }
 
