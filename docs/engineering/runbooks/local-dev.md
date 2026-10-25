@@ -46,9 +46,9 @@ macOS + Homebrew：
 brew install postgresql@14
 brew services start postgresql@14
 # 建库建号（用你已有的超级用户执行）
-createuser flora
-createdb -O flora flora
-psql -d flora -c "ALTER ROLE flora WITH PASSWORD 'replace-me'"
+createuser pilipala
+createdb -O pilipala pilipala
+psql -d pilipala -c "ALTER ROLE pilipala WITH PASSWORD 'replace-me'"
 
 brew install redis
 brew services start redis
@@ -77,7 +77,7 @@ export FLORA_API_PORT=8080
 export FLORA_TOKEN_NAME=pilipala-token
 export FLORA_TOKEN_TIMEOUT=2592000
 export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/pilipala
-export SPRING_DATASOURCE_USERNAME=flora
+export SPRING_DATASOURCE_USERNAME=pilipala
 export SPRING_DATASOURCE_PASSWORD=replace-me
 export SPRING_DATA_REDIS_HOST=127.0.0.1
 export SPRING_DATA_REDIS_PORT=6379
@@ -315,7 +315,7 @@ curl -s -X POST $API/jobs/submit -H 'Content-Type: application/json' \
 库里能看到 outbox 被投出去（`status` 从 `pending` 变 `sent`）：
 
 ```bash
-psql -d flora -c "SELECT id, aggregate_id, payload, status, sent_at FROM outbox_message ORDER BY created_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT id, aggregate_id, payload, status, sent_at FROM outbox_message ORDER BY created_at DESC LIMIT 5;"
 ```
 
 消息体只有 `job_id` 与传输层 `event_id`，没有 params、没有图片、没有钱包额（ADR 0003）：
@@ -382,8 +382,8 @@ curl -s $API/jobs/$JOB_CANCEL -H "pilipala-token: $TOKEN"
 上游原文只进 `provider_task`，`job_step` 通过 `provider_task_id` 关联：
 
 ```bash
-psql -d flora -c "SELECT job_id, job_step_id, upstream_request_id, raw_status, raw_body FROM provider_task ORDER BY created_at DESC LIMIT 5;"
-psql -d flora -c "SELECT job_id, attempt, status, error_code, provider_task_id FROM job_step ORDER BY started_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT job_id, job_step_id, upstream_request_id, raw_status, raw_body FROM provider_task ORDER BY created_at DESC LIMIT 5;"
+psql -d pilipala -c "SELECT job_id, attempt, status, error_code, provider_task_id FROM job_step ORDER BY started_at DESC LIMIT 5;"
 ```
 
 死信队列里能看到 dead 的消息：
@@ -410,7 +410,7 @@ redis-cli --scan --pattern 'job:lease:*'
 否则余额和流水对不上）：
 
 ```bash
-psql -d flora -c "
+psql -d pilipala -c "
 WITH w AS (
     INSERT INTO wallet (user_id, available, frozen)
     SELECT id, 100, 0 FROM users WHERE username = 'bob'
@@ -442,7 +442,7 @@ curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: a
 # {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}
 
 # 3) 充值 100（上面的 psql），然后用**同一个** idempotency_key 重新提交
-psql -d flora -c "..."   # 见本节开头的充值 SQL
+psql -d pilipala -c "..."   # 见本节开头的充值 SQL
 JOB_OK=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
@@ -489,13 +489,13 @@ curl -s $API/wallet -H "pilipala-token: $TOKEN"             # available 回到�
 对账（三张表 + 流水不变量）：
 
 ```bash
-psql -d flora -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
-psql -d flora -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
-psql -d flora -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
+psql -d pilipala -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
 
 # available == Σ(topup) - Σ(freeze) + Σ(release)
 # frozen    == Σ(freeze) - Σ(confirm) - Σ(release) == Σ(status='frozen' 的 hold.amount)
-psql -d flora -c "
+psql -d pilipala -c "
 SELECT w.available,
        COALESCE(SUM(l.amount) FILTER (WHERE l.type='topup'),0)
      - COALESCE(SUM(l.amount) FILTER (WHERE l.type='freeze'),0)
@@ -580,35 +580,35 @@ curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKE
 # {"ok":false,"data":null,"error_code":"JOB_NOT_FOUND","message":"The task does not exist."}
 
 # 3) 用户偏好优先于请求头：users.locale='en' 后，不带 Accept-Language 也是英文
-psql -d flora -c "UPDATE users SET locale='en' WHERE username='bob';"
+psql -d pilipala -c "UPDATE users SET locale='en' WHERE username='bob';"
 curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN"
 # → message="The task does not exist."
-psql -d flora -c "UPDATE users SET locale=NULL WHERE username='bob';"   # 还原
+psql -d pilipala -c "UPDATE users SET locale=NULL WHERE username='bob';"   # 还原
 
 # 4) 改词条即时生效：改完直接再 curl，**不要重启 api**
-psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值或换一台机器。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"
+psql -d pilipala -c "UPDATE i18n_message SET template='账户余额不足，请先充值或换一台机器。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"
 curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp9-1","capability":"image.generate","model":"demo","params":{}}'
 # {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值或换一台机器。"}
-psql -d flora -c "UPDATE i18n_message SET template='账户余额不足，请先充值。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"   # 还原
+psql -d pilipala -c "UPDATE i18n_message SET template='账户余额不足，请先充值。' WHERE key='WALLET_INSUFFICIENT' AND locale='zh';"   # 还原
 
 # 5) 缺词条回退链：DB(en) → DB(zh) → 内置种子
-psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='en';"
+psql -d pilipala -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='en';"
 curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN" -H 'Accept-Language: en-US'
 # → message="任务不存在。"（DB 里 en 那条没了，回退到 zh 那条）
-psql -d flora -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='zh';"
+psql -d pilipala -c "DELETE FROM i18n_message WHERE key='JOB_NOT_FOUND' AND locale='zh';"
 curl -s $API/jobs/00000000-0000-0000-0000-000000000000 -H "pilipala-token: $TOKEN" -H 'Accept-Language: en-US'
 # → message="The task does not exist."（表里两条都没了，回退到内置种子）
 
 # 还原种子
-psql -d flora -c "
+psql -d pilipala -c "
 INSERT INTO i18n_message (key, locale, template) VALUES
   ('JOB_NOT_FOUND', 'zh', '任务不存在。'),
   ('JOB_NOT_FOUND', 'en', 'The task does not exist.')
 ON CONFLICT (key, locale) DO NOTHING;"
 
 # 6) 词条现状
-psql -d flora -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
+psql -d pilipala -c "SELECT key, locale, template FROM i18n_message ORDER BY key, locale;"
 ```
 
 ### 11. WP7 前端联调（登录 + 钱包 + 生图闭环）
