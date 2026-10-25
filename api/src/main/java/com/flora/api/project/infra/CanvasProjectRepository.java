@@ -7,7 +7,7 @@ import java.util.UUID;
 import com.flora.api.project.domain.CanvasProject;
 
 /**
- * canvas_project 表的存取契约。SQL 只在 {@link JdbcCanvasProjectRepository}。
+ * canvas_project 表的存取契约。SQL 只在 {@link MybatisCanvasProjectRepository}。
  */
 public interface CanvasProjectRepository {
 

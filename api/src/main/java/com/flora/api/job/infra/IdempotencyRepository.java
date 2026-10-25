@@ -6,7 +6,7 @@ import java.util.UUID;
 import com.flora.api.job.domain.IdempotencyRecord;
 
 /**
- * idempotency_record 表的存取契约。实现在 {@link JdbcIdempotencyRepository}。
+ * idempotency_record 表的存取契约。实现在 {@link MybatisIdempotencyRepository}。
  *
  * <p>唯一约束 {@code (user_id, key)}：同 key 重复 submit 返回同一 job_id，
  * 同 key 不同 body → IDEMPOTENCY_CONFLICT。

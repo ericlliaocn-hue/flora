@@ -8,7 +8,7 @@ import com.flora.api.job.domain.Job;
 import com.flora.api.job.domain.JobStatus;
 
 /**
- * job 表的存取契约。Postgres 是权威存储，实现在 {@link JdbcJobRepository}。
+ * job 表的存取契约。Postgres 是权威存储，实现在 {@link MybatisJobRepository}。
  *
  * <p>定义成接口是为了让应用层用例能在没有数据库的情况下被测试：
  * 状态机测试用内存实现 + FakeTransport 覆盖成功 / 重试 / 取消 / dead。

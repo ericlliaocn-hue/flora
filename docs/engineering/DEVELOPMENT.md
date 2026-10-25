@@ -44,7 +44,7 @@ WP12 Seedance 视频生成
   ↓
 WP13 工程文档对齐（MyBatis-Plus + 领域分包；docs-first，不阻塞已合并 WP12）
   ↓
-WP14 MyBatis-Plus 代码迁移（预留；另 brief）
+WP14 MyBatis-Plus 代码迁移（[brief](./feature-briefs/2026-10-25-wp14-mybatis-plus-code-migration.md)）
 WP15 数据分析事件字典与报表口径（docs-first；可与 WP14 并行，不互相阻塞）
 ```
 
@@ -147,12 +147,13 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **不做**：全量 ORM 代码迁移；不改历史 WP0–WP12 brief 正文；不批量 DROP 物理 FK；不改成全局 MVC 目录。
 - **完成**：文档与 ADR 0006 一致；`api/pom.xml` 不再写「不引入 ORM」为目标。
 
-## WP14 — MyBatis-Plus 代码迁移（编号预留）
+## WP14 — MyBatis-Plus 代码迁移
 
 - **里程碑**：工程实现（跨 M）
-- **Brief**：待开（见 WP13「下一步」）；**本编号不分配给分析或其他主题**
-- **做什么**：引入 MyBatis-Plus，按域替换 `Jdbc*Repository` 等（细节以届时 brief 为准）
-- **不做**：与 WP15 分析文档混在同一无 brief 抢号
+- **Brief**：[2026-10-25-wp14-mybatis-plus-code-migration.md](./feature-briefs/2026-10-25-wp14-mybatis-plus-code-migration.md)
+- **做什么**：在 `api` / `worker` 引入 `mybatis-plus-spring-boot3-starter` 3.5.17，按域 `infra` 将 `Jdbc*Repository` 替换为 Mapper + 薄适配；保留钱包 freeze/confirm/release 与 job 乐观状态显式 SQL。
+- **不做**：全局 MVC 三目录；新 Flyway；批量 DROP 物理 FK；WP15 analytics 重写；HTTP/前端变更。
+- **完成**：`mvn -pl api,worker -am test` 通过；main 源码无 `JdbcTemplate` 业务仓储与 `Jdbc*.java`；领域分包不变。
 
 ## WP15 — 数据分析（事件字典 + 报表口径）
 

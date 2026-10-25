@@ -7,7 +7,7 @@ import com.flora.worker.job.domain.WorkerJob;
 import com.flora.worker.job.domain.WorkerJobStatus;
 
 /**
- * job 表的存取契约（worker 侧）。实现在 {@link JdbcWorkerJobRepository}。
+ * job 表的存取契约（worker 侧）。实现在 {@link MybatisWorkerJobRepository}。
  *
  * <p>定义成接口是为了让状态机测试能用内存实现跑，不用连数据库。
  */

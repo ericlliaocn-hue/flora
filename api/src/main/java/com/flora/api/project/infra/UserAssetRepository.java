@@ -7,7 +7,7 @@ import java.util.UUID;
 import com.flora.api.project.domain.UserAsset;
 
 /**
- * user_asset 表的存取契约。SQL 只在 {@link JdbcUserAssetRepository}。
+ * user_asset 表的存取契约。SQL 只在 {@link MybatisUserAssetRepository}。
  */
 public interface UserAssetRepository {
 

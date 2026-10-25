@@ -1,13 +1,9 @@
 package com.flora.api.auth.infra;
 
-import java.sql.Types;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.flora.api.auth.domain.User;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -19,55 +15,29 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class UserRepository {
 
-    private static final String COLUMNS = "id, username, password_hash, locale, created_at, updated_at, role";
+    private final UserMapper mapper;
 
-    private static final RowMapper<User> MAPPER = (rs, rowNum) -> new User(
-            rs.getObject("id", UUID.class),
-            rs.getString("username"),
-            rs.getString("password_hash"),
-            rs.getString("locale"),
-            rs.getTimestamp("created_at").toInstant(),
-            rs.getTimestamp("updated_at").toInstant(),
-            rs.getString("role"));
-
-    private final JdbcTemplate jdbc;
-
-    public UserRepository(JdbcTemplate jdbc) {
-        this.jdbc = jdbc;
+    public UserRepository(UserMapper mapper) {
+        this.mapper = mapper;
     }
 
     public Optional<User> findByUsername(String username) {
-        List<User> rows = jdbc.query("SELECT " + COLUMNS + " FROM users WHERE username = ?", MAPPER, username);
-        return rows.stream().findFirst();
+        return Optional.ofNullable(mapper.findByUsername(username));
     }
 
     public Optional<User> findById(UUID id) {
-        List<User> rows = jdbc.query("SELECT " + COLUMNS + " FROM users WHERE id = ?", MAPPER, id);
-        return rows.stream().findFirst();
+        return Optional.ofNullable(mapper.findById(id));
     }
 
     public boolean existsByUsername(String username) {
-        Integer count = jdbc.queryForObject("SELECT count(*) FROM users WHERE username = ?", Integer.class, username);
-        return count != null && count > 0;
+        return mapper.countByUsername(username) > 0;
     }
 
     /**
      * 插入用户；主键由数据库的 {@code gen_random_uuid()} 默认值生成。
      */
     public User insert(String username, String passwordHash, String locale) {
-        List<User> rows = jdbc.query(
-                "INSERT INTO users (username, password_hash, locale) VALUES (?, ?, ?) RETURNING " + COLUMNS,
-                ps -> {
-                    ps.setString(1, username);
-                    ps.setString(2, passwordHash);
-                    if (locale == null) {
-                        ps.setNull(3, Types.VARCHAR);
-                    } else {
-                        ps.setString(3, locale);
-                    }
-                },
-                MAPPER);
-        return rows.get(0);
+        return mapper.insert(username, passwordHash, locale);
     }
 
     /**
@@ -78,7 +48,6 @@ public class UserRepository {
      * @return 是否真的改了
      */
     public boolean updateRole(UUID id, String role) {
-        int updated = jdbc.update("UPDATE users SET role = ?, updated_at = now() WHERE id = ?", role, id);
-        return updated > 0;
+        return mapper.updateRole(id, role) > 0;
     }
 }

@@ -1,6 +1,13 @@
 server:
   port: ${FLORA_WORKER_PORT:8081}
 
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      table-underline: true
+
 spring:
   application:
     name: flora-worker

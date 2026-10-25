@@ -5,7 +5,7 @@ import java.util.UUID;
 import com.flora.worker.job.domain.WorkerStepStatus;
 
 /**
- * job_step 表的存取契约（worker 侧）。实现在 {@link JdbcWorkerJobStepRepository}。
+ * job_step 表的存取契约（worker 侧）。实现在 {@link MybatisWorkerJobStepRepository}。
  */
 public interface WorkerJobStepRepository {
 
