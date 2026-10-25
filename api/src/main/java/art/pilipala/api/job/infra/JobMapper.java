@@ -1,0 +1,65 @@
+package art.pilipala.api.job.infra;
+
+import java.util.List;
+import java.util.UUID;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
+import art.pilipala.api.job.domain.Job;
+
+@Mapper
+public interface JobMapper {
+
+    String COLS = "id, user_id, status, capability, model, params AS params_json, attempt, max_attempts, "
+            + "hold_id, idempotency_key, cancel_requested_at, error_code, "
+            + "result_object_keys AS result_object_keys_json, created_at, updated_at";
+
+    @Select("INSERT INTO job (user_id, status, capability, model, params, idempotency_key, hold_id) "
+            + "VALUES (#{userId}, 'created', #{capability}, #{model}, #{paramsJson,jdbcType=OTHER}, "
+            + "#{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
+            + "ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING " + COLS)
+    Job insertIfAbsent(
+            @Param("userId") UUID userId,
+            @Param("capability") String capability,
+            @Param("model") String model,
+            @Param("paramsJson") String paramsJson,
+            @Param("idempotencyKey") String idempotencyKey,
+            @Param("holdId") UUID holdId);
+
+    @Select("SELECT " + COLS + " FROM job WHERE id = #{jobId}")
+    Job findById(@Param("jobId") UUID jobId);
+
+    @Select("SELECT " + COLS + " FROM job WHERE id = #{jobId} AND user_id = #{userId}")
+    Job findByIdAndUser(@Param("jobId") UUID jobId, @Param("userId") UUID userId);
+
+    @Select("UPDATE job SET status = 'running', attempt = attempt + 1, updated_at = now() "
+            + "WHERE id = #{jobId} AND status = 'queued' RETURNING " + COLS)
+    Job claim(@Param("jobId") UUID jobId);
+
+    @Update("UPDATE job SET status = #{to}, error_code = #{errorCode}, updated_at = now() "
+            + "WHERE id = #{jobId} AND status = #{from}")
+    int updateStatus(
+            @Param("jobId") UUID jobId,
+            @Param("from") String from,
+            @Param("to") String to,
+            @Param("errorCode") String errorCode);
+
+    @Update("UPDATE job SET result_object_keys = #{resultObjectKeysJson,jdbcType=OTHER}, updated_at = now() "
+            + "WHERE id = #{jobId} AND status = 'running'")
+    int updateResult(@Param("jobId") UUID jobId, @Param("resultObjectKeysJson") String resultObjectKeysJson);
+
+    @Update("UPDATE job SET cancel_requested_at = COALESCE(cancel_requested_at, now()), updated_at = now() WHERE id = #{jobId}")
+    int requestCancel(@Param("jobId") UUID jobId);
+
+    @Select("SELECT " + COLS + " FROM job WHERE user_id = #{userId} ORDER BY created_at DESC LIMIT #{limit}")
+    List<Job> findByUserOrderByCreatedAtDesc(@Param("userId") UUID userId, @Param("limit") int limit);
+
+    @Update("<script>UPDATE job SET status = 'queued', error_code = NULL, cancel_requested_at = NULL, "
+            + "max_attempts = GREATEST(max_attempts, attempt) + 1, updated_at = now() "
+            + "<if test='clearHoldId'>, hold_id = NULL </if>"
+            + "WHERE id = #{jobId} AND status IN ('dead', 'failed')</script>")
+    int requeueForAdmin(@Param("jobId") UUID jobId, @Param("clearHoldId") boolean clearHoldId);
+}

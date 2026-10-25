@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-+ [调整] 全仓库产品品牌由 flora 更名为 **pilipala**（官网 https://pilipala.art）：前端文案与 i18n、npm `pilipala`、Java `com.pilipala` / `pilipala-*` 构件（打包 jar 仍为 `flora-api.jar` / `flora-worker.jar`）、`pilipala.*` 配置前缀、`PILIPALA_*` 环境变量（仍回读 `FLORA_*`）、`pilipala:` localStorage 键（启动时从 `flora:` 迁移）；导出包 `app` 为 pilipala（仍接受旧 flora 包）。**未设 env 时** Rabbit 拓扑默认仍为 `flora.jobs*`，Sa-Token 默认仍为 `flora-token`，TOS 未配置 bucket 默认仍为 `flora-dev`。Postgres 默认库名/账号仍为 `flora`；GitHub 仓库名未改。
++ [调整] 完成 Java 后端命名切换：包名 `com.pilipala` → `art.pilipala`（源码、测试、MyBatis `@MapperScan`、日志包名），Maven `groupId` 对齐为 `art.pilipala`，可执行 jar 产出 `pilipala-api.jar` / `pilipala-worker.jar`（替代 `flora-api.jar` / `flora-worker.jar`）。部署时需在主机上把 systemd `ExecStart` 中的 jar 路径改为新文件名（`/etc/systemd/system/flora-*.service` 的 unit 名可暂不改）。Rabbit/Sa-Token/TOS 等未设 env 时的运行时默认值未改。
++ [调整] 全仓库产品品牌由 flora 更名为 **pilipala**（官网 https://pilipala.art）：前端文案与 i18n、npm `pilipala`、Java `com.pilipala` / `pilipala-*` 构件（当时打包 jar 仍为 `flora-api.jar` / `flora-worker.jar`）、`pilipala.*` 配置前缀、`PILIPALA_*` 环境变量（仍回读 `FLORA_*`）、`pilipala:` localStorage 键（启动时从 `flora:` 迁移）；导出包 `app` 为 pilipala（仍接受旧 flora 包）。**未设 env 时** Rabbit 拓扑默认仍为 `flora.jobs*`，Sa-Token 默认仍为 `flora-token`，TOS 未配置 bucket 默认仍为 `flora-dev`。Postgres 默认库名/账号仍为 `flora`；GitHub 仓库名未改。
 + [调整] Studio 首页对齐 LibTV 节奏：压缩 Hero 高度；最近项目/特色功能标题与卡片强化（大插图、角标）；能力精选桌面固定一行 4 张大卡片（16:9）。
 + [调整] Studio 首页：活动条倒计时改为可配置截止时间的真实秒级倒计时（过期自动隐藏）；Hero/能力行/区块间距加大；能力精选栅格放宽至宽屏多列并采用偏横向卡片比例。
 + [调整] Studio 首页视觉贴近 LibTV：方形 Hero 新建按钮、图标能力行、青绿活动条与圆角顶栏、最近项目横滑与能力亮点卡片、能力精选栅格与搜索筛选；侧栏底部改为版本与预付费提示。

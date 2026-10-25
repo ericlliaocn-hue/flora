@@ -1,7 +1,7 @@
 # 本地 profile：只放非密钥的开发默认值。
 logging:
   level:
-    com.pilipala: DEBUG
+    art.pilipala: DEBUG
 
 spring:
   datasource:
