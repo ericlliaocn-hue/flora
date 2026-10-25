@@ -16,8 +16,6 @@ type StudioPromoStripProps = {
 export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
     const { t } = useTranslation();
     const countdown = usePromoCountdown(STUDIO_PROMO_END_MS);
-
-    if (!PROMO_STRIP_ENABLED) return null;
     const [visible, setVisible] = useState(() => {
         try {
             return localStorage.getItem(STORAGE_KEY) !== "1";
@@ -26,7 +24,7 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
         }
     });
 
-    if (!visible || countdown.expired) return null;
+    if (!PROMO_STRIP_ENABLED || !visible || countdown.expired) return null;
 
     return (
         <div
