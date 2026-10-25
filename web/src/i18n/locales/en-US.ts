@@ -426,6 +426,7 @@ export default {
             copy: "Top up for extra canvas compute",
             cta: "Top up",
             dismiss: "Dismiss",
+            countdownLabel: "{{days}} days, {{hours}} hours, {{minutes}} minutes, {{seconds}} seconds remaining",
         },
         recharge: {
             unavailable: "Top-up packages are not available right now.",

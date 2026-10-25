@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 
+import { STUDIO_PROMO_END_MS } from "@/constant/studio-promo";
+import { formatCountdownUnit, usePromoCountdown } from "@/hooks/use-promo-countdown";
+
 const STORAGE_KEY = "flora:studio-promo-dismissed:v1";
 
 type StudioPromoStripProps = {
@@ -10,6 +13,7 @@ type StudioPromoStripProps = {
 
 export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
     const { t } = useTranslation();
+    const countdown = usePromoCountdown(STUDIO_PROMO_END_MS);
     const [visible, setVisible] = useState(() => {
         try {
             return localStorage.getItem(STORAGE_KEY) !== "1";
@@ -18,7 +22,7 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
         }
     });
 
-    if (!visible) return null;
+    if (!visible || countdown.expired) return null;
 
     return (
         <div
@@ -28,15 +32,21 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
         >
             <div
                 className="inline-flex items-center gap-1 rounded-full border border-[#3d9a94]/35 bg-[#062424]/80 px-2.5 py-1 font-semibold tabular-nums tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                aria-hidden="true"
+                aria-live="polite"
+                aria-label={t("studio.promo.countdownLabel", {
+                    days: countdown.days,
+                    hours: countdown.hours,
+                    minutes: countdown.minutes,
+                    seconds: countdown.seconds,
+                })}
             >
-                <TimerBox value="02" />
+                <TimerBox value={formatCountdownUnit(countdown.days)} />
                 <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value="14" />
+                <TimerBox value={formatCountdownUnit(countdown.hours)} />
                 <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value="36" />
+                <TimerBox value={formatCountdownUnit(countdown.minutes)} />
                 <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value="08" />
+                <TimerBox value={formatCountdownUnit(countdown.seconds)} />
             </div>
             <p className="hidden text-[12.5px] sm:block">
                 <strong className="font-semibold text-white">{t("studio.promo.title")}</strong>
