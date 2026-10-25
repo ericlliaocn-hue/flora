@@ -2,6 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-10-23
+- 持久化细节以 [ADR 0006](./0006-mybatis-plus-persistence.md) 为准。
 
 ## 背景（Context）
 
@@ -14,6 +15,7 @@
 - 业务 API 进程使用 **Java 21 + Spring Boot 3**。
 - 认证使用 **Sa-Token**。
 - 持久化 **PostgreSQL**，缓存 **Redis**，对象存储 **火山 TOS**。
+- 持久化访问框架：**MyBatis-Plus**（详见 [ADR 0006](./0006-mybatis-plus-persistence.md)）。早期 JdbcTemplate 实现视为过渡，不得再写成 stage-1 最终冻结。
 - Worker 同属 JVM（独立进程），便于复用仓储与 Anytoken 客户端，但 **进程分离**，不把执行循环塞进 API 请求线程。
 - 前端保持 TypeScript，不把业务账本写回 Node。
 
@@ -23,4 +25,5 @@
 - 正向：api 与 worker 可共享少量 kernel 模块（实体、状态枚举），但不可共享 canvas 或 web 代码。
 - 代价：仓库将变成多语言。CI、本地启动、密钥管理都要比纯前端复杂。见 [runbooks/local-dev.md](../runbooks/local-dev.md) 的缺口。
 - 代价：Minimax / agent 改 Java 时必须遵守分层，不能因为「Spring 习惯」就堆一个 `*CenterService`。
+- 代价：实现须落在领域包的 `infra`，禁止借 Spring 习惯堆全局 `*CenterService` 或全局 mapper 包。
 - 不在 stage-1 用 Kotlin 重写，不在 stage-1 用 Nest/Go 并行做第二业务 API。

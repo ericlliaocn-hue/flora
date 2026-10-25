@@ -2,6 +2,8 @@
 
 flora 只做 **预付费钱包**。Anytoken 侧额度是公司成本，不映射成用户账本。
 
+> 用户余额**只**存在于 `wallet`（及变动流水 `wallet_ledger`）。`users` 表不得镜像余额。
+
 字段级由 [WP2 brief](../feature-briefs/2026-10-24-wp2-phase1-schema.md) 锁定。本页是 **实现者的照抄源**：列名、类型、约束以本页为准。
 
 - 权威存储：PostgreSQL。
@@ -32,6 +34,8 @@ job cancelled / dead / 不再重试的失败 → release（解冻）
 - 在 Anytoken 再记一笔用户额度并与钱包对账双写
 
 ## `wallet`
+
+余额字段只在本表；与 [data-model/README.md](./README.md) 前向外键策略一致：文档中的 `FK →` 为逻辑关联 + 索引；存量迁移里已有的物理 FK 保留，不在 WP13 批量拆除。
 
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -93,6 +97,8 @@ job cancelled / dead / 不再重试的失败 → release（解冻）
 ## 充值
 
 M2 可以用运维脚本 / SQL 加 `available`，但**必须同时记一笔 `wallet_ledger`（`type=topup`）**。C 端自助充值与支付渠道不是 M2 退出条件。M4 admin 提供有限加额。
+
+> 未来 C 端/支付渠道充值：`recharge_order`（名待定）与微信/支付宝等适配代码均属 **billing** 域；回调验签、订单状态机、入账 `topup` 流水在 billing 内闭环。`auth` 只提供已认证 `user_id`，不实现支付。
 
 ## 与其它域的接口
 
