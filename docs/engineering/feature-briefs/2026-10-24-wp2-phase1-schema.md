@@ -1,7 +1,7 @@
 # Feature brief：WP2 阶段 1 表/字段级 Schema 文档
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP2 / M1
 - 状态：已实现，待验收
 
@@ -40,7 +40,7 @@ WP0 白标与 WP1 API/worker 空骨架之后，仓内已有 **概念级** 数据
 3. Billing 域表字段定稿：`wallet` / `wallet_hold` / `wallet_ledger`（单账本；freeze / confirm / release）。
 4. Gateway 内部 DTO（submit / query / result / cancel）字段名、类型、必填、规范化说明写死；强调 thin hop，不是 Anytoken 协议拷贝。
 5. 错误模型定稿：C 端字段 vs ops 字段；预留 `error_code` 表；`i18n_message` 列级 schema。
-6. 声明 flora 的「lease」等价物：Postgres **不建** lease 表；worker 领取靠 `status=running` + Redis 短锁（键约定写入 jobs.md）。
+6. 声明 pilipala 的「lease」等价物：Postgres **不建** lease 表；worker 领取靠 `status=running` + Redis 短锁（键约定写入 jobs.md）。
 7. 新增本 brief 落盘，并更新 [feature-briefs/README.md](./README.md) 索引行。
 
 上述全部是 Markdown；零 `.java` / `.sql` / Flyway / `web/` 业务改动。
@@ -81,7 +81,7 @@ WP0 白标与 WP1 API/worker 空骨架之后，仓内已有 **概念级** 数据
 
 - PostgreSQL；PK 默认 UUID + `gen_random_uuid()`
 - 时间一律 `TIMESTAMPTZ`
-- 金额一律 `BIGINT`（flora credit 整数，禁止 float）
+- 金额一律 `BIGINT`（pilipala credit 整数，禁止 float）
 - 字符串枚举存 `TEXT` + `CHECK`（或实现 WP 再用 PG enum，文档先写允许值）
 - JSON 用 `JSONB`
 
@@ -95,7 +95,7 @@ WP0 白标与 WP1 API/worker 空骨架之后，仓内已有 **概念级** 数据
 | `user_id` | UUID | NO | IDX (`user_id`, `created_at` DESC) | 提交者；FK → `users.id`（users 表 WP3 建） |
 | `status` | TEXT | NO | CHECK ∈ 下表枚举；IDX (`status`, `updated_at`) | 状态机权威 |
 | `capability` | TEXT | NO | | 如 `image.generate` |
-| `model` | TEXT | NO | | flora 内部模型名 |
+| `model` | TEXT | NO | | pilipala 内部模型名 |
 | `params` | JSONB | NO | | 入队前已物化；worker 不回源画布 |
 | `attempt` | INT | NO | DEFAULT 0；CHECK >= 0 | 已开始的 attempt 数 |
 | `max_attempts` | INT | NO | DEFAULT 3；CHECK >= 1 | 默认 3；实现 WP 不得静默改默认，除非改本文档 |
@@ -276,7 +276,7 @@ created → queued → running → succeeded
 
 ### 规范化规则（必须写进正文）
 
-- flora 内部字段名 ≠ Anytoken 字段名；映射只发生在 gateway 适配层。
+- pilipala 内部字段名 ≠ Anytoken 字段名；映射只发生在 gateway 适配层。
 - `message` 只来自 `i18n_message` 模板，禁止填上游字符串。
 - Worker → Anytoken 的 HTTP 不是本合同的一部分。
 

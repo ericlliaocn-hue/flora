@@ -183,7 +183,7 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
      *   <li>{@code GET /v1/videos/{taskId}/content} 下载视频字节，写进火山 TOS。</li>
      * </ol>
      *
-     * <p>视频分组用独立 Key（{@code FLORA_GATEWAY_VIDEO_API_KEY}），与生图互不影响。
+     * <p>视频分组用独立 Key（{@code PILIPALA_GATEWAY_VIDEO_API_KEY}），与生图互不影响。
      */
     private AnytokenAttemptResult httpVideo(AnytokenRequest request) {
         String key = properties.apiKeyForCapability(request.capability());
@@ -306,7 +306,7 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
      * Seedance 提交体：只带视频协议自己的字段。
      *
      * <p>**绝不**往上游报文里塞 {@code job_id} / {@code attempt} / {@code capability} 这类
-     * flora 内部字段：实测 Anytoken 看到 {@code capability} 会把请求路由到 xAI 上游，
+     * pilipala 内部字段：实测 Anytoken 看到 {@code capability} 会把请求路由到 xAI 上游，
      * 直接返回 400（"xAI upstream returned status 400"）。任务身份靠
      * {@code Idempotency-Key: {jobId}:{attempt}} 头带，权威记录在
      * {@code job} / {@code job_step} / {@code provider_task} 表里。
@@ -409,9 +409,9 @@ public class AnytokenGatewayAdapter implements AnytokenGateway {
     }
 
     /**
-     * 上游失败码：只认 flora 已登记的码，其余一律用兜底码。
+     * 上游失败码：只认 pilipala 已登记的码，其余一律用兜底码。
      *
-     * <p>上游自己的错误码不能直接进 {@code job.error_code}：error_code 是 flora 的对外合同，
+     * <p>上游自己的错误码不能直接进 {@code job.error_code}：error_code 是 pilipala 的对外合同，
      * 上游原文与它的错误码只留在 raw_body 里给运维看（ADR 0005）。
      */
     private static String extractErrorCode(JsonNode node, String fallback) {

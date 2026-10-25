@@ -7,7 +7,7 @@
 
 qingfeng 参考实现里，`TaskCenterService` 约 3k 行，`CanvasAgentProductionService` 约 5k 行。Worker 会去拉画布与创作上下文，适配器还成双。这种结构短期能出功能，随后任何「加一个模型 / 加一种失败」都要在同一堆里改，审查无法对照 brief。
 
-flora 的 worker 只做一件事：把已编排好的 job 执行完。画布怎么选参考图、怎么计价、怎么对用户说话，不属于执行进程。
+pilipala 的 worker 只做一件事：把已编排好的 job 执行完。画布怎么选参考图、怎么计价、怎么对用户说话，不属于执行进程。
 
 ## 决策（Decision）
 

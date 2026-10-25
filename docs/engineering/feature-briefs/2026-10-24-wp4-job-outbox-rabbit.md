@@ -1,7 +1,7 @@
 # Feature brief：WP4 Job 状态机、Outbox、RabbitMQ
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP4 / M1
 - 状态：已确认（待实现）
 
@@ -11,7 +11,7 @@
 
 ## 背景
 
-WP0–WP3 已合入 main（当前含 WP3：`users` + Sa-Token + Flyway `V1__create_users.sql` + Redis 会话 + `/api/v1/**` 闸门）。`api` 已有 `com.flora.api.job` 空包与 `package-info`；`/api/v1/jobs/**` 已被 `AuthPathPolicy` 保护（无 token → `UNAUTHORIZED`；有 token 尚无控制器 → 404）。
+WP0–WP3 已合入 main（当前含 WP3：`users` + Sa-Token + Flyway `V1__create_users.sql` + Redis 会话 + `/api/v1/**` 闸门）。`api` 已有 `art.pilipala.api.job` 空包与 `package-info`；`/api/v1/jobs/**` 已被 `AuthPathPolicy` 保护（无 token → `UNAUTHORIZED`；有 token 尚无控制器 → 404）。
 
 [DEVELOPMENT.md](../DEVELOPMENT.md) WP4：
 
@@ -50,7 +50,7 @@ WP1 曾 **刻意不引** `spring-boot-starter-amqp`，避免 worker 无 broker �
 | Transport | 接口 `JobMessageTransport`（或同名）；实现：RabbitJobTransport + FakeJobTransport（测试）。换 Transport 不改状态枚举 |
 | amqp 依赖 | 只加在 api/pom.xml：`spring-boot-starter-amqp`。worker/pom.xml 不加 |
 | api 与 broker | 本 WP 起 api 本地需要 Postgres + Redis + RabbitMQ（outbox dispatcher 投递）。actuator：对 rabbit 健康检查，broker 未起则 api health 可为 DOWN——诚实写进 runbook；不要给 worker 加 rabbit 健康检查 |
-| 领取 / lease | 权威在 Postgres（queued → running + attempt++）；短锁 Redis `SET job:lease:{job_id} {worker_id} NX EX {seconds}`，默认 TTL 60，环境变量 `FLORA_JOB_LEASE_TTL_SECONDS`；禁止拍脑袋改默认且不写文档 |
+| 领取 / lease | 权威在 Postgres（queued → running + attempt++）；短锁 Redis `SET job:lease:{job_id} {worker_id} NX EX {seconds}`，默认 TTL 60，环境变量 `PILIPALA_JOB_LEASE_TTL_SECONDS`；禁止拍脑袋改默认且不写文档 |
 | 谁领取 | 本 WP 提供 api 侧 ClaimJob（或等价应用服务）+ 测试内 FakeWorkerDriver 调用它。不在本 WP 让 worker 进程消费；WP5 再接消费者调同一服务合同 |
 | max_attempts | 默认 3（与 jobs.md 一致）；禁止静默改默认 |
 | 重试可见态 | 失败后：先写 job.status=failed（中间可见），若 attempt < max_attempts 则同事务或紧随迁回 queued 并再写 outbox；对 query：允许短暂看到 failed 或已回 queued——实现选一种，PR / 测试写死并验收 |
@@ -71,7 +71,7 @@ WP1 曾 **刻意不引** `spring-boot-starter-amqp`，避免 worker 无 broker �
 - Anytoken 客户端、provider_task 表与原文入库（WP5）
 - worker 进程真实 `@RabbitListener` 消费与 ack/nack 策略细节的生产化（WP5；本 WP 只在 api 测 FakeTransport + FakeWorkerDriver）
 - TOS 上传与签名 URL（WP8）
-- 前端改打 flora API（WP7）
+- 前端改打 pilipala API（WP7）
 - i18n_message 表与运营改文案（WP9）
 - 超时扫回收 running 孤儿的完整运维策略（可留接口/TODO；若做最小扫，默认阈值必须写进本 brief——见「留给实现者」）
 - 多队列 / 按 capability 分 routing（禁止在 job 表写 queue；Transport 配置可先单队列）
@@ -101,10 +101,10 @@ WP1 曾 **刻意不引** `spring-boot-starter-amqp`，避免 worker 无 broker �
 | `api/src/main/resources/db/migration/V2__create_job_domain.sql` | 四表 + 索引 + CHECK |
 | `api/src/main/resources/application.yml` | RabbitMQ `${ENV:}`、outbox 轮询间隔、lease TTL、exchange/queue Transport 配置（不是领域列） |
 | `api/src/main/resources/application-local.yml` | 本地非密钥默认（localhost broker）；禁止真实密码 |
-| `api/src/main/java/com/flora/api/job/**` | web / application / domain / infra（仓储、状态机、outbox、transport、lease、错误文案） |
-| `api/src/main/java/com/flora/api/common/ErrorCodes.java` | 追加本 WP 启用的已登记码常量（名称必须与 errors.md 一致） |
-| `api/src/main/java/com/flora/api/job/package-info.java` | 更新 WP 注释 |
-| `api/src/test/java/com/flora/api/job/**` | 状态机 + 幂等 + outbox/FakeTransport + API 切片测试 |
+| `api/src/main/java/com/pilipala/api/job/**` | web / application / domain / infra（仓储、状态机、outbox、transport、lease、错误文案） |
+| `api/src/main/java/com/pilipala/api/common/ErrorCodes.java` | 追加本 WP 启用的已登记码常量（名称必须与 errors.md 一致） |
+| `api/src/main/java/com/pilipala/api/job/package-info.java` | 更新 WP 注释 |
+| `api/src/test/java/com/pilipala/api/job/**` | 状态机 + 幂等 + outbox/FakeTransport + API 切片测试 |
 | `docker-compose.deps.yml` | 追加 RabbitMQ 服务（仍不是全家桶）；密码/默认用户走环境变量或官方默认 guest 仅本地并在 runbook 标明 |
 | `docs/engineering/runbooks/local-dev.md` | WP4 启动、Rabbit、curl、Fake vs 真 broker 说明；更新「api 依赖」表 |
 | `docs/engineering/data-model/README.md` | job 四表「首次落地」可标「WP4 已落地」并链到本 brief（不要改列定义） |
@@ -114,7 +114,7 @@ WP1 曾 **刻意不引** `spring-boot-starter-amqp`，避免 worker 无 broker �
 ### 建议 Java 包（可微调命名，职责必须拆开，禁止上帝类）
 
 ```
-com.flora.api.job
+art.pilipala.api.job
   web/           JobController, JobExceptionHandler（或复用/扩展公共异常 → 信封）
   application/   SubmitJob, GetJob, GetJobResult, CancelJob, ClaimJob,
                  RecordAttemptResult（成功/失败/死信迁移）, OutboxDispatchTick
@@ -138,7 +138,7 @@ com.flora.api.job
 - 在 `job` 表增加 `queue_name` / `routing_key` / `amqp_*` / Anytoken user id / raw message
 - Postgres `job_lease` 表
 - TOS / STS / 签名 URL
-- 前端 `web/`、登录页、改打 flora API
+- 前端 `web/`、登录页、改打 pilipala API
 - Admin、RBAC、DLQ 运营台
 - 新建未在 errors.md 登记的 `error_code`
 - 提前建 `i18n_message` 表
@@ -222,7 +222,7 @@ com.flora.api.job
 { "ok": true, "data": {}, "error_code": null, "message": null }
 ```
 
-认证：除注明外，全部需要有效 flora-token 头（WP3 闸门已覆盖 `/api/v1/jobs/**`）。`user_id` 只从会话取，禁止信任请求体里的 user id。
+认证：除注明外，全部需要有效 pilipala-token 头（WP3 闸门已覆盖 `/api/v1/jobs/**`）。`user_id` 只从会话取，禁止信任请求体里的 user id。
 
 ### `POST /api/v1/jobs/submit`
 
@@ -336,11 +336,11 @@ Transport 配置建议默认（可经 env 覆盖，写入 yml + runbook）：
 
 | 项 | 建议默认 |
 | --- | --- |
-| exchange | `flora.jobs`（topic 或 direct，实现选一种写死） |
+| exchange | `pilipala.jobs`（topic 或 direct，实现选一种写死） |
 | routing key | `job.execute` |
-| queue | `flora.jobs.execute` |
-| DLQ | `flora.jobs.execute.dlq` |
-| outbox 轮询 | 每 `FLORA_OUTBOX_POLL_MS`（默认 500）扫一批 pending |
+| queue | `pilipala.jobs.execute` |
+| DLQ | `pilipala.jobs.execute.dlq` |
+| outbox 轮询 | 每 `PILIPALA_OUTBOX_POLL_MS`（默认 500）扫一批 pending |
 
 这些名字 **只** 存在于配置与 Rabbit 声明，禁止写入 job 行。
 
@@ -373,7 +373,7 @@ Transport 配置建议默认（可经 env 覆盖，写入 yml + runbook）：
 
 - 不在本任务证明真生图或 Anytoken 连通
 - 不在本任务扣费 / 充值
-- 不把「能 submit」写成「托管 flora 已可用」
+- 不把「能 submit」写成「托管 pilipala 已可用」
 - Admin / 运营改 DLQ 不是本任务
 
 ## 给 Minimax 的额外约束
@@ -421,11 +421,11 @@ git push -u origin feat/wp4-job-outbox-rabbit
 
 ```bash
 # 继承 WP3
-export FLORA_API_PORT=8080
-export FLORA_TOKEN_NAME=flora-token
-export FLORA_TOKEN_TIMEOUT=2592000
-export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/flora
-export SPRING_DATASOURCE_USERNAME=flora
+export PILIPALA_API_PORT=8080
+export PILIPALA_TOKEN_NAME=pilipala-token
+export PILIPALA_TOKEN_TIMEOUT=2592000
+export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/pilipala
+export SPRING_DATASOURCE_USERNAME=pilipala
 export SPRING_DATASOURCE_PASSWORD=replace-me
 export SPRING_DATA_REDIS_HOST=127.0.0.1
 export SPRING_DATA_REDIS_PORT=6379
@@ -435,8 +435,8 @@ export SPRING_RABBITMQ_HOST=127.0.0.1
 export SPRING_RABBITMQ_PORT=5672
 export SPRING_RABBITMQ_USERNAME=guest
 export SPRING_RABBITMQ_PASSWORD=guest
-export FLORA_JOB_LEASE_TTL_SECONDS=60
-export FLORA_OUTBOX_POLL_MS=500
+export PILIPALA_JOB_LEASE_TTL_SECONDS=60
+export PILIPALA_OUTBOX_POLL_MS=500
 ```
 
 ## curl 验收草稿（实现者可微调，须写进 runbook）
@@ -448,12 +448,12 @@ TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 
 # submit
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"k1","capability":"image.generate","model":"demo","params":{"prompt":"hi"}}'
 # → ok=true, data.job_id, data.status=queued, data.hold_id=null
 
 # query
-curl -s $API/jobs/$JOB_ID -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_ID -H "pilipala-token: $TOKEN"
 
 # 无 token
 curl -s -X POST $API/jobs/submit -H 'Content-Type: application/json' \
@@ -461,7 +461,7 @@ curl -s -X POST $API/jobs/submit -H 'Content-Type: application/json' \
 # → ok=false, error_code=UNAUTHORIZED
 
 # cancel
-curl -s -X POST $API/jobs/$JOB_ID/cancel -H "flora-token: $TOKEN"
+curl -s -X POST $API/jobs/$JOB_ID/cancel -H "pilipala-token: $TOKEN"
 ```
 
 成功 / 重试 / dead 的完整路径以自动化测试为主；runbook 可注明「claim/succeed 由测试 FakeWorkerDriver 驱动，WP5 前不要指望 worker 进程改状态」。

@@ -24,4 +24,4 @@ spring:
 
 pilipala:
   gateway:
-    base-url: ${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
+    base-url: ${PILIPALA_GATEWAY_BASE_URL:http://127.0.0.1:18080}

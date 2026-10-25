@@ -41,7 +41,7 @@ function localPluginsManifest(): Plugin {
 export default defineConfig({
     base: process.env.VITE_BASE || "/",
     plugins: [react(), localPluginsManifest()],
-    // flora 后端网关：开发时把 /api 转发到本地 api，避免跨域与硬编码后端地址。
+    // pilipala 后端网关：开发时把 /api 转发到本地 api，避免跨域与硬编码后端地址。
     server: {
         proxy: {
             "/api": {

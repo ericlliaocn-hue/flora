@@ -624,7 +624,7 @@ export default {
             newName: "New provider",
             indexedName: "Provider {{index}}",
             mode: "Generation route",
-            modeRemote: "Flora managed cloud (recommended)",
+            modeRemote: "Pilipala managed cloud (recommended)",
             modeRemoteDescription: "Generate through the pilipala backend gateway (/api/v1/jobs/submit) and the prepaid wallet. No provider API key in the browser.",
             modeLocal: "Local direct debugging",
             modeLocalDescription: "The browser calls your own provider channels directly. No wallet, no billing. Enable it only for local debugging.",

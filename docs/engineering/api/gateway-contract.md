@@ -2,7 +2,7 @@
 
 以下是 stage-1 内部 DTO 语义。JSON 字段名一律 **snake_case**。
 
-这是 flora 自己的合同，**不是** Anytoken 协议，也不是 OpenAI 兼容表面。实现时可加信封（`data` / `error`），但下面的业务字段不能被 Anytoken 字段名替换。
+这是 pilipala 自己的合同，**不是** Anytoken 协议，也不是 OpenAI 兼容表面。实现时可加信封（`data` / `error`），但下面的业务字段不能被 Anytoken 字段名替换。
 
 字段级由 [WP2 brief](../feature-briefs/2026-10-24-wp2-phase1-schema.md) 锁定。
 
@@ -36,7 +36,7 @@
 | --- | --- | --- | --- |
 | `idempotency_key` | string | 是 | 同一用户重复提交返回同一 job |
 | `capability` | string | 是 | 如 `image.generate` |
-| `model` | string | 是 | flora 内部模型标识 |
+| `model` | string | 是 | pilipala 内部模型标识 |
 | `params` | object | 是 | 已物化参数（prompt、尺寸、引用的对象键等）。不要传整张画布文档 |
 | `client_job_id` | string | 否 | 若提供，仅作客户端追踪，权威 id 仍由服务端返回 |
 
@@ -148,9 +148,9 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 
 ### 充值（WP16，z-pay 支付宝）
 
-环境变量（**禁止**把真实商户密钥写入仓库）：`FLORA_PUBLIC_BASE_URL`（无尾 `/`，经 env 注入、代码不写死）、`FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`、可选 `FLORA_ZPAY_CID`（默认 `12540`）、`FLORA_ZPAY_API_BASE`（默认 `https://api.z-pay.cn`）。缺配置时 **创建订单** 返回 `VALIDATION_ERROR`。
+环境变量（**禁止**把真实商户密钥写入仓库）：`PILIPALA_PUBLIC_BASE_URL`（无尾 `/`，经 env 注入、代码不写死）、`PILIPALA_ZPAY_PID`、`PILIPALA_ZPAY_PKEY`、可选 `PILIPALA_ZPAY_CID`（默认 `12540`）、`PILIPALA_ZPAY_API_BASE`（默认 `https://api.z-pay.cn`）。缺配置时 **创建订单** 返回 `VALIDATION_ERROR`。
 
-**生产（已确认）**：`FLORA_PUBLIC_BASE_URL=https://pilipala.art`。
+**生产（已确认）**：`PILIPALA_PUBLIC_BASE_URL=https://pilipala.art`。
 
 | 方法 | 路径 | 鉴权 | 说明 |
 | --- | --- | --- | --- |
@@ -159,7 +159,7 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 | GET | `/api/v1/billing/recharge/orders/{outTradeNo}` | 登录、本人 | `pending_pay` 时可触发一次查单补单（限流） |
 | GET/POST | `/api/v1/billing/recharge/webhook/zpay` | 匿名 | 验签成功入账后 HTTP 200，body **恰好** `success`（纯文本）；失败 400 |
 
-`notify_url` = `{FLORA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay`；`return_url` = `{FLORA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不入账）。生产示例：notify `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`，return `https://pilipala.art/billing/recharge/result`。
+`notify_url` = `{PILIPALA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay`；`return_url` = `{PILIPALA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不入账）。生产示例：notify `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`，return `https://pilipala.art/billing/recharge/result`。
 
 Admin：`GET /api/v1/admin/billing/recharge-orders`；`POST /api/v1/admin/billing/recharge-orders/{id}/refund`（全额退，`paid` 且余额足够扣回）。
 
@@ -327,7 +327,7 @@ Admin：`GET /api/v1/admin/billing/recharge-orders`；`POST /api/v1/admin/billin
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | string (uuid) | |
-| `model` | string | flora 内部模型标识 |
+| `model` | string | pilipala 内部模型标识 |
 | `capability` | string | 如 `image.generate` |
 | `display_name` | string | 前端展示名 |
 | `enabled` | boolean | 是否上架；本接口只返回上架的，恒为 `true` |
@@ -458,7 +458,7 @@ C 端 `/api/v1/jobs/**`（`query` / `result` / `history`）严禁包含这两个
 
 ## 规范化规则
 
-1. **flora 内部字段名 ≠ Anytoken 字段名。** 映射只发生在 gateway 适配层（Worker 侧），C 端合同永远用 flora 自己的名字。
+1. **pilipala 内部字段名 ≠ Anytoken 字段名。** 映射只发生在 gateway 适配层（Worker 侧），C 端合同永远用 pilipala 自己的名字。
 2. **`message` 只来自 `i18n_message` 模板**，禁止填上游字符串，禁止 `e.getMessage()` 直出。
 3. **`error_code` 只能取自注册表**（见 [data-model/errors.md](../data-model/errors.md)）；未识别上游落到泛化码，原文进 `provider_task`。
 4. **时间一律 ISO 8601 字符串**（服务端存 `TIMESTAMPTZ`）；**金额一律 BIGINT 整数 credit**，不出现浮点。
@@ -481,17 +481,17 @@ Worker 调 Anytoken 的请求 / 响应 **不** 定义为本合同的一部分。
 ### Seedance 视频三步协议（WP12）
 
 `capability` 以 `video` 开头时，worker 走 Anytoken 的 **视频** 端点（与生图的
-`/v1/images/generations` 分开），用 `FLORA_GATEWAY_VIDEO_API_KEY` 认证：
+`/v1/images/generations` 分开），用 `PILIPALA_GATEWAY_VIDEO_API_KEY` 认证：
 
 | 步 | 请求 | 用途 |
 | --- | --- | --- |
 | 1 | `POST /v1/videos/generations` | 提交异步视频任务；请求头带 `Idempotency-Key: <jobId>:<attempt>`；body **只含** `model` / `prompt` / `aspect_ratio` / `duration` /（可选）`resolution` /（可选）`reference_images` /（可选）`reference_videos`。响应里取任务 id（`id` → `task_id` → `request_id` → `data.id`）与初始 `status` |
-| 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `flora.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制 |
+| 2 | `GET /v1/videos/{taskId}` | 轮询状态；成功终态 `completed` / `succeeded` / `success`，失败终态 `failed` / `cancelled` / `error`（大小写不敏感）。轮询上限与间隔由 `pilipala.gateway.anytoken.video-max-poll-attempts` / `video-poll-interval-ms` 控制 |
 | 3 | `GET /v1/videos/{taskId}/content` → 回退到直链 | 优先试 `/content` 下载字节；**该端点在实测部署里不存在（404 `video not found`）**，必须回退到轮询响应里的成片直链 |
 
 **上游报文的两条硬约束（实测踩出来的，写下来免得再踩）：**
 
-1. **请求 body 不能带 flora 内部字段**（`job_id` / `attempt` / `capability`）。
+1. **请求 body 不能带 pilipala 内部字段**（`job_id` / `attempt` / `capability`）。
    实测 Anytoken 看到 `capability` 会把请求**路由到 xAI 上游**并直接返回 400
    （`{"error":{"message":"xAI upstream returned status 400"}}`），Seedance 视频根本起不来。
    任务身份靠 `Idempotency-Key` 头带，权威记录在 `job` / `job_step` / `provider_task` 表里。

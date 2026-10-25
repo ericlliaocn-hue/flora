@@ -1,7 +1,7 @@
 # Feature brief：WP1 API / Worker 骨架
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP1 / M1
 - 状态：已实现，待验收
 
@@ -33,7 +33,7 @@ WP0 之后仓库只有前端（`web/`），没有任何服务端代码。WP1 要
 - 根 `pom.xml`（聚合父工程）
 - `api/`（Maven 模块 + 启动类 + 配置 + 预留空包）
 - `worker/`（Maven 模块 + 启动类 + 配置 + 预留空包）
-- `docs/engineering/runbooks/local-dev.md`（把「TBD：flora 业务进程」换成真实步骤）
+- `docs/engineering/runbooks/local-dev.md`（把「TBD：pilipala 业务进程」换成真实步骤）
 - `docs/engineering/feature-briefs/2026-10-24-wp1-api-worker-skeleton.md`（本文件）
 - `docs/engineering/feature-briefs/README.md`（状态表加一行）
 - `.gitignore`（忽略 Maven 产物与本地密钥文件）
@@ -46,7 +46,7 @@ WP0 之后仓库只有前端（`web/`），没有任何服务端代码。WP1 要
 - Job 表 / Flyway / 状态机 / Outbox / RabbitMQ 投递与消费者逻辑
 - 钱包冻结 / 确认 / 释放
 - Anytoken 调用、TOS 上传、STS、回调
-- 前端改打 flora API
+- 前端改打 pilipala API
 - Admin
 - PostgreSQL / Redis / RabbitMQ 的本地 compose
 - Docker 镜像与编排
@@ -65,7 +65,7 @@ WP0 之后仓库只有前端（`web/`），没有任何服务端代码。WP1 要
 | `api` | `http://127.0.0.1:8080/actuator/health` | Spring Actuator，200 + `{"status":"UP"}` |
 | `worker` | `http://127.0.0.1:8081/actuator/health` | 同上 |
 
-端口可用 `FLORA_API_PORT` / `FLORA_WORKER_PORT` 覆盖。
+端口可用 `PILIPALA_API_PORT` / `PILIPALA_WORKER_PORT` 覆盖。
 
 ## 状态机
 

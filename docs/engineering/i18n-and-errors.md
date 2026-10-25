@@ -7,7 +7,7 @@
 - 文件：`web/src/i18n/locales/zh-CN.ts`、`en-US.ts`（以及后续 locale）。
 - 适用：导航、按钮、空状态、设置项、画布固定说明。
 - 语言切换只影响这些键。不要在组件里写 `if (zh) ... else ...` 的整段文案。
-- WP0 之后产品名键是 flora，不要把品牌写回「无限画布」。
+- WP0 之后产品名键是 pilipala，不要把品牌写回「无限画布」。
 
 ## 动态运营文案：一张 `i18n_message`
 
@@ -35,7 +35,7 @@ C 端默认永远是：
 
 | 字段 | 受众 | 内容 |
 | --- | --- | --- |
-| `error_code` | 用户 + 客服 | 稳定大写蛇形，flora 定义 |
+| `error_code` | 用户 + 客服 | 稳定大写蛇形，pilipala 定义 |
 | `message` | 用户 | 当前 locale 的友好短句 |
 | 日志 / `provider_task.raw_body` | 运营 | 上游原文 |
 

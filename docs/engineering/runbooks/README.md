@@ -1,6 +1,6 @@
 # Runbooks
 
-运维与本地启动手册。目前 **Java api / worker / 队列尚未入仓**，很多步骤只能写缺口，不能假装已经 `docker compose up` 出全套 flora。
+运维与本地启动手册。目前 **Java api / worker / 队列尚未入仓**，很多步骤只能写缺口，不能假装已经 `docker compose up` 出全套 pilipala。
 
 | 文档 | 状态 |
 | --- | --- |

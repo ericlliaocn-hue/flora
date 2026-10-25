@@ -13,7 +13,7 @@ import art.pilipala.api.common.ErrorCodes;
  * <p>这里的种子与 {@code V5__create_i18n_message.sql} 灌入的 stage-1 词条逐字一致，
  * 保证「表被误删 / 切片测试没挂 DB」时已登记 error_code 仍有友好短句。
  *
- * <p>ADR 0005：这里只放 flora 自己写的短句，绝不放上游原文。
+ * <p>ADR 0005：这里只放 pilipala 自己写的短句，绝不放上游原文。
  */
 public final class I18nDefaultCatalog {
 

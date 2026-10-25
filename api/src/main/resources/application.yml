@@ -1,5 +1,5 @@
 server:
-  port: ${PILIPALA_API_PORT:${FLORA_API_PORT:8080}}
+  port: ${PILIPALA_API_PORT:8080}
 
 mybatis-plus:
   configuration:
@@ -19,7 +19,7 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:pilipala}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
-      maximum-pool-size: ${PILIPALA_DB_POOL_SIZE:${FLORA_DB_POOL_SIZE:10}}
+      maximum-pool-size: ${PILIPALA_DB_POOL_SIZE:10}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
@@ -47,8 +47,8 @@ management:
 
 # WP3 起提供注册/登录/登出与会话；会话存 Redis，token 走请求头，不走 cookie。
 sa-token:
-  token-name: ${PILIPALA_TOKEN_NAME:${FLORA_TOKEN_NAME:pilipala-token}}
-  timeout: ${PILIPALA_TOKEN_TIMEOUT:${FLORA_TOKEN_TIMEOUT:2592000}}
+  token-name: ${PILIPALA_TOKEN_NAME:pilipala-token}
+  timeout: ${PILIPALA_TOKEN_TIMEOUT:2592000}
   is-log: false
   is-read-header: true
   is-read-cookie: false
@@ -58,48 +58,48 @@ sa-token:
 # 固定成环境变量，仓库里不出现真实 Key。
 pilipala:
   # 对外 URL 根（无尾 /）。生产经 env 设为 https://pilipala.art；本地联调用 http://127.0.0.1:5173 等，勿写死在代码里。
-  public-base-url: ${PILIPALA_PUBLIC_BASE_URL:${FLORA_PUBLIC_BASE_URL:}}
+  public-base-url: ${PILIPALA_PUBLIC_BASE_URL:}
   # WP11：Admin 运维与配置后台。
   admin:
     # 逗号分隔的初始管理员用户名列表：命中者在注册或登录时自动升为 admin 角色
-    bootstrap-usernames: ${PILIPALA_ADMIN_BOOTSTRAP_USERNAMES:${FLORA_ADMIN_BOOTSTRAP_USERNAMES:admin,pilipala_admin}}
+    bootstrap-usernames: ${PILIPALA_ADMIN_BOOTSTRAP_USERNAMES:admin,pilipala_admin}
   gateway:
-    base-url: ${PILIPALA_GATEWAY_BASE_URL:${FLORA_GATEWAY_BASE_URL:}}
-    api-key: ${PILIPALA_GATEWAY_API_KEY:${FLORA_GATEWAY_API_KEY:}}
+    base-url: ${PILIPALA_GATEWAY_BASE_URL:}
+    api-key: ${PILIPALA_GATEWAY_API_KEY:}
   # WP4 的 Job 域配置。队列名只存在这里与 Rabbit 声明里，禁止写进 job 行（ADR 0003）。
   job:
     # rabbit = 真 broker；fake = 本地内存假 transport（测试与无 broker 演练用）。
-    transport: ${PILIPALA_JOB_TRANSPORT:${FLORA_JOB_TRANSPORT:rabbit}}
-    exchange: ${PILIPALA_JOB_EXCHANGE:${FLORA_JOB_EXCHANGE:pilipala.jobs}}
-    routing-key: ${PILIPALA_JOB_ROUTING_KEY:${FLORA_JOB_ROUTING_KEY:job.execute}}
-    queue: ${PILIPALA_JOB_QUEUE:${FLORA_JOB_QUEUE:pilipala.jobs.execute}}
-    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:${FLORA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}}
+    transport: ${PILIPALA_JOB_TRANSPORT:rabbit}
+    exchange: ${PILIPALA_JOB_EXCHANGE:pilipala.jobs}
+    routing-key: ${PILIPALA_JOB_ROUTING_KEY:job.execute}
+    queue: ${PILIPALA_JOB_QUEUE:pilipala.jobs.execute}
+    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}
     # worker 领取 job 的 Redis 短锁 TTL（秒）。权威状态在 Postgres，这里只是短锁。
-    lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:${FLORA_JOB_LEASE_TTL_SECONDS:60}}
+    lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:60}
     outbox:
       # dispatcher 的轮询间隔（毫秒）与单轮最多投递多少条。
-      poll-ms: ${PILIPALA_OUTBOX_POLL_MS:${FLORA_OUTBOX_POLL_MS:500}}
-      batch-size: ${PILIPALA_OUTBOX_BATCH_SIZE:${FLORA_OUTBOX_BATCH_SIZE:50}}
+      poll-ms: ${PILIPALA_OUTBOX_POLL_MS:500}
+      batch-size: ${PILIPALA_OUTBOX_BATCH_SIZE:50}
       # 同一条 outbox 连续投递失败多少次后停在 failed（不再自动重试）。
-      max-attempts: ${PILIPALA_OUTBOX_MAX_ATTEMPTS:${FLORA_OUTBOX_MAX_ATTEMPTS:10}}
+      max-attempts: ${PILIPALA_OUTBOX_MAX_ATTEMPTS:10}
   # WP6 的预付费钱包。金额一律整数 credit（BIGINT）。
   billing:
     # 单次任务默认冻结 credit 数（正整数）。
-    default-job-cost: ${PILIPALA_BILLING_DEFAULT_JOB_COST:${FLORA_BILLING_DEFAULT_JOB_COST:10}}
+    default-job-cost: ${PILIPALA_BILLING_DEFAULT_JOB_COST:10}
     # 新注册用户初始赠送 credit 数（默认 0；若 > 0 则注册时自动记一笔 topup 流水）。
-    initial-credits: ${PILIPALA_BILLING_INITIAL_CREDITS:${FLORA_BILLING_INITIAL_CREDITS:0}}
+    initial-credits: ${PILIPALA_BILLING_INITIAL_CREDITS:0}
     # 后台扫描 worker 已完成任务并自动 confirm/release 冻结单的间隔（毫秒）与批大小。
-    settle-poll-ms: ${PILIPALA_BILLING_SETTLE_POLL_MS:${FLORA_BILLING_SETTLE_POLL_MS:200}}
-    settle-batch-size: ${PILIPALA_BILLING_SETTLE_BATCH_SIZE:${FLORA_BILLING_SETTLE_BATCH_SIZE:50}}
+    settle-poll-ms: ${PILIPALA_BILLING_SETTLE_POLL_MS:200}
+    settle-batch-size: ${PILIPALA_BILLING_SETTLE_BATCH_SIZE:50}
     zpay:
-      api-base: ${PILIPALA_ZPAY_API_BASE:${FLORA_ZPAY_API_BASE:https://api.z-pay.cn}}
-      pid: ${PILIPALA_ZPAY_PID:${FLORA_ZPAY_PID:}}
-      pkey: ${PILIPALA_ZPAY_PKEY:${FLORA_ZPAY_PKEY:}}
-      cid: ${PILIPALA_ZPAY_CID:${FLORA_ZPAY_CID:12540}}
+      api-base: ${PILIPALA_ZPAY_API_BASE:https://api.z-pay.cn}
+      pid: ${PILIPALA_ZPAY_PID:}
+      pkey: ${PILIPALA_ZPAY_PKEY:}
+      cid: ${PILIPALA_ZPAY_CID:12540}
     recharge:
-      order-ttl-minutes: ${PILIPALA_RECHARGE_ORDER_TTL_MINUTES:${FLORA_RECHARGE_ORDER_TTL_MINUTES:30}}
-      reconcile-poll-ms: ${PILIPALA_RECHARGE_RECONCILE_POLL_MS:${FLORA_RECHARGE_RECONCILE_POLL_MS:5000}}
-      reconcile-batch-size: ${PILIPALA_RECHARGE_RECONCILE_BATCH_SIZE:${FLORA_RECHARGE_RECONCILE_BATCH_SIZE:50}}
+      order-ttl-minutes: ${PILIPALA_RECHARGE_ORDER_TTL_MINUTES:30}
+      reconcile-poll-ms: ${PILIPALA_RECHARGE_RECONCILE_POLL_MS:5000}
+      reconcile-batch-size: ${PILIPALA_RECHARGE_RECONCILE_BATCH_SIZE:50}
       packages:
         - id: p10
           money-fen: 1000
@@ -117,12 +117,12 @@ pilipala:
   storage:
     tos:
       # stub = 本地零密钥模式（worker 写 local-dir，api 同样按 V4 规则签出短期 URL）；http = 调真实火山 TOS HTTP 接口
-      mode: ${PILIPALA_TOS_MODE:${FLORA_TOS_MODE:stub}}
-      endpoint: ${PILIPALA_TOS_ENDPOINT:${FLORA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}}
-      region: ${PILIPALA_TOS_REGION:${FLORA_TOS_REGION:cn-beijing}}
-      bucket: ${PILIPALA_TOS_BUCKET:${FLORA_TOS_BUCKET:pilipala-dev}}
-      access-key: ${PILIPALA_TOS_ACCESS_KEY:${FLORA_TOS_ACCESS_KEY:pilipala-local-ak}}
-      secret-key: ${PILIPALA_TOS_SECRET_KEY:${FLORA_TOS_SECRET_KEY:pilipala-local-sk}}
-      presign-ttl-seconds: ${PILIPALA_TOS_PRESIGN_TTL_SECONDS:${FLORA_TOS_PRESIGN_TTL_SECONDS:900}}
-      timeout-ms: ${PILIPALA_TOS_TIMEOUT_MS:${FLORA_TOS_TIMEOUT_MS:15000}}
-      local-dir: ${PILIPALA_TOS_LOCAL_DIR:${FLORA_TOS_LOCAL_DIR:/tmp/pilipala-tos}}
+      mode: ${PILIPALA_TOS_MODE:stub}
+      endpoint: ${PILIPALA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}
+      region: ${PILIPALA_TOS_REGION:cn-beijing}
+      bucket: ${PILIPALA_TOS_BUCKET:pilipala-dev}
+      access-key: ${PILIPALA_TOS_ACCESS_KEY:pilipala-local-ak}
+      secret-key: ${PILIPALA_TOS_SECRET_KEY:pilipala-local-sk}
+      presign-ttl-seconds: ${PILIPALA_TOS_PRESIGN_TTL_SECONDS:900}
+      timeout-ms: ${PILIPALA_TOS_TIMEOUT_MS:15000}
+      local-dir: ${PILIPALA_TOS_LOCAL_DIR:/tmp/pilipala-tos}

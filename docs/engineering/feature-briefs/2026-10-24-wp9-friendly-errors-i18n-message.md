@@ -1,13 +1,13 @@
 # Feature brief：WP9 友好错误与 i18n（`i18n_message` 表）
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP9 / M2（友好错误映射与 `i18n_message` 数据库驱动词条闭环）
 - 状态：已确认（待实现）
 
 把本文件从「# Feature brief」起到文末 **整份粘贴** 给 Minimax（上方面包屑硬约束一并保留）。不要摘要。
 
-本任务落地 **flora 友好错误映射与 `i18n_message` 表闭环**：通过 Flyway `V5__create_i18n_message.sql` 建立 `i18n_message` 表并灌入 stage-1 全部已登记 `error_code`（及重试/动态模板）的中英文（`zh` / `en`）种子词条；在 `api` 模块新增 `com.flora.api.i18n` 包（`I18nMessage`、`I18nMessageRepository`、`JdbcI18nMessageRepository`、`I18nMessageService`、`I18nDefaultCatalog`、`RequestLocaleResolver`），实现「用户偏好 `users.locale` → 请求 `Accept-Language` → `'zh'`」语言选择链与「DB `(key, locale)` → DB `(key, 'zh')` → 内置默认种子 → `error_code` 本身」缺词条安全回退链，支持有限安全占位符插值（如 `{attempt}`、`{max_attempts}`）；删除 WP3/WP4 临时硬编码类 `AuthErrorMessages` 与 `JobErrorMessages`，统一收口 `api` 全部异常处理器与任务状态查询的友好文案解析，并补齐未捕获异常兜底（严禁向 C 端泄露 SQL、堆栈或上游原文）。**严守 DEVELOPMENT.md 与 ADR 0004 / 0005：`worker` 模块零改动、不把前端静态 UI 词条搬进数据库、不做运营后台 CRUD 页面（留给 WP11）、不改前端 `web/`。**
+本任务落地 **pilipala 友好错误映射与 `i18n_message` 表闭环**：通过 Flyway `V5__create_i18n_message.sql` 建立 `i18n_message` 表并灌入 stage-1 全部已登记 `error_code`（及重试/动态模板）的中英文（`zh` / `en`）种子词条；在 `api` 模块新增 `art.pilipala.api.i18n` 包（`I18nMessage`、`I18nMessageRepository`、`JdbcI18nMessageRepository`、`I18nMessageService`、`I18nDefaultCatalog`、`RequestLocaleResolver`），实现「用户偏好 `users.locale` → 请求 `Accept-Language` → `'zh'`」语言选择链与「DB `(key, locale)` → DB `(key, 'zh')` → 内置默认种子 → `error_code` 本身」缺词条安全回退链，支持有限安全占位符插值（如 `{attempt}`、`{max_attempts}`）；删除 WP3/WP4 临时硬编码类 `AuthErrorMessages` 与 `JobErrorMessages`，统一收口 `api` 全部异常处理器与任务状态查询的友好文案解析，并补齐未捕获异常兜底（严禁向 C 端泄露 SQL、堆栈或上游原文）。**严守 DEVELOPMENT.md 与 ADR 0004 / 0005：`worker` 模块零改动、不把前端静态 UI 词条搬进数据库、不做运营后台 CRUD 页面（留给 WP11）、不改前端 `web/`。**
 
 ## 背景
 
@@ -15,8 +15,8 @@ WP0–WP6、WP8 已合入 `main`（当前最新为 WP8 `2ca58ba`）：
 
 - `api` 已有 `V1`（`users`）、`V2`（`job` / `job_step` / `idempotency_record` / `outbox_message`）、`V3`（`provider_task`）、`V4`（`wallet` / `wallet_hold` / `wallet_ledger`），以及火山 TOS 短期预签名读 URL（WP8）。
 - 在 WP3 与 WP4 中，为了先跑通认证与任务生命周期，`api` 临时放置了两个硬编码静态类：
-  - `com.flora.api.auth.infra.AuthErrorMessages`（Javadoc 已注明：`WP9 引入 i18n_message 表后删掉本类，改为按 locale 查表`）
-  - `com.flora.api.job.infra.JobErrorMessages`（Javadoc 已注明：`WP9 引入 i18n_message 表后删掉本类，改为按 locale 查表`）
+  - `art.pilipala.api.auth.infra.AuthErrorMessages`（Javadoc 已注明：`WP9 引入 i18n_message 表后删掉本类，改为按 locale 查表`）
+  - `art.pilipala.api.job.infra.JobErrorMessages`（Javadoc 已注明：`WP9 引入 i18n_message 表后删掉本类，改为按 locale 查表`）
 - 同时，当前 `JobController` / `JobExceptionHandler` / `AuthExceptionHandler` 只解析了请求头 `Accept-Language`，尚未按 `i18n-and-errors.md` 优先读取已登录用户的 `users.locale` 偏好；且 `AuthExceptionHandler` 尚未兜底未预期 `Exception`（一旦出现未捕获运行时异常，可能落回 Spring 默认 500 错误体）。
 - 按「先做完后端再接前端」顺序，本 WP（WP9）完成后，后端 M1–M2 的数据库迁移（`V1`–`V5`）与 C 端接口契约即全部收口，随后即可进入前端画布接线的 WP7。
 
@@ -53,7 +53,7 @@ WP0–WP6、WP8 已合入 `main`（当前最新为 WP8 `2ca58ba`）：
 | 迁移 `V5` | `api/src/main/resources/db/migration/V5__create_i18n_message.sql`：新建 `i18n_message` 表 + `UNIQUE (key, locale)` 约束，并 `INSERT` 灌入全部 8 个已登记 `error_code` 及 `JOB_FAILED.RETRY` 的 `'zh'` / `'en'` 种子行（共 18 行，`ON CONFLICT (key, locale) DO NOTHING`）。**严禁修改 `V1` / `V2` / `V3` / `V4` 已有迁移文件** |
 | `i18n_message` 表结构 | 严格照抄 [data-model/errors.md](../data-model/errors.md)：<br>1) `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`<br>2) `key TEXT NOT NULL`<br>3) `locale TEXT NOT NULL CHECK (locale IN ('zh', 'en'))`（注意是 `'zh'` / `'en'`，不是 `'zh-CN'` / `'en-US'`）<br>4) `template TEXT NOT NULL`<br>5) `updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`<br>6) `CONSTRAINT i18n_message_key_locale_key UNIQUE (key, locale)` |
 | 种子词条内容 | 8 个基础 `error_code` 的中英文模板与现行测试断言完全对齐：<br>- `WALLET_INSUFFICIENT`：`zh`=`"账户余额不足，请先充值。"` / `en`=`"Insufficient wallet balance. Please top up first."`<br>- `JOB_NOT_FOUND`：`zh`=`"任务不存在。"` / `en`=`"The task does not exist."`<br>- `JOB_CANCELLED`：`zh`=`"任务已取消。"` / `en`=`"The task has been cancelled."`<br>- `JOB_FAILED`：`zh`=`"任务执行失败。"` / `en`=`"The task failed to run."`<br>- `PROVIDER_UNAVAILABLE`：`zh`=`"生成服务暂时不可用，请稍后重试。"` / `en`=`"The generation service is temporarily unavailable. Please try again later."`<br>- `IDEMPOTENCY_CONFLICT`：`zh`=`"同一个幂等键对应了不同的请求内容。"` / `en`=`"The same idempotency key was used with a different request."`<br>- `UNAUTHORIZED`：`zh`=`"请先登录后再试。"` / `en`=`"Please sign in first."`<br>- `VALIDATION_ERROR`：`zh`=`"请求参数不合法。"` / `en`=`"The request parameters are invalid."`<br>另加 [data-model/errors.md](../data-model/errors.md) 点名的带占位符前缀键示例：<br>- `JOB_FAILED.RETRY`：`zh`=`"生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。"` / `en`=`"Generation issue, retrying ({attempt}/{max_attempts})."` |
-| 清理临时硬编码类 | **删除** `com.flora.api.auth.infra.AuthErrorMessages` 与 `com.flora.api.job.infra.JobErrorMessages`（兑现 WP3/WP4 注释承诺），所有调用方统一迁移到 `com.flora.api.i18n` |
+| 清理临时硬编码类 | **删除** `art.pilipala.api.auth.infra.AuthErrorMessages` 与 `art.pilipala.api.job.infra.JobErrorMessages`（兑现 WP3/WP4 注释承诺），所有调用方统一迁移到 `art.pilipala.api.i18n` |
 | 语言决策链（`RequestLocaleResolver`） | 1) 若当前请求已有登录会话且对应 `users.locale` 非空（`'zh'` 或 `'en'`），优先返回 `users.locale`；<br>2) 否则解析 `Accept-Language` 请求头（忽略前导空白，大小写不敏感以 `en` 开头返回 `'en'`，其余返回 `'zh'`）；<br>3) 任何异常或空值一律回退 `'zh'` |
 | 词条查询与回退链（`I18nMessageService`） | `resolve(String key, String locale)` 与 `resolve(String key, String locale, Map<String, Object> params)`：<br>1) 规范化 `locale` 为 `'zh'` 或 `'en'`；<br>2) 先查 `I18nMessageRepository.findByKeyAndLocale(key, normalizedLocale)`；<br>3) 若未命中且 `normalizedLocale` 为 `'en'`，再查 `findByKeyAndLocale(key, "zh")`；<br>4) 若 DB 仍未命中（例如某条记录被误删或纯切片测试未挂 DB），查 `I18nDefaultCatalog` 内置种子兜底（同样先 `normalizedLocale` 再 `'zh'`），保证已登记 `error_code` 永远返回友好短句；<br>5) 若 `key` 连内置种子都不存在（未知 key），最终返回 `key` 本身（若 `key` 为空则返回 `ErrorCodes.PROVIDER_UNAVAILABLE`），**绝不返回 `null`、空串或异常堆栈** |
 | 安全占位符插值 | 模板支持 `{placeholder}` 形式的具名占位符（仅匹配 `\{([a-zA-Z0-9_]+)\}`）：当传入 `params` 包含对应 key 且值非 null 时替换为 `String.valueOf(val)`（并截断单个参数值不超过 64 字符、剔除换行符以防注入）；未提供对应参数时保留原占位符或安全忽略，不抛异常 |
@@ -98,17 +98,17 @@ ON CONFLICT (key, locale) DO NOTHING;
 
 ## 模块与包设计
 
-### 1. api 新增 `com.flora.api.i18n` 包
+### 1. api 新增 `art.pilipala.api.i18n` 包
 
 建议结构（保持与 auth、job、billing 相同的分层风格）：
 
-`com.flora.api.i18n.domain.I18nMessage`：
+`art.pilipala.api.i18n.domain.I18nMessage`：
 
 ```java
 record I18nMessage(UUID id, String key, String locale, String template, Instant updatedAt)
 ```
 
-`com.flora.api.i18n.infra.I18nMessageRepository`：
+`art.pilipala.api.i18n.infra.I18nMessageRepository`：
 
 ```java
 Optional<I18nMessage> findByKeyAndLocale(String key, String locale)
@@ -116,19 +116,19 @@ List<I18nMessage> findByKey(String key)
 I18nMessage upsert(String key, String locale, String template) // 使用 INSERT INTO i18n_message (key, locale, template, updated_at) VALUES (?, ?, ?, now()) ON CONFLICT (key, locale) DO UPDATE SET template = EXCLUDED.template, updated_at = now() RETURNING ...，供集成测试与后续 WP11 Admin 复用
 ```
 
-`com.flora.api.i18n.infra.JdbcI18nMessageRepository`：
+`art.pilipala.api.i18n.infra.JdbcI18nMessageRepository`：
 
 ```java
 @Repository，使用 JdbcTemplate 实现上述接口；所有 SQL 只写在本类内
 ```
 
-`com.flora.api.i18n.application.I18nDefaultCatalog`：
+`art.pilipala.api.i18n.application.I18nDefaultCatalog`：
 
 ```java
 纯函数静态工具类，持有 localeOf(String acceptLanguage) 与上述 9 个 key（8 个 ErrorCodes + JOB_FAILED.RETRY）的内置只读种子映射及 {placeholder} 安全插值函数 interpolate(String template, Map<String, Object> params)
 ```
 
-`com.flora.api.i18n.application.I18nMessageService`：
+`art.pilipala.api.i18n.application.I18nMessageService`：
 
 ```java
 @Service，注入 I18nMessageRepository
@@ -143,7 +143,7 @@ public String resolve(String key, String locale, Map<String, Object> params)：
     若 DB 未命中（或 DB 访问抛异常时捕获并记录 WARN 日志，绝不让查词条失败炸穿主流程），回退到 I18nDefaultCatalog.resolveDefault(key, lang, params)（内置种子同样遵循 lang -> 'zh' -> key 本身）。
 ```
 
-`com.flora.api.i18n.application.RequestLocaleResolver`：
+`art.pilipala.api.i18n.application.RequestLocaleResolver`：
 
 ```java
 @Component，注入 AuthSessionService 与 UserRepository
@@ -158,9 +158,9 @@ public String resolve(HttpServletRequest request) / public String resolve(UUID u
 删除文件：
 
 ```text
-api/src/main/java/com/flora/api/auth/infra/AuthErrorMessages.java
-api/src/main/java/com/flora/api/job/infra/JobErrorMessages.java
-api/src/test/java/com/flora/api/job/infra/JobErrorMessagesTest.java（替换为 com.flora.api.i18n.I18nMessageServiceTest）
+api/src/main/java/com/pilipala/api/auth/infra/AuthErrorMessages.java
+api/src/main/java/com/pilipala/api/job/infra/JobErrorMessages.java
+api/src/test/java/com/pilipala/api/job/infra/JobErrorMessagesTest.java（替换为 art.pilipala.api.i18n.I18nMessageServiceTest）
 ```
 
 更新 GetJob、GetJobResult、CancelJob、JobView：
@@ -236,7 +236,7 @@ public ApiResponse<Void> onUnexpected(Exception e, HttpServletRequest request) {
 
 内存测试仓储 `InMemoryI18nMessageRepository` 的放置位置：
 
-- **方式 A（推荐）**：放在 `api/src/test/java/com/flora/api/i18n/InMemoryI18nMessageRepository.java`（与 `InMemoryJobStore` / `InMemoryWalletStore` 风格一致，生产包只留 `I18nMessageRepository` 接口与 `JdbcI18nMessageRepository` 实现）；
+- **方式 A（推荐）**：放在 `api/src/test/java/com/pilipala/api/i18n/InMemoryI18nMessageRepository.java`（与 `InMemoryJobStore` / `InMemoryWalletStore` 风格一致，生产包只留 `I18nMessageRepository` 接口与 `JdbcI18nMessageRepository` 实现）；
 - **方式 B**：在 `I18nMessageService` 中允许通过静态工厂 `I18nMessageService.withDefaultsOnly()` 快速构造仅供单测使用的实例。
 
 建议优先选方式 A，既能测真实仓储读写与动态覆盖，又保持生产包纯净。

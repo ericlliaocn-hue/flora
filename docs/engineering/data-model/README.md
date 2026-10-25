@@ -56,7 +56,7 @@ WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)�
 | `locale` | TEXT | YES | | `zh` / `en` 偏好；空则回退 Accept-Language / zh |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
-| `role` | TEXT | NO | DEFAULT `'user'`，CHECK ∈ `user` \| `admin` | 角色；**WP11 `V7` 新增**。命中 `flora.admin.bootstrap-usernames` 的用户名在注册或登录时自动升为 `admin` |
+| `role` | TEXT | NO | DEFAULT `'user'`，CHECK ∈ `user` \| `admin` | 角色；**WP11 `V7` 新增**。命中 `pilipala.admin.bootstrap-usernames` 的用户名在注册或登录时自动升为 `admin` |
 
 ## Job 四表（WP4 已落地）
 
@@ -117,7 +117,7 @@ WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | UUID | NO | PK | 默认 `gen_random_uuid()` |
-| `model` | TEXT | NO | UNIQUE (`model`) | flora 内部模型标识；唯一键 |
+| `model` | TEXT | NO | UNIQUE (`model`) | pilipala 内部模型标识；唯一键 |
 | `capability` | TEXT | NO | DEFAULT `'image.generate'` | 能力名 |
 | `display_name` | TEXT | NO | | 前端展示名 |
 | `enabled` | BOOLEAN | NO | DEFAULT true | 是否上架；`GET /api/v1/models` 只返回上架的 |
@@ -128,7 +128,7 @@ WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md
 
 - PostgreSQL；PK 默认 UUID + `gen_random_uuid()`。
 - 时间一律 `TIMESTAMPTZ`。
-- 金额一律 `BIGINT`（flora credit 整数）。禁止 `DECIMAL` / `FLOAT`。
+- 金额一律 `BIGINT`（pilipala credit 整数）。禁止 `DECIMAL` / `FLOAT`。
 - 字符串枚举存 `TEXT` + `CHECK`（或实现 WP 再用 PG enum，文档先写允许值）。
 - JSON 用 `JSONB`。
 - **前向策略（WP13 起）**：新表之间的关联默认用**逻辑外键**（列 + 索引 + 应用写路径校验 / 事务），**不以**数据库 `FOREIGN KEY` 约束作为主一致性手段。

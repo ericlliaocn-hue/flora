@@ -5,13 +5,13 @@
 
 ## 背景（Context）
 
-flora 需要用数据支撑拉新、营销与定价：激活与留存、生成漏斗、按模型质量、充值与消耗、冻结滞留等。
+pilipala 需要用数据支撑拉新、营销与定价：激活与留存、生成漏斗、按模型质量、充值与消耗、冻结滞留等。
 若把埋点与报表逻辑塞进 `job` / `billing`，或另建一套「分析用余额」，会破坏领域边界与 ADR 0001 账本唯一性。
 客户端点击不能代替账本与任务表成为资金/任务真相源。
 
 ## 决策（Decision）
 
-- 设立 **analytics** 域（文档与未来代码包 `com.flora.api.analytics`）：负责事件契约、采集（后续）、报表口径；**不**负责改余额、不实现广告投放与优惠券引擎。
+- 设立 **analytics** 域（文档与未来代码包 `art.pilipala.api.analytics`）：负责事件契约、采集（后续）、报表口径；**不**负责改余额、不实现广告投放与优惠券引擎。
 - **真相源分层**：
   - 资金与任务终态：Postgres 业务表（`users` / `job*` / `wallet*` / `wallet_ledger` / `wallet_hold`）为权威。
   - 意图与曝光：客户端事件（`canvas_opened`、`generation_submit_clicked`、`paywall_viewed` 等）。

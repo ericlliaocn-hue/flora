@@ -3,7 +3,6 @@
 #
 # Postgres 库名/用户默认为 pilipala；密码不写进仓库，启动前先导出：
 #   export PILIPALA_DEPS_POSTGRES_PASSWORD=<本地开发用密码>
-# （仍接受 FLORA_DEPS_POSTGRES_PASSWORD 作为回退）
 # 宿主机端口冲突时：
 #   export PILIPALA_DEPS_POSTGRES_PORT=55432
 #   export PILIPALA_DEPS_REDIS_PORT=56379
@@ -18,7 +17,7 @@ services:
     environment:
       POSTGRES_DB: pilipala
       POSTGRES_USER: pilipala
-      POSTGRES_PASSWORD: ${PILIPALA_DEPS_POSTGRES_PASSWORD:${FLORA_DEPS_POSTGRES_PASSWORD:?set PILIPALA_DEPS_POSTGRES_PASSWORD before starting local deps}}
+      POSTGRES_PASSWORD: ${PILIPALA_DEPS_POSTGRES_PASSWORD:?set PILIPALA_DEPS_POSTGRES_PASSWORD before starting local deps}
     ports:
       - "${PILIPALA_DEPS_POSTGRES_PORT:-5432}:5432"
     volumes:

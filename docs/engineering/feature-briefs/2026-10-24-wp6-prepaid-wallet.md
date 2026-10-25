@@ -1,22 +1,22 @@
 # Feature brief：WP6 预付费钱包（freeze / confirm / release）
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP6 / M2（预付费钱包闭环）
 - 状态：已确认（待实现）
 
 把本文件从「# Feature brief」起到文末 **整份粘贴** 给 Minimax（上方面包屑硬约束一并保留）。不要摘要。
 
-本任务落地 **flora 预付费钱包与单账本闭环**：通过 Flyway `V4__create_wallet_domain.sql` 建立 `wallet`、`wallet_hold`、`wallet_ledger` 三张表并补齐 `job.hold_id` 物理外键；在 `api` 的 `com.flora.api.billing` 包内实现充值（`topup`）、提交任务时冻结（`freeze`）、任务成功时确认实扣（`confirm`）、任务取消或死信时解冻释放（`release`），以及 C 端余额查询接口 `GET /api/v1/wallet` 与 `WALLET_INSUFFICIENT` 错误码。**严守 ADR 0004：计费与钱包 100% 留在 `api` 模块，`worker` 模块一行不改、零钱包依赖。不做后付费、不做套餐引擎、不做支付网关回调、不做 Anytoken 双账本、不改前端 `web/`。**
+本任务落地 **pilipala 预付费钱包与单账本闭环**：通过 Flyway `V4__create_wallet_domain.sql` 建立 `wallet`、`wallet_hold`、`wallet_ledger` 三张表并补齐 `job.hold_id` 物理外键；在 `api` 的 `art.pilipala.api.billing` 包内实现充值（`topup`）、提交任务时冻结（`freeze`）、任务成功时确认实扣（`confirm`）、任务取消或死信时解冻释放（`release`），以及 C 端余额查询接口 `GET /api/v1/wallet` 与 `WALLET_INSUFFICIENT` 错误码。**严守 ADR 0004：计费与钱包 100% 留在 `api` 模块，`worker` 模块一行不改、零钱包依赖。不做后付费、不做套餐引擎、不做支付网关回调、不做 Anytoken 双账本、不改前端 `web/`。**
 
 ## 背景
 
 WP0–WP5 已合入 `main`（当前最新为 WP5 `1bd6817`）：
 
 - `api` 已有认证闸门（WP3 `V1__create_users.sql`）、Job 四表与 Outbox 投递（WP4 `V2__create_job_domain.sql`）、`provider_task` 原文留痕表（WP5 `V3__create_provider_task.sql`）。
-- `worker` 已实现消费 RabbitMQ `flora.jobs.execute`、抢 Redis 短锁、调唯一 `AnytokenGatewayAdapter`（默认 `stub` 模式 + `http` 模式）并推进 `job` 到 `succeeded` / 重试回 `queued` / `cancelled` / `dead`（进 DLQ）。
+- `worker` 已实现消费 RabbitMQ `pilipala.jobs.execute`、抢 Redis 短锁、调唯一 `AnytokenGatewayAdapter`（默认 `stub` 模式 + `http` 模式）并推进 `job` 到 `succeeded` / 重试回 `queued` / `cancelled` / `dead`（进 DLQ）。
 - WP4 与 WP5 刻意推迟了钱包：`job.hold_id` 目前恒为 `null`，提交任务不校验余额，终态不结算。
-- `api` 中已预留空包 `com.flora.api.billing`（仅含 `package-info.java`）。
+- `api` 中已预留空包 `art.pilipala.api.billing`（仅含 `package-info.java`）。
 
 [DEVELOPMENT.md](../DEVELOPMENT.md) WP6：
 
@@ -27,7 +27,7 @@ WP0–WP5 已合入 `main`（当前最新为 WP5 `1bd6817`）：
 
 ## 必须遵守
 
-- **ADR 0001**：单账本。用户余额只存在 flora 的 `wallet` + `wallet_ledger`；Anytoken 侧额度是公司成本，禁止在业务库建 NewAPI 风格的 `tokens` / `quotas` / `channels` 镜像表或双写配额。
+- **ADR 0001**：单账本。用户余额只存在 pilipala 的 `wallet` + `wallet_ledger`；Anytoken 侧额度是公司成本，禁止在业务库建 NewAPI 风格的 `tokens` / `quotas` / `channels` 镜像表或双写配额。
 - **ADR 0003**：MQ 消息体仍然只有 `job_id`（及传输层可选 `event_id`），禁止往 MQ 消息塞钱包金额或 `hold_id`。
 - **ADR 0004**：Worker 必须瘦，禁止直接 confirm/release 钱包或重算用户余额。`worker` 模块在本 WP 零改动，编译依赖与包内不得出现 wallet / billing。
 - **ADR 0005**：C 端只看稳定 `error_code` + 本地化友好短句；禁止抛 SQL / 异常堆栈原文。
@@ -44,15 +44,15 @@ WP0–WP5 已合入 `main`（当前最新为 WP5 `1bd6817`）：
 | --- | --- |
 | 迁移 V4 | `api/src/main/resources/db/migration/V4__create_wallet_domain.sql`：新建 `wallet`、`wallet_hold`、`wallet_ledger` 三张表 + 对应索引，并通过 `ALTER TABLE job ADD CONSTRAINT job_hold_id_fkey FOREIGN KEY (hold_id) REFERENCES wallet_hold (id);` 补齐物理外键。严禁修改 V1 / V2 / V3 已有迁移文件 |
 | 表名与列名 | 严格照抄 `data-model/billing.md`：<br>1) `wallet`：`id`、`user_id`、`available`、`frozen`、`updated_at`（共 5 列）<br>2) `wallet_hold`：`id`、`user_id`、`job_id`、`amount`、`status`、`created_at`、`finalized_at`（共 7 列，注意状态枚举是 `'frozen'` / `'confirmed'` / `'released'`，不是 `'held'`）<br>3) `wallet_ledger`：`id`、`wallet_id`、`user_id`、`type`、`amount`、`hold_id`、`job_id`、`created_at`（共 8 列，流水类型枚举 `'topup'` / `'freeze'` / `'confirm'` / `'release'`） |
-| 金额与标价规则 | 金额一律 BIGINT（Java `long`），`wallet_ledger.amount` 与 `wallet_hold.amount` 恒为正整数（> 0），加减方向完全由 `type` 决定。<br>单次任务标价由配置 `flora.billing.default-job-cost=${FLORA_BILLING_DEFAULT_JOB_COST:10}` 决定（默认 10 credit，要求 > 0；抽成 `JobCostPolicy` 接口或配置类，按 capability / model 返回标价，缺省回退 default-job-cost） |
+| 金额与标价规则 | 金额一律 BIGINT（Java `long`），`wallet_ledger.amount` 与 `wallet_hold.amount` 恒为正整数（> 0），加减方向完全由 `type` 决定。<br>单次任务标价由配置 `pilipala.billing.default-job-cost=${PILIPALA_BILLING_DEFAULT_JOB_COST:10}` 决定（默认 10 credit，要求 > 0；抽成 `JobCostPolicy` 接口或配置类，按 capability / model 返回标价，缺省回退 default-job-cost） |
 | billing.md 必选二选一（估价与实扣） | `data-model/billing.md` 要求在实现 brief 中二选一写死：本 WP 锁定「成功仍按冻结额全额 confirm（一口价标价，不拆分差额 release）」。一次 job 对应唯一一张 `wallet_hold`，confirm 金额恒等于 `hold.amount` |
 | gateway-contract.md 必选拍板（冻失败行为） | `api/gateway-contract.md` 要求 WP6 写死冻失败行为：本 WP 锁定「冻失败则无 job」——余额不足（`available < cost`）时抛出 `WALLET_INSUFFICIENT`，不创建 job 行、不写 `wallet_hold`、不写 `wallet_ledger`、不写 `outbox_message`、不写 `idempotency_record`，HTTP 仍返 200 + `{"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"..."}`。用户充值后可用原 `idempotency_key` 重新提交 |
 | 同键幂等重放与冻结 | 同一 `(user_id, idempotency_key)` + 相同请求体 hash 重放时，直接从已有 job 返回 `SubmitJobView(job.id, job.status, job.holdId)`，绝不二次冻结。不同请求体 hash 仍在碰钱包前抛 `IDEMPOTENCY_CONFLICT` |
 | 循环外键无冲突写入顺序 | `job.hold_id -> wallet_hold(id)` 与 `wallet_hold.job_id -> job(id)` 互指（两列均可空）。在 `SubmitJob` 同一 `@Transactional` 事务内，允许以下任一等价无冲突顺序：<br>**顺序 A（推荐，内存单测也天然零残留）**：① 调 `walletService.freeze(userId, cost)`（检查 `available >= cost` 扣可用加冻结，插入 `wallet_hold(job_id=null, status='frozen')` 与 `wallet_ledger(type='freeze', job_id=null)`；若余额不足直接抛 `WALLET_INSUFFICIENT`，此时 job 尚未插入）→ ② 插入 `job(status='created', hold_id=hold.id)` 并迁为 queued → ③ 调 `walletService.bindJob(hold.id, job.id)` 回填 `wallet_hold.job_id` 与 `wallet_ledger.job_id` → ④ 写 `outbox_message` 与 `idempotency_record`（若步骤 ② 因并发同键冲突未插入，则释放或回滚本次 hold 并走 replay）；<br>**顺序 B**：先校验余额 / 插入 `job(created, hold_id=null)` → 插入 `wallet_hold(job_id=job.id)` 与 `wallet_ledger` → 更新 `job SET hold_id=hold.id, status='queued'`（若用内存假仓储跑单测，需确保 freeze 抛异常时不残留 created 状态的孤儿 job） |
-| 谁触发 confirm / release（严守 ADR 0004） | worker 绝不碰钱包表。所有 confirm 与 release 均在 api 进程内通过幂等的 `WalletService` 完成，触发点有三处（共用同一套幂等方法）：<br>1) api 同步触发：`CancelJob` 将 created/queued 任务直接迁为 cancelled 时，同事务调 `release(holdId)`；`ClaimJob`（发现取消意图直接迁 cancelled）与 `RecordAttemptResult`（迁 succeeded 调 confirm，迁 cancelled/dead 调 release）同事务立即结算；<br>2) api 后台定时对账器 `WalletHoldSettlementDispatcher`：参考 `OutboxDispatcher` 模式，`@Scheduled(fixedDelayString = "${flora.billing.settle-poll-ms:200}")` 扫描 `wallet_hold.status = 'frozen'` 且关联 `job.status IN ('succeeded', 'cancelled', 'dead')` 的记录（单批默认 `${flora.billing.settle-batch-size:50}`），对 succeeded 调 `confirm(holdId)`，对 cancelled / dead 调 `release(holdId)`；<br>3) api 读接口兜底触发（消除轮询窗口抖动）：`GetJob`、`GetJobResult`、`CancelJob`（已终态分支）若发现当前 job 已处于终态且 `holdId != null`，或 `GetWallet` 查询当前用户钱包前，顺手调用一次幂等结算，保证 worker 刚写完终态后客户端立刻查询 job 或 wallet 时，账本已 100% 实时收敛 |
+| 谁触发 confirm / release（严守 ADR 0004） | worker 绝不碰钱包表。所有 confirm 与 release 均在 api 进程内通过幂等的 `WalletService` 完成，触发点有三处（共用同一套幂等方法）：<br>1) api 同步触发：`CancelJob` 将 created/queued 任务直接迁为 cancelled 时，同事务调 `release(holdId)`；`ClaimJob`（发现取消意图直接迁 cancelled）与 `RecordAttemptResult`（迁 succeeded 调 confirm，迁 cancelled/dead 调 release）同事务立即结算；<br>2) api 后台定时对账器 `WalletHoldSettlementDispatcher`：参考 `OutboxDispatcher` 模式，`@Scheduled(fixedDelayString = "${pilipala.billing.settle-poll-ms:200}")` 扫描 `wallet_hold.status = 'frozen'` 且关联 `job.status IN ('succeeded', 'cancelled', 'dead')` 的记录（单批默认 `${pilipala.billing.settle-batch-size:50}`），对 succeeded 调 `confirm(holdId)`，对 cancelled / dead 调 `release(holdId)`；<br>3) api 读接口兜底触发（消除轮询窗口抖动）：`GetJob`、`GetJobResult`、`CancelJob`（已终态分支）若发现当前 job 已处于终态且 `holdId != null`，或 `GetWallet` 查询当前用户钱包前，顺手调用一次幂等结算，保证 worker 刚写完终态后客户端立刻查询 job 或 wallet 时，账本已 100% 实时收敛 |
 | 重试不释放、不重冻 | 当任务第 1、2 次 attempt 失败并按 `attempt < max_attempts` 迁回 queued 时，job 处于非终态 queued，其 `wallet_hold` 保持 `status = 'frozen'`（既不 release 也不二次 freeze）。只有最终落 succeeded 才 confirm，最终落 dead 或 cancelled 才 release |
 | confirm / release 幂等与并发安全 | 在 Postgres 中以原子条件更新 `UPDATE wallet_hold SET status = 'confirmed'`（或 `'released'`）, `finalized_at = now() WHERE id = ? AND status = 'frozen' RETURNING ...` 作为闸门：<br>- 若更新行数为 1：同事务更新 wallet（confirm：`frozen = frozen - amount`；release：`available = available + amount, frozen = frozen - amount`）并插入 `wallet_ledger`（`type = 'confirm'` 或 `'release'`）；<br>- 若更新行数为 0：查当前 `wallet_hold.status`——若已是目标终态（confirmed 重放 confirm，或 released 重放 release），幂等静默返回，不改 wallet、不双写 `wallet_ledger`；若已是相反终态（如已 released 却调 confirm，或已 confirmed 却调 release），打 warn 日志并抛非法状态异常 |
-| 初始余额与本地充值路径 | 1) 配置项 `flora.billing.initial-credits=${FLORA_BILLING_INITIAL_CREDITS:0}`（默认 0）：用户注册（`RegisterUser`）或首次访问钱包时确保存在 wallet 行（`available=0, frozen=0`）；若 `initial-credits > 0`，必须经由 topup 路径同时写入 `wallet(available = initialCredits)` 与 `wallet_ledger(type='topup', amount=initialCredits)`（严禁只改 `wallet.available` 不写流水）。<br>2) 应用层提供 `TopUpWallet` 用例（`topup(UUID userId, long amount)`：校验 `amount > 0`，加 `wallet.available` 并写 `wallet_ledger(type='topup')`），供单测/集成测试与未来 WP11 Admin 调用。<br>3) 不暴露 C 端自助免费充值 HTTP 接口（防生产越权刷钱）；本地 curl 联调使用 `runbooks/local-dev.md` 中提供的单条 psql 原子充值 SQL（同时写 wallet + `wallet_ledger(type='topup')`）或环境变量 `FLORA_BILLING_INITIAL_CREDITS` |
+| 初始余额与本地充值路径 | 1) 配置项 `pilipala.billing.initial-credits=${PILIPALA_BILLING_INITIAL_CREDITS:0}`（默认 0）：用户注册（`RegisterUser`）或首次访问钱包时确保存在 wallet 行（`available=0, frozen=0`）；若 `initial-credits > 0`，必须经由 topup 路径同时写入 `wallet(available = initialCredits)` 与 `wallet_ledger(type='topup', amount=initialCredits)`（严禁只改 `wallet.available` 不写流水）。<br>2) 应用层提供 `TopUpWallet` 用例（`topup(UUID userId, long amount)`：校验 `amount > 0`，加 `wallet.available` 并写 `wallet_ledger(type='topup')`），供单测/集成测试与未来 WP11 Admin 调用。<br>3) 不暴露 C 端自助免费充值 HTTP 接口（防生产越权刷钱）；本地 curl 联调使用 `runbooks/local-dev.md` 中提供的单条 psql 原子充值 SQL（同时写 wallet + `wallet_ledger(type='topup')`）或环境变量 `PILIPALA_BILLING_INITIAL_CREDITS` |
 | C 端钱包查询接口 | 新增 `GET /api/v1/wallet`（受 WP3 `AuthPathPolicy` 保护，无 token → UNAUTHORIZED）：返回当前登录用户的钱包快照 `{"ok":true,"data":{"user_id":"...","available":90,"frozen":10,"updated_at":"..."},"error_code":null,"message":null}`。若用户尚无 wallet 行，惰性初始化一行 `available=0, frozen=0` 后返回 |
 | `WALLET_INSUFFICIENT` 文案 | `ErrorCodes` 新增 `WALLET_INSUFFICIENT = "WALLET_INSUFFICIENT"`；错误文案字典新增：<br>- zh：「账户余额不足，请先充值。」<br>- en：「Insufficient wallet balance. Please top up first.」 |
 
@@ -62,15 +62,15 @@ WP0–WP5 已合入 `main`（当前最新为 WP5 `1bd6817`）：
 - 套餐 / 订阅 / 优惠券 / 阶梯折扣 / 后付费透支引擎。
 - C 端自助充值 HTTP 接口（M4 / WP11 Admin 才提供受控加额接口）。
 - 火山 TOS 上传与签名 URL（WP8）。
-- 前端 `web/` 改打 flora API 与余额展示（WP7）。
+- 前端 `web/` 改打 pilipala API 与余额展示（WP7）。
 - `i18n_message` 数据库表（WP9）。
 - 在 worker 中加入任何钱包代码或依赖。
 
 ## 目标
 
 1. Flyway `V4__create_wallet_domain.sql` 建 `wallet` / `wallet_hold` / `wallet_ledger` 三张表并给 `job.hold_id` 补上物理外键，表名、列名、类型、约束与 `data-model/billing.md` 逐字一致。
-2. 在 `com.flora.api.billing` 落地完整预付费账本服务：topup、freeze、confirm、release、getOrCreateWallet，保证每次余额或冻结额变动必有对应 `wallet_ledger` 流水，且 `available >= 0`、`frozen >= 0`。
-3. 改造 `SubmitJob`：同事务内完成 freeze（默认每单 10 credit，可通过 `FLORA_BILLING_DEFAULT_JOB_COST` 配置）+ 写 `job(queued, hold_id)` + 写 `outbox_message` + 写 `idempotency_record`；余额不足抛 `WALLET_INSUFFICIENT` 且不落库任何 job / outbox / hold；同键同 body 重放返回原 `job_id` 与原 `hold_id`，不二次冻结。
+2. 在 `art.pilipala.api.billing` 落地完整预付费账本服务：topup、freeze、confirm、release、getOrCreateWallet，保证每次余额或冻结额变动必有对应 `wallet_ledger` 流水，且 `available >= 0`、`frozen >= 0`。
+3. 改造 `SubmitJob`：同事务内完成 freeze（默认每单 10 credit，可通过 `PILIPALA_BILLING_DEFAULT_JOB_COST` 配置）+ 写 `job(queued, hold_id)` + 写 `outbox_message` + 写 `idempotency_record`；余额不足抛 `WALLET_INSUFFICIENT` 且不落库任何 job / outbox / hold；同键同 body 重放返回原 `job_id` 与原 `hold_id`，不二次冻结。
 4. 打通终态结算闭环（api 同步触发 + `WalletHoldSettlementDispatcher` 定时扫描 + 读接口幂等兜底）：
    - 任务 succeeded → `wallet_hold` 变为 confirmed，`wallet.frozen` 扣减，写 `wallet_ledger(type='confirm')`；
    - 任务 cancelled（含排队中直接取消、运行中取消）或 dead（含不可重试直接 dead、可重试 3 次用尽后 dead）→ `wallet_hold` 变为 released，`wallet.frozen` 退回 `wallet.available`，写 `wallet_ledger(type='release')`；
@@ -91,23 +91,23 @@ WP0–WP5 已合入 `main`（当前最新为 WP5 `1bd6817`）：
 | `docs/engineering/api/gateway-contract.md` | 将 Submit 响应 `status` 旁注「（WP6 写死一种）」更新为已锁定的「冻失败则无 job，返 WALLET_INSUFFICIENT」；新增 Wallet（`GET /api/v1/wallet`）小节 |
 | `docs/engineering/runbooks/local-dev.md` | 新增 WP6 环境变量、本地 psql 充值脚本与端到端钱包 curl 验收步骤；更新诚实对照表 |
 | `api/src/main/resources/db/migration/V4__create_wallet_domain.sql` | 新增 `wallet`、`wallet_hold`、`wallet_ledger` 表、索引与 `job.hold_id` 外键 |
-| `api/src/main/resources/application.yml` | 新增 `flora.billing.*` 配置段（default-job-cost、initial-credits、settle-poll-ms、settle-batch-size） |
-| `api/src/main/java/com/flora/api/common/ErrorCodes.java` | 追加 `WALLET_INSUFFICIENT` |
-| `api/src/main/java/com/flora/api/job/infra/JobErrorMessages.java` | 追加 `WALLET_INSUFFICIENT` 的 zh / en 短句 |
-| `api/src/main/java/com/flora/api/job/infra/JobException.java` | 新增 `walletInsufficient()` 工厂方法（或由 `BillingException` 统一映射为同一信封） |
-| `api/src/main/java/com/flora/api/billing/**` | 新增钱包领域模型、应用服务（`WalletService` / `TopUpWallet` / `GetWallet` / `WalletHoldSettlementTick`）、JDBC 仓储、`WalletHoldSettlementDispatcher`、`WalletController` |
-| `api/src/main/java/com/flora/api/auth/application/RegisterUser.java` | 注册成功后初始化用户钱包（若 `initial-credits > 0` 则走 topup 写入初始额度与流水） |
-| `api/src/main/java/com/flora/api/job/infra/JobRepository.java` & `JdbcJobRepository.java` | 支持在创建/入队时写入或绑定 `hold_id` |
-| `api/src/main/java/com/flora/api/job/application/SubmitJob.java` | 接入 freeze，返回非空 `hold_id`；冻失败抛 `WALLET_INSUFFICIENT` |
-| `api/src/main/java/com/flora/api/job/application/CancelJob.java` | 直接取消 created/queued 任务时同事务 release；已终态时幂等兜底结算 |
-| `api/src/main/java/com/flora/api/job/application/ClaimJob.java` & `RecordAttemptResult.java` | 迁入终态（succeeded / cancelled / dead）时同事务调用 confirm / release |
-| `api/src/main/java/com/flora/api/job/application/GetJob.java` & `GetJobResult.java` | 若查到的任务已处于终态且 `hold_id != null`，顺手触发幂等结算兜底 |
-| `api/src/test/java/com/flora/api/**` | 新增 billing 单元测试（freeze/confirm/release/topup/幂等/并发边界/控制器切片），更新并扩充 `JobLifecycleTest` 与 `JobControllerSliceTest` |
+| `api/src/main/resources/application.yml` | 新增 `pilipala.billing.*` 配置段（default-job-cost、initial-credits、settle-poll-ms、settle-batch-size） |
+| `api/src/main/java/com/pilipala/api/common/ErrorCodes.java` | 追加 `WALLET_INSUFFICIENT` |
+| `api/src/main/java/com/pilipala/api/job/infra/JobErrorMessages.java` | 追加 `WALLET_INSUFFICIENT` 的 zh / en 短句 |
+| `api/src/main/java/com/pilipala/api/job/infra/JobException.java` | 新增 `walletInsufficient()` 工厂方法（或由 `BillingException` 统一映射为同一信封） |
+| `api/src/main/java/com/pilipala/api/billing/**` | 新增钱包领域模型、应用服务（`WalletService` / `TopUpWallet` / `GetWallet` / `WalletHoldSettlementTick`）、JDBC 仓储、`WalletHoldSettlementDispatcher`、`WalletController` |
+| `api/src/main/java/com/pilipala/api/auth/application/RegisterUser.java` | 注册成功后初始化用户钱包（若 `initial-credits > 0` 则走 topup 写入初始额度与流水） |
+| `api/src/main/java/com/pilipala/api/job/infra/JobRepository.java` & `JdbcJobRepository.java` | 支持在创建/入队时写入或绑定 `hold_id` |
+| `api/src/main/java/com/pilipala/api/job/application/SubmitJob.java` | 接入 freeze，返回非空 `hold_id`；冻失败抛 `WALLET_INSUFFICIENT` |
+| `api/src/main/java/com/pilipala/api/job/application/CancelJob.java` | 直接取消 created/queued 任务时同事务 release；已终态时幂等兜底结算 |
+| `api/src/main/java/com/pilipala/api/job/application/ClaimJob.java` & `RecordAttemptResult.java` | 迁入终态（succeeded / cancelled / dead）时同事务调用 confirm / release |
+| `api/src/main/java/com/pilipala/api/job/application/GetJob.java` & `GetJobResult.java` | 若查到的任务已处于终态且 `hold_id != null`，顺手触发幂等结算兜底 |
+| `api/src/test/java/com/pilipala/api/**` | 新增 billing 单元测试（freeze/confirm/release/topup/幂等/并发边界/控制器切片），更新并扩充 `JobLifecycleTest` 与 `JobControllerSliceTest` |
 
-### 建议 `com.flora.api.billing` 包结构（职责拆开，禁止上帝类）
+### 建议 `art.pilipala.api.billing` 包结构（职责拆开，禁止上帝类）
 
 ```
-com.flora.api.billing
+art.pilipala.api.billing
   package-info.java
   domain/
     Wallet.java                       （id, userId, available, frozen, updatedAt）
@@ -119,10 +119,10 @@ com.flora.api.billing
     WalletService.java                （核心账本事务：ensureWallet / topup / freeze / bindJob / confirm / release / settleForJob）
     GetWallet.java                    （先触发该用户未决终态 hold 结算，再返回 WalletView）
     WalletView.java                   （user_id, available, frozen, updated_at）
-    JobCostPolicy.java                （计算单次任务冻结额，默认读 flora.billing.default-job-cost）
+    JobCostPolicy.java                （计算单次任务冻结额，默认读 pilipala.billing.default-job-cost）
     WalletHoldSettlementTick.java     （扫描 status='frozen' 且 job 已终态的 hold，逐笔调 confirm 或 release）
   infra/
-    BillingProperties.java            （绑定 flora.billing.*：defaultJobCost=10, initialCredits=0, settlePollMs=200, settleBatchSize=50）
+    BillingProperties.java            （绑定 pilipala.billing.*：defaultJobCost=10, initialCredits=0, settlePollMs=200, settleBatchSize=50）
     WalletRepository.java / JdbcWalletRepository.java
     WalletHoldRepository.java / JdbcWalletHoldRepository.java
     WalletLedgerRepository.java / JdbcWalletLedgerRepository.java
@@ -218,7 +218,7 @@ ALTER TABLE job
 
 ### 1. `GET /api/v1/wallet`（新增，需登录）
 
-鉴权：由 `AuthPathPolicy` 覆盖（`/api/v1/**`），无有效 `flora-token` 返回 UNAUTHORIZED。
+鉴权：由 `AuthPathPolicy` 覆盖（`/api/v1/**`），无有效 `pilipala-token` 返回 UNAUTHORIZED。
 
 响应（200 OK）：
 
@@ -311,15 +311,15 @@ ALTER TABLE job
 ## 配置项（`api/src/main/resources/application.yml`）
 
 ```yaml
-flora:
+pilipala:
   billing:
     # 单次任务默认冻结 credit 数（正整数）。
-    default-job-cost: ${FLORA_BILLING_DEFAULT_JOB_COST:10}
+    default-job-cost: ${PILIPALA_BILLING_DEFAULT_JOB_COST:10}
     # 新注册用户初始赠送 credit 数（默认 0；若 > 0 则注册时自动记一笔 topup 流水）。
-    initial-credits: ${FLORA_BILLING_INITIAL_CREDITS:0}
+    initial-credits: ${PILIPALA_BILLING_INITIAL_CREDITS:0}
     # 后台扫描 worker 已完成任务并自动 confirm/release 冻结单的间隔（毫秒）与批大小。
-    settle-poll-ms: ${FLORA_BILLING_SETTLE_POLL_MS:200}
-    settle-batch-size: ${FLORA_BILLING_SETTLE_BATCH_SIZE:50}
+    settle-poll-ms: ${PILIPALA_BILLING_SETTLE_POLL_MS:200}
+    settle-batch-size: ${PILIPALA_BILLING_SETTLE_BATCH_SIZE:50}
 ```
 
 ## 验收
@@ -353,7 +353,7 @@ flora:
 
 ## 给 Minimax 的额外约束
 
-- **先读再写**：`DEVELOPMENT.md`（WP6）、`TECH_STACK.md`、`data-model/billing.md`、`data-model/jobs.md`、`data-model/errors.md`、`api/gateway-contract.md`、ADR 0001 / 0003 / 0004 / 0005、本 brief、现有 `api/src/main/java/com/flora/api/**`、V1–V3 迁移、`runbooks/local-dev.md`。
+- **先读再写**：`DEVELOPMENT.md`（WP6）、`TECH_STACK.md`、`data-model/billing.md`、`data-model/jobs.md`、`data-model/errors.md`、`api/gateway-contract.md`、ADR 0001 / 0003 / 0004 / 0005、本 brief、现有 `api/src/main/java/com/pilipala/api/**`、V1–V3 迁移、`runbooks/local-dev.md`。
 - **严守模块边界**：`worker/` 目录不要碰（0 行改动）。所有钱包表读写都在 api 进程。
 - **注意现有单测兼容**：`JobLifecycleTest` 之前假设无钱包（`holdId == null`）。接入钱包后，请在 `JobLifecycleTest` 初始化时通过 `InMemoryWalletStore` 给测试用户充值（如 100 credit），将原断言更新为 `assertThat(view.holdId()).isNotBlank()`，并补充余额不足、成功 confirm、重试保持 frozen、dead/cancel 自动 release 的断言。
 - **全部测试必须绿**：`./mvnw test` 同时跑通 api 与 worker 全部单测。
@@ -379,7 +379,7 @@ git checkout main
 git pull origin main
 git checkout -b feat/wp6-prepaid-wallet
 # 1) 落入 brief + 更新 feature-briefs/README.md、data-model/README.md、api/gateway-contract.md
-# 2) api: V4 迁移 + com.flora.api.billing + SubmitJob/CancelJob/RecordAttemptResult/GetJob 联动 + GET /api/v1/wallet + 单测
+# 2) api: V4 迁移 + art.pilipala.api.billing + SubmitJob/CancelJob/RecordAttemptResult/GetJob 联动 + GET /api/v1/wallet + 单测
 # 3) 更新 runbooks/local-dev.md
 git add docs/engineering api
 git commit -m "WP6: 预付费钱包 freeze/confirm/release 与单账本流水"
@@ -396,10 +396,10 @@ git push -u origin feat/wp6-prepaid-wallet
 
 ```bash
 # 继承 WP3 / WP4 / WP5 的基础变量…
-export FLORA_BILLING_DEFAULT_JOB_COST=10
-export FLORA_BILLING_INITIAL_CREDITS=0
-export FLORA_BILLING_SETTLE_POLL_MS=200
-export FLORA_BILLING_SETTLE_BATCH_SIZE=50
+export PILIPALA_BILLING_DEFAULT_JOB_COST=10
+export PILIPALA_BILLING_INITIAL_CREDITS=0
+export PILIPALA_BILLING_SETTLE_POLL_MS=200
+export PILIPALA_BILLING_SETTLE_BATCH_SIZE=50
 ```
 
 ## curl 与 psql 端到端验收草稿（同时启动 api 与 worker，写进 runbook）
@@ -411,14 +411,14 @@ TOKEN=$(curl -s -X POST $API/auth/register -H 'Content-Type: application/json' \
   -d '{"username":"bob","password":"password1","locale":"zh"}' \
   | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
 # 2) 查钱包：available=0, frozen=0
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → {"ok":true,"data":{"user_id":"...","available":0,"frozen":0,"updated_at":"..."},"error_code":null,"message":null}
 # 3) 余额不足时 submit → WALLET_INSUFFICIENT，且不入队
-curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}'
 # → {"ok":false,"data":null,"error_code":"WALLET_INSUFFICIENT","message":"账户余额不足，请先充值。"}
 # 4) 运维 SQL 充值 100 credit（原子更新 wallet 并记一笔 topup 流水）
-psql -d flora -c "
+psql -d pilipala -c "
 WITH w AS (
     INSERT INTO wallet (user_id, available, frozen)
     SELECT id, 100, 0 FROM users WHERE username = 'bob'
@@ -430,42 +430,42 @@ WITH w AS (
 INSERT INTO wallet_ledger (wallet_id, user_id, type, amount)
 SELECT id, user_id, 'topup', 100 FROM w;
 "
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → available=100, frozen=0
 # 5) 用刚才被拒的同一个 idempotency_key 重新提交（正常生图）：
 #    提交瞬间 freeze 10 → worker 消费成功 → 自动 confirm 10
-JOB_OK=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_OK=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-ok-1","capability":"image.generate","model":"demo","params":{"prompt":"sunflower"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 1
-curl -s $API/jobs/$JOB_OK -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_OK -H "pilipala-token: $TOKEN"
 # → status="succeeded"
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → available=90, frozen=0（10 credit 已由 frozen 转为 confirmed 实扣）
 # 6) 不可重试失败（stub_outcome=job_failed）：freeze 10 → dead → 自动 release 10
-JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_FAIL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-fail-1","capability":"image.generate","model":"demo","params":{"prompt":"bad","stub_outcome":"job_failed"}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
 sleep 1
-curl -s $API/jobs/$JOB_FAIL -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_FAIL -H "pilipala-token: $TOKEN"
 # → status="dead", error_code="JOB_FAILED"
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → available=90, frozen=0（失败不吞冻，10 credit 已退回 available）
 # 7) 运行中取消（stub_delay_ms=3000）：freeze 10 → running 中点取消 → cancelled → 自动 release 10
-JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "flora-token: $TOKEN" -H 'Content-Type: application/json' \
+JOB_CANCEL=$(curl -s -X POST $API/jobs/submit -H "pilipala-token: $TOKEN" -H 'Content-Type: application/json' \
   -d '{"idempotency_key":"wp6-cancel-1","capability":"image.generate","model":"demo","params":{"prompt":"slow","stub_delay_ms":3000}}' \
   | sed -n 's/.*"job_id":"\([^"]*\)".*/\1/p')
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → 运行中可观察到 available=80, frozen=10
 sleep 1
-curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "flora-token: $TOKEN"
+curl -s -X POST $API/jobs/$JOB_CANCEL/cancel -H "pilipala-token: $TOKEN"
 sleep 3
-curl -s $API/jobs/$JOB_CANCEL -H "flora-token: $TOKEN"
+curl -s $API/jobs/$JOB_CANCEL -H "pilipala-token: $TOKEN"
 # → status="cancelled", error_code="JOB_CANCELLED"
-curl -s $API/wallet -H "flora-token: $TOKEN"
+curl -s $API/wallet -H "pilipala-token: $TOKEN"
 # → available=90, frozen=0（取消后 10 credit 已退回 available）
 # 8) 核对数据库三张表与流水对账
-psql -d flora -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
-psql -d flora -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
-psql -d flora -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT available, frozen FROM wallet WHERE user_id = (SELECT id FROM users WHERE username = 'bob');"
+psql -d pilipala -c "SELECT id, job_id, amount, status, finalized_at FROM wallet_hold WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
+psql -d pilipala -c "SELECT type, amount, hold_id, job_id, created_at FROM wallet_ledger WHERE user_id = (SELECT id FROM users WHERE username = 'bob') ORDER BY created_at;"
 ```

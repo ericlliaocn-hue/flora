@@ -24,5 +24,5 @@ spring:
 pilipala:
   gateway:
     # 本地默认走 stub：不发外部请求，用确定性假上游跑通全链路。
-    mode: ${FLORA_GATEWAY_MODE:stub}
-    base-url: ${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
+    mode: ${PILIPALA_GATEWAY_MODE:stub}
+    base-url: ${PILIPALA_GATEWAY_BASE_URL:http://127.0.0.1:18080}

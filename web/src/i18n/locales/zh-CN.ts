@@ -624,7 +624,7 @@ export default {
             newName: "新渠道",
             indexedName: "渠道 {{index}}",
             mode: "生成通道",
-            modeRemote: "Flora 托管云端（推荐）",
+            modeRemote: "Pilipala 托管云端（推荐）",
             modeRemoteDescription: "通过 pilipala 后端网关（/api/v1/jobs/submit）与预付费钱包生成图片，无需在浏览器配置供应商 API Key。",
             modeLocal: "本地直连调试",
             modeLocalDescription: "浏览器直连你自配的供应商渠道，不走钱包、不计费。仅在本地调试时开启。",

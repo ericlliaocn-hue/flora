@@ -7,7 +7,7 @@
 
 异步生成必须入队：重试、并发、DLQ、取消都要求「状态在数据库，投递可失败可重放」。有的方案把 queue 名、routing key、tag、offset 写进业务表，换 RocketMQ / 云厂商队列时要做领域迁移。qingfeng 类系统还常把「发送消息」和「改状态」散落在几千行服务里，难以证明只投递了一次。
 
-flora 后续可能换 RocketMQ，但不想改 `created/queued/running/...` 这张状态机。
+pilipala 后续可能换 RocketMQ，但不想改 `created/queued/running/...` 这张状态机。
 
 ## 决策（Decision）
 

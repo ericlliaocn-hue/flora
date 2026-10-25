@@ -10,7 +10,7 @@
 
     <artifactId>pilipala-worker</artifactId>
     <name>pilipala-worker</name>
-    <description>flora thin worker process</description>
+    <description>pilipala thin worker process</description>
 
     <dependencies>
         <dependency>

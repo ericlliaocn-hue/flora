@@ -10,7 +10,7 @@ import type { GeneratedImageItem, ReferenceImage } from "@/types/image";
 /** 后端 JobStatus 的小写形式：failed 是重试中的中间态，终态失败是 dead。 */
 export type PilipalaJobStatus = "created" | "queued" | "running" | "succeeded" | "failed" | "cancelled" | "dead";
 
-export type FloraSubmitJobRequest = {
+export type PilipalaSubmitJobRequest = {
     idempotency_key: string;
     capability: string;
     model: string;
@@ -18,7 +18,7 @@ export type FloraSubmitJobRequest = {
     client_job_id?: string;
 };
 
-export type FloraSubmitJobView = {
+export type PilipalaSubmitJobView = {
     job_id: string;
     status: PilipalaJobStatus;
     hold_id: string | null;
@@ -48,7 +48,7 @@ export type PilipalaJobResultView = {
     message: string | null;
 };
 
-export type FloraGeneratedImage = GeneratedImageItem;
+export type PilipalaGeneratedImage = GeneratedImageItem;
 
 type PilipalaJobCallOptions = { signal?: AbortSignal; fetchImpl?: typeof fetch };
 
@@ -63,8 +63,8 @@ export type RunPilipalaImageJobOptions = PilipalaJobCallOptions & {
 const DEFAULT_POLL_INTERVAL_MS = 800;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
-export function submitPilipalaJob(payload: FloraSubmitJobRequest, options?: PilipalaJobCallOptions) {
-    return pilipalaRequest<FloraSubmitJobView>("/api/v1/jobs/submit", {
+export function submitPilipalaJob(payload: PilipalaSubmitJobRequest, options?: PilipalaJobCallOptions) {
+    return pilipalaRequest<PilipalaSubmitJobView>("/api/v1/jobs/submit", {
         method: "POST",
         body: JSON.stringify(payload),
         signal: options?.signal,
@@ -131,7 +131,7 @@ export function cancelPilipalaJob(jobId: string, options?: PilipalaJobCallOption
  * <p>失败文案一律用后端返回的本地化 message（WP9 的 i18n_message），
  * 不向界面暴露堆栈或上游英文原文（ADR 0005）。
  */
-export async function runPilipalaImageJob(config: AiConfig, prompt: string, references?: ReferenceImage[], options?: RunPilipalaImageJobOptions): Promise<FloraGeneratedImage[]> {
+export async function runPilipalaImageJob(config: AiConfig, prompt: string, references?: ReferenceImage[], options?: RunPilipalaImageJobOptions): Promise<PilipalaGeneratedImage[]> {
     const model = modelOptionName(config.model || config.imageModel || "gpt-image-2") || "gpt-image-2";
     // 只传已物化参数：严禁把画布文档或参考图 Base64 塞进 params（ADR 0003）。
     const params: Record<string, unknown> = {
@@ -142,7 +142,7 @@ export async function runPilipalaImageJob(config: AiConfig, prompt: string, refe
     if (config.background) params.background = config.background;
     if (references?.length) params.reference_count = references.length;
 
-    let submitted: FloraSubmitJobView;
+    let submitted: PilipalaSubmitJobView;
     try {
         submitted = await submitPilipalaJob(
             {
@@ -223,7 +223,7 @@ async function pollPilipalaJob(jobId: string, options?: RunPilipalaImageJobOptio
  * <p>本地文件桶没有 CORS 头时 fetch 会失败：回退成直链，
  * 由 image-storage 的 new Image() 加载宽高并直接渲染这个地址。
  */
-async function loadImageFromUrl(url: string, fetchImpl?: typeof fetch): Promise<FloraGeneratedImage> {
+async function loadImageFromUrl(url: string, fetchImpl?: typeof fetch): Promise<PilipalaGeneratedImage> {
     try {
         const response = await (fetchImpl ?? globalThis.fetch)(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

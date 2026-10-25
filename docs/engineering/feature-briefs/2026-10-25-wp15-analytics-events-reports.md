@@ -1,7 +1,7 @@
 # Feature brief：WP15 数据分析 — 事件字典 v0 + 必出报表 + analytics 域（docs-first）
 
 - 日期：2026-10-25
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP15 / 增长与定价决策基线（docs-first；采集入库为可选 Phase 2 / WP15b）
 - 状态：已确认（待实现）
 - 建议分支：`feat/wp15-analytics-events-reports`
@@ -79,7 +79,7 @@
 仅当 PR 描述明确写「含 WP15 Phase 2」时才要求：
 
 - Flyway：`analytics_event`（或等价名）最小表 + 索引建议。
-- api 域包 `com.flora.api.analytics`：`web` ingest（鉴权策略在 ADR/brief 写清：登录用户或带 anon 的受限接口）+ `application` 只追加事件 + `infra` 仓储；**零**钱包写入。
+- api 域包 `art.pilipala.api.analytics`：`web` ingest（鉴权策略在 ADR/brief 写清：登录用户或带 anon 的受限接口）+ `application` 只追加事件 + `infra` 仓储；**零**钱包写入。
 - 契约字段与字典一致；单测：写入成功、拒绝改钱包路径（无 billing 依赖写操作）。
 
 **未勾选 Phase 2 时，有 Phase 2 代码/迁移反而应打回或标为超出——除非实施者愿意拆成第二 commit 且 checklist 勾选。** 推荐：Phase 1 PR 干净只做文档。
@@ -106,7 +106,7 @@
 | 路径 | 动作 |
 | --- | --- |
 | `api/src/main/resources/db/migration/V*__analytics_event.sql`（版本号接仓内最新） | 建表 |
-| `api/src/main/java/com/flora/api/analytics/**` | 最小 ingest |
+| `api/src/main/java/com/pilipala/api/analytics/**` | 最小 ingest |
 | 对应测试 | 写入 / 校验字段 |
 
 ---
@@ -227,13 +227,13 @@ Phase 1 文档可描述该表为「后续可选物理化」，**不**提交 Flyw
 
 ## 背景（Context）
 
-flora 需要用数据支撑拉新、营销与定价：激活与留存、生成漏斗、按模型质量、充值与消耗、冻结滞留等。
+pilipala 需要用数据支撑拉新、营销与定价：激活与留存、生成漏斗、按模型质量、充值与消耗、冻结滞留等。
 若把埋点与报表逻辑塞进 `job` / `billing`，或另建一套「分析用余额」，会破坏领域边界与 ADR 0001 账本唯一性。
 客户端点击不能代替账本与任务表成为资金/任务真相源。
 
 ## 决策（Decision）
 
-- 设立 **analytics** 域（文档与未来代码包 `com.flora.api.analytics`）：负责事件契约、采集（后续）、报表口径；**不**负责改余额、不实现广告投放与优惠券引擎。
+- 设立 **analytics** 域（文档与未来代码包 `art.pilipala.api.analytics`）：负责事件契约、采集（后续）、报表口径；**不**负责改余额、不实现广告投放与优惠券引擎。
 - **真相源分层**：
   - 资金与任务终态：Postgres 业务表（`users` / `job*` / `wallet*` / `wallet_ledger` / `wallet_hold`）为权威。
   - 意图与曝光：客户端事件（`canvas_opened`、`generation_submit_clicked`、`paywall_viewed` 等）。

@@ -42,7 +42,7 @@ export type PilipalaAdminJobStep = {
     ended_at: string | null;
 };
 
-export type FloraAdminProviderTask = {
+export type PilipalaAdminProviderTask = {
     id: string;
     job_step_id: string | null;
     upstream_request_id: string | null;
@@ -67,7 +67,7 @@ export type PilipalaAdminJob = {
     created_at: string;
     updated_at: string;
     steps: PilipalaAdminJobStep[];
-    provider_tasks: FloraAdminProviderTask[];
+    provider_tasks: PilipalaAdminProviderTask[];
 };
 
 export type PilipalaI18nMessage = {

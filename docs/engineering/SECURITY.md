@@ -1,13 +1,13 @@
 # 工程安全
 
-本文面向 flora 实现与协作，不是漏洞赏金页。上游公开安全说明仍见仓库根目录 `SECURITY.md`（infinite-canvas 策略）。**不要把真实密钥贴进聊天、brief、PR、截图或仓库。**
+本文面向 pilipala 实现与协作，不是漏洞赏金页。上游公开安全说明仍见仓库根目录 `SECURITY.md`（infinite-canvas 策略）。**不要把真实密钥贴进聊天、brief、PR、截图或仓库。**
 
 ## 密钥放哪里
 
 | 密钥 | 允许 | 禁止 |
 | --- | --- | --- |
 | Anytoken token | 服务器环境变量；GitHub Actions Secrets；团队 vault | 前端 `VITE_*`、localStorage、示例 JSON |
-| 上游模型 Key | 只存在 Anytoken 侧。flora 进程不需要也不该存用户级上游 Key | 再做一个「渠道 Key 表」给 C 端用 |
+| 上游模型 Key | 只存在 Anytoken 侧。pilipala 进程不需要也不该存用户级上游 Key | 再做一个「渠道 Key 表」给 C 端用 |
 | TOS AK/SK、签名密钥 | api/worker 环境变量或云角色 | 提交到 git；发到浏览器长期有效的 AK |
 | Postgres / Redis / RabbitMQ 密码 | 环境变量 / Secrets | compose 样例里写生产密码 |
 | Sa-Token 或 cookie 签名 | 环境变量 | 默认 `123456` 进生产 |
@@ -18,11 +18,11 @@
 
 M2 之后正式路径：
 
-- 浏览器只有 flora 会话，没有 Anytoken，没有供应商 Key。
+- 浏览器只有 pilipala 会话，没有 Anytoken，没有供应商 Key。
 - TOS 只下发短 TTL 读地址，不把 bucket 配成长期 public + 可枚举。
 - 用户不能通过 query 读到别人的 `job_id` 结果（必须校验 `user_id`）。
 
-在 WP7 完成前，上游「前端直连 + 本地 Key」仍然存在。那是 fork 遗留，不是 flora 安全模型。不要在对外文档把遗留写成推荐生产架构。
+在 WP7 完成前，上游「前端直连 + 本地 Key」仍然存在。那是 fork 遗留，不是 pilipala 安全模型。不要在对外文档把遗留写成推荐生产架构。
 
 ## 协作时
 
@@ -39,7 +39,7 @@ M2 之后正式路径：
 
 ## 依赖与插件
 
-上游画布仍允许远程节点插件在浏览器执行。托管 flora 若保留插件，必须在独立 brief 里写信任模型；默认不要把「用户贴 URL 装插件」当成企业默认打开项。
+上游画布仍允许远程节点插件在浏览器执行。托管 pilipala 若保留插件，必须在独立 brief 里写信任模型；默认不要把「用户贴 URL 装插件」当成企业默认打开项。
 
 ## 上报
 

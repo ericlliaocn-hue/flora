@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * {@code flora.admin.*} 的配置。
+ * {@code pilipala.admin.*} 的配置。
  *
  * @param bootstrapUsernames 初始管理员用户名列表（去空白小写比较）：命中者在注册或登录时自动升为 admin
  */

@@ -2,15 +2,15 @@
 
 ## Unreleased
 
-+ [调整] 未设环境变量时的运行时默认全面切到 pilipala 品牌：Sa-Token 请求头/ cookie 名 `pilipala-token`，Rabbit 拓扑 `pilipala.jobs*`，TOS stub 默认 `pilipala-dev` / `pilipala-local-*` / `/tmp/pilipala-tos`，Postgres 默认库名与账号 `pilipala`；仍可通过 `PILIPALA_*` 配置，并回读 `FLORA_*` 作迁移回退。部署需重建 Rabbit 队列、切换客户端 token 头、并按环境对齐数据库名。
++ [调整] 清除仓库内残留的 **flora** 品牌与 `FLORA_*` 配置回退：文档/README/runbook/ADR/feature brief 统一为 pilipala；运行时仅 `PILIPALA_*`，默认 `pilipala-token`、`pilipala.jobs*`、本地 TOS `pilipala-dev`、Postgres 默认库 `pilipala`；仅保留 localStorage `flora:` 迁移与火山 TOS 历史桶名（如 `flora-media-prod`）配置说明。部署需重建 Rabbit 队列、切换客户端 token 头、并按环境对齐数据库名。
 + [调整] 完成 Java 后端命名切换：包名 `com.pilipala` → `art.pilipala`（源码、测试、MyBatis `@MapperScan`、日志包名），Maven `groupId` 对齐为 `art.pilipala`，可执行 jar 产出 `pilipala-api.jar` / `pilipala-worker.jar`（替代 `flora-api.jar` / `flora-worker.jar`）。部署时需在主机上把 systemd `ExecStart` 中的 jar 路径改为新文件名（`/etc/systemd/system/flora-*.service` 的 unit 名可暂不改）。
-+ [调整] 全仓库产品品牌由 flora 更名为 **pilipala**（官网 https://pilipala.art）：前端文案与 i18n、npm `pilipala`、Java `art.pilipala` / `pilipala-*` 构件、`pilipala.*` 配置前缀、`PILIPALA_*` 环境变量（仍回读 `FLORA_*`）、`pilipala:` localStorage 键（启动时从 `flora:` 迁移）；导出包 `app` 为 pilipala（仍接受旧 flora 包）。GitHub 仓库名未改。
++ [调整] 全仓库产品品牌由 flora 更名为 **pilipala**（官网 https://pilipala.art）：前端文案与 i18n、npm `pilipala`、Java `art.pilipala` / `pilipala-*` 构件、`pilipala.*` 配置前缀、`PILIPALA_*` 环境变量、`pilipala:` localStorage 键（启动时从 `flora:` 迁移）；导出包 `app` 为 pilipala（仍接受旧 flora 包）。GitHub 仓库已更名为 pilipala。
 + [调整] Studio 首页对齐 LibTV 节奏：压缩 Hero 高度；最近项目/特色功能标题与卡片强化（大插图、角标）；能力精选桌面固定一行 4 张大卡片（16:9）。
 + [调整] Studio 首页：活动条倒计时改为可配置截止时间的真实秒级倒计时（过期自动隐藏）；Hero/能力行/区块间距加大；能力精选栅格放宽至宽屏多列并采用偏横向卡片比例。
 + [调整] Studio 首页视觉贴近 LibTV：方形 Hero 新建按钮、图标能力行、青绿活动条与圆角顶栏、最近项目横滑与能力亮点卡片、能力精选栅格与搜索筛选；侧栏底部改为版本与预付费提示。
 + [调整] 官网首页改版为深色 Studio 壳层：左侧导航、右侧工具顶栏、大画布 Hero、能力亮点与精选作品瀑布流（mockup v5）。
 + [新增] WP16：z-pay 支付宝 mapi 充值（套餐下单、验签 webhook、查单补单、Admin 退款）与 `/billing/recharge/result` 结果页。
-+ [调整] 文档登记生产公网根 URL 为 https://pilipala.art（经 `PILIPALA_PUBLIC_BASE_URL` / 兼容 `FLORA_PUBLIC_BASE_URL` 配置，代码不写死）。
++ [调整] 文档登记生产公网根 URL 为 https://pilipala.art（经 `PILIPALA_PUBLIC_BASE_URL` 配置，代码不写死）。
 
 ## v0.20.0 - 2026-10-10
 

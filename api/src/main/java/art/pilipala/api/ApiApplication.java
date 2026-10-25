@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * flora 业务 API 进程入口。
+ * pilipala 业务 API 进程入口。
  *
  * <p>WP1 是进程骨架与健康检查；WP3 起有 users 表与 Sa-Token 认证；
  * WP4 起有 job 域（状态机 + outbox + RabbitMQ 投递）。

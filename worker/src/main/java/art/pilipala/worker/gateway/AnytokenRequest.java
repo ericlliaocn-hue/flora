@@ -8,7 +8,7 @@ import java.util.UUID;
  * @param jobId      服务端 job id
  * @param attempt    第几次 attempt（从 1 开始）
  * @param capability 能力名，如 image.generate
- * @param model      flora 内部模型名
+ * @param model      pilipala 内部模型名
  * @param paramsJson 已物化的参数（JSON 文本）
  */
 public record AnytokenRequest(

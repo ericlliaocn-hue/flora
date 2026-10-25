@@ -20,12 +20,12 @@ import org.springframework.context.annotation.Configuration;
 public class WorkerRabbitConfig {
 
     @Bean
-    public DirectExchange floraJobExchange(WorkerJobProperties properties) {
+    public DirectExchange pilipalaJobExchange(WorkerJobProperties properties) {
         return new DirectExchange(properties.exchange(), true, false);
     }
 
     @Bean
-    public Queue floraJobQueue(WorkerJobProperties properties) {
+    public Queue pilipalaJobQueue(WorkerJobProperties properties) {
         return QueueBuilder.durable(properties.queue())
                 .deadLetterExchange("")
                 .deadLetterRoutingKey(properties.deadLetterQueue())
@@ -33,12 +33,12 @@ public class WorkerRabbitConfig {
     }
 
     @Bean
-    public Queue floraJobDeadLetterQueue(WorkerJobProperties properties) {
+    public Queue pilipalaJobDeadLetterQueue(WorkerJobProperties properties) {
         return QueueBuilder.durable(properties.deadLetterQueue()).build();
     }
 
     @Bean
-    public Binding floraJobBinding(Queue floraJobQueue, DirectExchange floraJobExchange, WorkerJobProperties properties) {
-        return BindingBuilder.bind(floraJobQueue).to(floraJobExchange).with(properties.routingKey());
+    public Binding pilipalaJobBinding(Queue pilipalaJobQueue, DirectExchange pilipalaJobExchange, WorkerJobProperties properties) {
+        return BindingBuilder.bind(pilipalaJobQueue).to(pilipalaJobExchange).with(properties.routingKey());
     }
 }

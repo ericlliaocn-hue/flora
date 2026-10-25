@@ -51,7 +51,7 @@ created → queued → running → succeeded
 | `user_id` | UUID | NO | IDX (`user_id`, `created_at` DESC) | 提交者；FK → `users.id`（`users` 表 WP3 建） |
 | `status` | TEXT | NO | CHECK ∈ 上表枚举；IDX (`status`, `updated_at`) | 状态机权威 |
 | `capability` | TEXT | NO | | 如 `image.generate` |
-| `model` | TEXT | NO | | flora 内部模型名 |
+| `model` | TEXT | NO | | pilipala 内部模型名 |
 | `params` | JSONB | NO | | 入队前已物化；worker 不回源画布 |
 | `attempt` | INT | NO | DEFAULT 0；CHECK >= 0 | 已开始的 attempt 数 |
 | `max_attempts` | INT | NO | DEFAULT 3；CHECK >= 1 | 默认 3；实现 WP 不得静默改默认，除非改本文档 |
@@ -66,7 +66,7 @@ created → queued → running → succeeded
 ### 禁止出现在 `job` 上的列
 
 - `queue_name` / `routing_key` / `amqp_*`：队列实现可换，job 模型不绑死队列（ADR 0003）。
-- Anytoken user id：网关侧不映射成 flora 用户。
+- Anytoken user id：网关侧不映射成 pilipala 用户。
 - 上游 raw message：原文只进 `provider_task` 与日志。
 
 ## Lease 等价物

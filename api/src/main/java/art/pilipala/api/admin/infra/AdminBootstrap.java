@@ -6,9 +6,9 @@ import art.pilipala.api.auth.domain.User;
 import art.pilipala.api.auth.infra.UserRepository;
 
 /**
- * 初始管理员引导：命中 {@code flora.admin.bootstrap-usernames} 的用户名自动升为 admin。
+ * 初始管理员引导：命中 {@code pilipala.admin.bootstrap-usernames} 的用户名自动升为 admin。
  *
- * <p>这样本地联调与自动化验收只要注册或登录 {@code admin}（或 {@code flora_admin}）
+ * <p>这样本地联调与自动化验收只要注册或登录 {@code admin}（或 {@code pilipala_admin}）
  * 就能拿到运维权限，不必手写 SQL 改库。已经在库里是 admin 的用户不会被降权。
  */
 @Component
