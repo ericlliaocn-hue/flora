@@ -607,3 +607,9 @@
     border-radius: 0.6rem;
     font-size: 0.75rem;
 }
+
+/* antd reset.css is unlayered (`button { color: inherit }`) and beats Tailwind `@layer utilities` text colors on <button>. */
+button.studio-solid-on-white,
+button.studio-solid-on-white:hover {
+    color: #171717;
+}
