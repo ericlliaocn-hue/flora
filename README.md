@@ -3,7 +3,7 @@
 >
 > 工程文档（愿景、里程碑、架构、ADR、feature brief）见 **[docs/engineering](docs/engineering/README.md)**。大改动先写 brief，再实现。
 >
-> 用户可见品牌、npm 包名、Java `art.pilipala` 模块与 `PILIPALA_*` 环境变量已统一为 pilipala；`FLORA_*` 与 `flora:` localStorage 键仍可读一个版本以便生产 `.env` 与浏览器本地数据平滑迁移。
+> 用户可见品牌、npm 包名、Java `art.pilipala` 模块与 `PILIPALA_*` 环境变量已统一为 pilipala；未设 env 时 Sa-Token / Rabbit / TOS / Postgres 默认亦为 pilipala 命名。`FLORA_*` 与 `flora:` localStorage 键仍可读一个版本以便生产 `.env` 与浏览器本地数据平滑迁移。
 
 <p align="center">
   <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">

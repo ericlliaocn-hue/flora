@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
  */
 class TosV4SignerTest {
 
-    private static final String ACCESS_KEY = "flora-local-ak";
-    private static final String SECRET_KEY = "flora-local-sk";
+    private static final String ACCESS_KEY = "pilipala-local-ak";
+    private static final String SECRET_KEY = "pilipala-local-sk";
     private static final String REGION = "cn-beijing";
     private static final String DATE = "20261024";
 
@@ -47,11 +47,11 @@ class TosV4SignerTest {
     @Test
     void putAuthorizationMatchesTheDeterministicVector() {
         String authorization = TosV4Signer.authorization(ACCESS_KEY, SECRET_KEY, REGION,
-                "/flora-dev/anytoken/img/x/1.png", "127.0.0.1:18080", "image/png",
+                "/pilipala-dev/anytoken/img/x/1.png", "127.0.0.1:18080", "image/png",
                 TosV4Signer.sha256Hex(MinimalPng.BYTES), Instant.parse("2026-10-24T04:30:00Z"));
 
         assertThat(authorization).isEqualTo("TOS4-HMAC-SHA256 "
-                + "Credential=flora-local-ak/20261024/cn-beijing/tos/request, "
+                + "Credential=pilipala-local-ak/20261024/cn-beijing/tos/request, "
                 + "SignedHeaders=content-type;host;x-tos-content-sha256;x-tos-date, "
                 + "Signature=047f56261cf45379d5131ab7d0641d6149ef77f8312267db9f24b0267fbde50f");
     }

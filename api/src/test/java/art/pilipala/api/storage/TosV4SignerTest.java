@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
  */
 class TosV4SignerTest {
 
-    private static final String SECRET_KEY = "flora-local-sk";
+    private static final String SECRET_KEY = "pilipala-local-sk";
     private static final String REGION = "cn-beijing";
     private static final String DATE = "20261024";
 

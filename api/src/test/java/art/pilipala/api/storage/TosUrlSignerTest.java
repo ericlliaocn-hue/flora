@@ -27,10 +27,10 @@ import org.junit.jupiter.api.Test;
  */
 class TosUrlSignerTest {
 
-    private static final String ACCESS_KEY = "flora-local-ak";
-    private static final String SECRET_KEY = "flora-local-sk";
+    private static final String ACCESS_KEY = "pilipala-local-ak";
+    private static final String SECRET_KEY = "pilipala-local-sk";
     private static final String REGION = "cn-beijing";
-    private static final String BUCKET = "flora-dev";
+    private static final String BUCKET = "pilipala-dev";
     private static final String ENDPOINT = "http://127.0.0.1:18080";
     private static final String OBJECT_KEY = "anytoken/img/11111111-2222-3333-4444-555555555555/1.png";
     private static final Instant SIGNING_TIME = Instant.parse("2026-10-24T04:30:00Z");
@@ -41,9 +41,9 @@ class TosUrlSignerTest {
     void signedUrlMatchesTheDeterministicVector() {
         String url = signer(ENDPOINT).signGetUrl(OBJECT_KEY, SIGNING_TIME);
 
-        assertThat(url).isEqualTo("http://127.0.0.1:18080/flora-dev/anytoken/img/11111111-2222-3333-4444-555555555555/1.png"
+        assertThat(url).isEqualTo("http://127.0.0.1:18080/pilipala-dev/anytoken/img/11111111-2222-3333-4444-555555555555/1.png"
                 + "?X-Tos-Algorithm=TOS4-HMAC-SHA256"
-                + "&X-Tos-Credential=flora-local-ak%2F20261024%2Fcn-beijing%2Ftos%2Frequest"
+                + "&X-Tos-Credential=pilipala-local-ak%2F20261024%2Fcn-beijing%2Ftos%2Frequest"
                 + "&X-Tos-Date=20261024T043000Z"
                 + "&X-Tos-Expires=900"
                 + "&X-Tos-SignedHeaders=host"
@@ -75,7 +75,7 @@ class TosUrlSignerTest {
         String virtualHost = "flora-media-test.tos-cn-guangzhou.volces.com";
         String canonicalUri = "/anytoken/img/11111111-2222-3333-4444-555555555555/1.png";
         String url = new TosUrlSigner(new TosProperties("http", "https://tos-cn-guangzhou.volces.com", "cn-guangzhou",
-                "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/flora-tos"))
+                "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/pilipala-tos"))
                 .signGetUrl(OBJECT_KEY, SIGNING_TIME);
 
         assertThat(url).startsWith("https://" + virtualHost + canonicalUri + "?");
@@ -109,7 +109,7 @@ class TosUrlSignerTest {
     @Test
     void virtualHostPrefixIsNotDuplicated() {
         String url = new TosUrlSigner(new TosProperties("http", "https://flora-media-test.tos-cn-guangzhou.volces.com",
-                "cn-guangzhou", "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/flora-tos"))
+                "cn-guangzhou", "flora-media-test", ACCESS_KEY, SECRET_KEY, 900, 15000, "/tmp/pilipala-tos"))
                 .signGetUrl(OBJECT_KEY, SIGNING_TIME);
 
         assertThat(url).startsWith("https://flora-media-test.tos-cn-guangzhou.volces.com/anytoken/img/");
@@ -187,7 +187,7 @@ class TosUrlSignerTest {
 
     private TosUrlSigner signer(String endpoint) {
         return new TosUrlSigner(new TosProperties("stub", endpoint, REGION, BUCKET, ACCESS_KEY, SECRET_KEY, 900, 15000,
-                "/tmp/flora-tos"));
+                "/tmp/pilipala-tos"));
     }
 
     /** 本地 TOS 桩：校验 Query 预签名，通过才返回对象字节。 */

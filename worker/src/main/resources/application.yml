@@ -16,8 +16,8 @@ spring:
     property-naming-strategy: SNAKE_CASE
   # worker 直连 Postgres：迁移统一由 api 管理，worker 不跑 Flyway。
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/flora}
-    username: ${SPRING_DATASOURCE_USERNAME:flora}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/pilipala}
+    username: ${SPRING_DATASOURCE_USERNAME:pilipala}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
       maximum-pool-size: ${PILIPALA_DB_POOL_SIZE:${FLORA_DB_POOL_SIZE:5}}
@@ -52,10 +52,10 @@ management:
 pilipala:
   # 队列名只是传输配置，不进 job 表（ADR 0003）。
   job:
-    exchange: ${PILIPALA_JOB_EXCHANGE:${FLORA_JOB_EXCHANGE:flora.jobs}}
+    exchange: ${PILIPALA_JOB_EXCHANGE:${FLORA_JOB_EXCHANGE:pilipala.jobs}}
     routing-key: ${PILIPALA_JOB_ROUTING_KEY:${FLORA_JOB_ROUTING_KEY:job.execute}}
-    queue: ${PILIPALA_JOB_QUEUE:${FLORA_JOB_QUEUE:flora.jobs.execute}}
-    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:${FLORA_JOB_DEAD_LETTER_QUEUE:flora.jobs.execute.dlq}}
+    queue: ${PILIPALA_JOB_QUEUE:${FLORA_JOB_QUEUE:pilipala.jobs.execute}}
+    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:${FLORA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}}
     # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑。
     lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:${FLORA_JOB_LEASE_TTL_SECONDS:60}}
   # 唯一的模型供应商适配器（ADR 0001：只走 Anytoken，没有第二个适配器）。
@@ -80,9 +80,9 @@ pilipala:
       mode: ${PILIPALA_TOS_MODE:${FLORA_TOS_MODE:stub}}
       endpoint: ${PILIPALA_TOS_ENDPOINT:${FLORA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}}
       region: ${PILIPALA_TOS_REGION:${FLORA_TOS_REGION:cn-beijing}}
-      bucket: ${PILIPALA_TOS_BUCKET:${FLORA_TOS_BUCKET:flora-dev}}
-      access-key: ${PILIPALA_TOS_ACCESS_KEY:${FLORA_TOS_ACCESS_KEY:flora-local-ak}}
-      secret-key: ${PILIPALA_TOS_SECRET_KEY:${FLORA_TOS_SECRET_KEY:flora-local-sk}}
+      bucket: ${PILIPALA_TOS_BUCKET:${FLORA_TOS_BUCKET:pilipala-dev}}
+      access-key: ${PILIPALA_TOS_ACCESS_KEY:${FLORA_TOS_ACCESS_KEY:pilipala-local-ak}}
+      secret-key: ${PILIPALA_TOS_SECRET_KEY:${FLORA_TOS_SECRET_KEY:pilipala-local-sk}}
       presign-ttl-seconds: ${PILIPALA_TOS_PRESIGN_TTL_SECONDS:${FLORA_TOS_PRESIGN_TTL_SECONDS:900}}
       timeout-ms: ${PILIPALA_TOS_TIMEOUT_MS:${FLORA_TOS_TIMEOUT_MS:15000}}
-      local-dir: ${PILIPALA_TOS_LOCAL_DIR:${FLORA_TOS_LOCAL_DIR:/tmp/flora-tos}}
+      local-dir: ${PILIPALA_TOS_LOCAL_DIR:${FLORA_TOS_LOCAL_DIR:/tmp/pilipala-tos}}

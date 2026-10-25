@@ -23,10 +23,10 @@ public record TosProperties(
         @DefaultValue("stub") String mode,
         @DefaultValue("https://tos-cn-beijing.volces.com") String endpoint,
         @DefaultValue("cn-beijing") String region,
-        @DefaultValue("flora-dev") String bucket,
-        @DefaultValue("flora-local-ak") String accessKey,
-        @DefaultValue("flora-local-sk") String secretKey,
+        @DefaultValue("pilipala-dev") String bucket,
+        @DefaultValue("pilipala-local-ak") String accessKey,
+        @DefaultValue("pilipala-local-sk") String secretKey,
         @DefaultValue("900") long presignTtlSeconds,
         @DefaultValue("15000") long timeoutMs,
-        @DefaultValue("/tmp/flora-tos") String localDir) {
+        @DefaultValue("/tmp/pilipala-tos") String localDir) {
 }

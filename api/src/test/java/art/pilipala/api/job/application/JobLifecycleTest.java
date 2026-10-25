@@ -65,7 +65,7 @@ class JobLifecycleTest {
             new JobCostPolicy(billing));
     private final GetJob getJob = new GetJob(store, holdSettlement, i18n);
     private final TosUrlSigner tosUrlSigner = new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080",
-            "cn-beijing", "flora-dev", "flora-local-ak", "flora-local-sk", 900, 15000, "/tmp/flora-tos"));
+            "cn-beijing", "pilipala-dev", "pilipala-local-ak", "pilipala-local-sk", 900, 15000, "/tmp/pilipala-tos"));
     private final GetJobResult getJobResult = new GetJobResult(store, mapper, holdSettlement, tosUrlSigner, i18n);
     private final CancelJob cancelJob = new CancelJob(store, holdSettlement, i18n);
     private final ClaimJob claimJob = new ClaimJob(store, store, lease, holdSettlement);

@@ -1,7 +1,7 @@
 # 仅本地依赖：Postgres + Redis + RabbitMQ。
 # 不是 pilipala 全家桶编排（web / api / worker 都不在这里）。
 #
-# Postgres 库名/用户默认仍为 flora（运维切库前不改物理名）；密码不写进仓库，启动前先导出：
+# Postgres 库名/用户默认为 pilipala；密码不写进仓库，启动前先导出：
 #   export PILIPALA_DEPS_POSTGRES_PASSWORD=<本地开发用密码>
 # （仍接受 FLORA_DEPS_POSTGRES_PASSWORD 作为回退）
 # 宿主机端口冲突时：
@@ -16,15 +16,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: flora
-      POSTGRES_USER: flora
+      POSTGRES_DB: pilipala
+      POSTGRES_USER: pilipala
       POSTGRES_PASSWORD: ${PILIPALA_DEPS_POSTGRES_PASSWORD:${FLORA_DEPS_POSTGRES_PASSWORD:?set PILIPALA_DEPS_POSTGRES_PASSWORD before starting local deps}}
     ports:
       - "${PILIPALA_DEPS_POSTGRES_PORT:-5432}:5432"
     volumes:
-      - flora-deps-postgres:/var/lib/postgresql/data
+      - pilipala-deps-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U flora -d flora"]
+      test: ["CMD-SHELL", "pg_isready -U pilipala -d pilipala"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -55,4 +55,4 @@ services:
       retries: 12
 
 volumes:
-  flora-deps-postgres:
+  pilipala-deps-postgres:
