@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { STUDIO_PROMO_END_MS } from "@/constant/studio-promo";
 import { formatCountdownUnit, usePromoCountdown } from "@/hooks/use-promo-countdown";
 
-const STORAGE_KEY = "flora:studio-promo-dismissed:v1";
+const STORAGE_KEY = "pilipala:studio-promo-dismissed:v1";
 
 type StudioPromoStripProps = {
     onRecharge?: () => void;

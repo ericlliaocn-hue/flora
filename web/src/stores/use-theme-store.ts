@@ -14,6 +14,6 @@ export const useThemeStore = create<ThemeStore>()(
             theme: "dark",
             setTheme: (theme) => set({ theme }),
         }),
-        { name: "flora:theme_store" },
+        { name: "pilipala:theme_store" },
     ),
 );

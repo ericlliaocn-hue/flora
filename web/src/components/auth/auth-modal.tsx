@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { App, Button, Form, Input, Modal, Tabs } from "antd";
 import { useTranslation } from "react-i18next";
 
-import { FloraApiError } from "@/services/api/flora-client";
+import { PilipalaApiError } from "@/services/api/pilipala-client";
 import { useAuthStore } from "@/stores/use-auth-store";
 
 /** 与后端 RegisterUser 的用户名规则一致：^[a-zA-Z0-9_]{3,32}$。 */
@@ -43,7 +43,7 @@ export function AuthModal() {
                 await register({ ...values, locale: i18n.resolvedLanguage === "en-US" ? "en" : "zh" });
             }
         } catch (error) {
-            message.error(error instanceof FloraApiError ? error.message : t(tab === "login" ? "auth.loginFailed" : "auth.registerFailed"));
+            message.error(error instanceof PilipalaApiError ? error.message : t(tab === "login" ? "auth.loginFailed" : "auth.registerFailed"));
         }
     };
 

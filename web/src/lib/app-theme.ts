@@ -33,7 +33,7 @@ export function getAntThemeConfig(dark: boolean): ThemeConfig {
 
     return {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-        cssVar: { key: dark ? "flora-dark" : "flora-light" },
+        cssVar: { key: dark ? "pilipala-dark" : "pilipala-light" },
         token: {
             colorPrimary: color.primary,
             colorInfo: color.primary,

@@ -1,9 +1,9 @@
 > [!IMPORTANT]
-> **flora** 是本仓库的产品品牌（[ericlliaocn-hue/flora](https://github.com/ericlliaocn-hue/flora)），基于 infinite-canvas 的白标 fork，正在替换品牌并补齐托管架构（账号、预付费、任务、Anytoken hop）。
+> **pilipala**（官网 https://pilipala.art）是本仓库的产品品牌；GitHub 仓库名仍为 [ericlliaocn-hue/flora](https://github.com/ericlliaocn-hue/flora)（后续可单独改名）。基于 infinite-canvas 的白标 fork，正在补齐托管架构（账号、预付费、任务、Anytoken hop）。
 >
-> 工程文档（愿景、里程碑、架构、ADR、feature brief）见 **[docs/engineering](docs/engineering/README.md)**。大改动先写 brief，再交给 Minimax 或人实现。
+> 工程文档（愿景、里程碑、架构、ADR、feature brief）见 **[docs/engineering](docs/engineering/README.md)**。大改动先写 brief，再实现。
 >
-> 下方仍保留上游 infinite-canvas 的功能说明与快速开始，便于对照。用户可见品牌已在 WP0 换成 flora；`web/` 中的本地存储键、导出文件标识与版本检查地址也一并改为 flora，旧的本地上游数据不做迁移。
+> 用户可见品牌、npm 包名、Java `com.pilipala` 模块与 `PILIPALA_*` 环境变量已统一为 pilipala；`FLORA_*` 与 `flora:` localStorage 键仍可读一个版本以便生产 `.env` 与浏览器本地数据平滑迁移。
 
 <p align="center">
   <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">

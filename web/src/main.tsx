@@ -8,8 +8,10 @@ import { RouterProvider } from "react-router-dom";
 import { AppProviders } from "@/components/layout/app-providers";
 import "@/i18n";
 import { initAnalytics } from "@/lib/analytics";
+import { migrateLegacyLocalStorageKeys } from "@/lib/legacy-storage-migrate";
 import { router } from "@/router";
 
+migrateLegacyLocalStorageKeys();
 initAnalytics();
 
 document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';

@@ -30,7 +30,7 @@ export const studioNavGroups: StudioNavGroup[] = [
     {
         labelKey: "studio.nav.create",
         items: [
-            { id: "canvas", labelKey: "studio.nav.floraCanvas", href: "/canvas", icon: Maximize2, match: (p) => p === "/canvas" },
+            { id: "canvas", labelKey: "studio.nav.pilipalaCanvas", href: "/canvas", icon: Maximize2, match: (p) => p === "/canvas" },
             { id: "agent", labelKey: "studio.nav.agent", icon: Bot, badgeKey: "studio.nav.agentBeta", action: "agent" },
         ],
     },

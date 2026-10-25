@@ -9,13 +9,13 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.flora</groupId>
-    <artifactId>flora-parent</artifactId>
+    <groupId>com.pilipala</groupId>
+    <artifactId>pilipala-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>flora-parent</name>
-    <description>flora backend processes: business API and thin worker</description>
+    <name>pilipala-parent</name>
+    <description>pilipala backend processes: business API and thin worker</description>
 
     <modules>
         <module>api</module>

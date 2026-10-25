@@ -11,7 +11,7 @@ import { App } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
-import { createRechargeOrder, fetchRechargePackages } from "@/services/api/flora-recharge";
+import { createRechargeOrder, fetchRechargePackages } from "@/services/api/pilipala-recharge";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { useAgentStore } from "@/stores/use-agent-store";
 

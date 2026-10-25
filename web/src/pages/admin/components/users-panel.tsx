@@ -3,8 +3,8 @@ import { App, Button, Empty, Input, InputNumber, Modal, Space, Table, Tag } from
 import { RefreshCw, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { FloraApiError } from "@/services/api/flora-client";
-import { adminTopUpWallet, fetchAdminUsers, fetchAdminWalletLedger, type FloraAdminLedgerEntry, type FloraAdminUser } from "@/services/api/flora-admin";
+import { PilipalaApiError } from "@/services/api/pilipala-client";
+import { adminTopUpWallet, fetchAdminUsers, fetchAdminWalletLedger, type PilipalaAdminLedgerEntry, type PilipalaAdminUser } from "@/services/api/pilipala-admin";
 import { useAuthStore } from "@/stores/use-auth-store";
 
 /**
@@ -17,13 +17,13 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
     const { message } = App.useApp();
     const currentUser = useAuthStore((state) => state.user);
     const [keyword, setKeyword] = useState("");
-    const [users, setUsers] = useState<FloraAdminUser[]>([]);
+    const [users, setUsers] = useState<PilipalaAdminUser[]>([]);
     const [loading, setLoading] = useState(false);
-    const [topUpTarget, setTopUpTarget] = useState<FloraAdminUser | null>(null);
+    const [topUpTarget, setTopUpTarget] = useState<PilipalaAdminUser | null>(null);
     const [amount, setAmount] = useState<number>(100);
     const [submitting, setSubmitting] = useState(false);
-    const [ledgerTarget, setLedgerTarget] = useState<FloraAdminUser | null>(null);
-    const [ledger, setLedger] = useState<FloraAdminLedgerEntry[]>([]);
+    const [ledgerTarget, setLedgerTarget] = useState<PilipalaAdminUser | null>(null);
+    const [ledger, setLedger] = useState<PilipalaAdminLedgerEntry[]>([]);
     const [ledgerLoading, setLedgerLoading] = useState(false);
 
     const load = useCallback(async () => {
@@ -31,7 +31,7 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
         try {
             setUsers(await fetchAdminUsers({ q: keyword.trim() || undefined, limit: 50 }));
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -45,13 +45,13 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
         void load();
     }, [load]);
 
-    const openLedger = async (user: FloraAdminUser) => {
+    const openLedger = async (user: PilipalaAdminUser) => {
         setLedgerTarget(user);
         setLedgerLoading(true);
         try {
             setLedger(await fetchAdminWalletLedger(user.user_id, 50));
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -72,7 +72,7 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
             if (currentUser?.user_id === topUpTarget.user_id) void useAuthStore.getState().refreshWallet();
             await load();
         } catch (error) {
-            if (error instanceof FloraApiError && error.errorCode === "FORBIDDEN") {
+            if (error instanceof PilipalaApiError && error.errorCode === "FORBIDDEN") {
                 onForbidden();
                 return;
             }
@@ -97,7 +97,7 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
                     {t("common.refresh")}
                 </Button>
             </div>
-            <Table<FloraAdminUser>
+            <Table<PilipalaAdminUser>
                 rowKey="user_id"
                 size="small"
                 loading={loading}
@@ -164,7 +164,7 @@ export function UsersPanel({ onForbidden }: { onForbidden: () => void }) {
             </Modal>
 
             <Modal open={Boolean(ledgerTarget)} title={t("admin.users.ledgerTitle", { username: ledgerTarget?.username ?? "" })} footer={null} onCancel={() => setLedgerTarget(null)} width={720} destroyOnHidden>
-                <Table<FloraAdminLedgerEntry>
+                <Table<PilipalaAdminLedgerEntry>
                     rowKey="id"
                     size="small"
                     loading={ledgerLoading}

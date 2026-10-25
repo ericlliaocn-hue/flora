@@ -4,6 +4,7 @@ import { App, Button } from "antd";
 import { Download, FileUp, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { isKnownAppPackage } from "@/lib/app-package";
 import { readZip } from "@/lib/zip";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
@@ -48,7 +49,7 @@ export default function CanvasPage() {
             const projectFile = zip.get("projects.json");
             if (!projectFile) throw new Error("missing projects.json");
             const data = JSON.parse(await projectFile.text()) as CanvasExportFile;
-            if (data.app !== "flora") throw new Error("invalid canvas package");
+            if (!isKnownAppPackage(data.app)) throw new Error("invalid canvas package");
             await Promise.all(
                 data.projects.flatMap((project) =>
                     project.files.map(async (item) => {

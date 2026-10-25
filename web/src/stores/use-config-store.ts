@@ -72,15 +72,15 @@ export type ChannelCredentialsImportResult = {
     channelName?: string;
 };
 
-export const CONFIG_STORE_KEY = "flora:ai_config_store";
+export const CONFIG_STORE_KEY = "pilipala:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
 const OPENAI_BASE_URL = "https://api.openai.com";
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
 export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
 
-/** 托管云端模式内置的生图模型：走 flora 后端网关，浏览器不需要配供应商 Key。 */
-export const FLORA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
+/** 托管云端模式内置的生图模型：走 pilipala 后端网关，浏览器不需要配供应商 Key。 */
+export const PILIPALA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
     { name: "gpt-image-2", capability: "image" },
     { name: "gpt-image-2.5-flare", capability: "image" },
     { name: "gpt-image-2.5-sunburst", capability: "image" },
@@ -91,7 +91,7 @@ export const FLORA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
 ];
 
 /** 托管云端模式内置的视频模型（WP12：Anytoken Seedance）。 */
-export const FLORA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
+export const PILIPALA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
     { name: "seedance2", capability: "video" },
     { name: "seedance2.5", capability: "video" },
     { name: "seedance-fast", capability: "video" },
@@ -102,7 +102,7 @@ export const FLORA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
 export function isRemoteVideoModel(model: string | undefined): boolean {
     const trimmed = model?.trim();
     if (!trimmed) return false;
-    return FLORA_REMOTE_VIDEO_MODELS.some((item) => item.name === trimmed);
+    return PILIPALA_REMOTE_VIDEO_MODELS.some((item) => item.name === trimmed);
 }
 
 /** 取一个可用的托管视频模型：优先用偏好值，否则回落到第一个。 */
@@ -111,7 +111,7 @@ export function remoteVideoModel(preferred?: string): string {
     if (trimmed && isRemoteVideoModel(trimmed)) {
         return trimmed;
     }
-    return FLORA_REMOTE_VIDEO_MODELS[0].name;
+    return PILIPALA_REMOTE_VIDEO_MODELS[0].name;
 }
 
 export const defaultConfig: AiConfig = {
@@ -166,7 +166,7 @@ export const defaultWebdavSyncConfig: WebdavSyncConfig = {
     url: "",
     username: "",
     password: "",
-    directory: "flora",
+    directory: "pilipala",
     lastSyncedAt: "",
 };
 
@@ -234,7 +234,7 @@ export function resolveModelForCapability(config: AiConfig, currentModel: string
         if (currentModel && isRemoteImageModel(currentModel)) return currentModel;
         const configured = (config.imageModel || "").trim();
         if (isRemoteImageModel(configured)) return configured;
-        return FLORA_REMOTE_IMAGE_MODELS[0].name;
+        return PILIPALA_REMOTE_IMAGE_MODELS[0].name;
     }
 
     // WP12：托管云端模式：视频用云端内置的 Seedance 模型，同样不需要供应商 API Key。
@@ -265,8 +265,8 @@ export function selectableModelsByCapability(config: AiConfig, capability?: Mode
         ? config.channels.flatMap((channel) => channel.models.filter((model) => model.capability === capability).map((model) => encodeChannelModel(channel.id, model.name)))
         : config.models;
     if (config.channelMode !== "remote") return local;
-    const remoteImage = !capability || capability === "image" ? FLORA_REMOTE_IMAGE_MODELS.map((model) => model.name) : [];
-    const remoteVideo = !capability || capability === "video" ? FLORA_REMOTE_VIDEO_MODELS.map((model) => model.name) : [];
+    const remoteImage = !capability || capability === "image" ? PILIPALA_REMOTE_IMAGE_MODELS.map((model) => model.name) : [];
+    const remoteVideo = !capability || capability === "video" ? PILIPALA_REMOTE_VIDEO_MODELS.map((model) => model.name) : [];
     if (!remoteImage.length && !remoteVideo.length) return local;
     // 托管云端模式：云端内置模型排在本地同能力模型前面，用户不配任何渠道也能直接选。
     const localVideo = local.filter((name) => modelCapabilityOf(config, name) === "video");
@@ -277,7 +277,7 @@ export function selectableModelsByCapability(config: AiConfig, capability?: Mode
 /** 云端内置生图模型名（不带渠道前缀）。 */
 export function isRemoteImageModel(value: string) {
     const model = value.trim();
-    return FLORA_REMOTE_IMAGE_MODELS.some((item) => item.name === model);
+    return PILIPALA_REMOTE_IMAGE_MODELS.some((item) => item.name === model);
 }
 
 /** The user script (if any) attached to a model; empty string means use the system default call. */
@@ -387,7 +387,7 @@ export function useEffectiveConfig() {
 /** 托管云端模式下的生图模型：云端内置模型或默认的第一个。 */
 function remoteImageModel(value: string | undefined) {
     const model = (value || "").trim();
-    return isRemoteImageModel(model) ? model : FLORA_REMOTE_IMAGE_MODELS[0].name;
+    return isRemoteImageModel(model) ? model : PILIPALA_REMOTE_IMAGE_MODELS[0].name;
 }
 
 /** Normalize a mixed list of raw model names or model objects into deduped ChannelModel entries. */

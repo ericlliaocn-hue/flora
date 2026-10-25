@@ -16,7 +16,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { nanoid } from "nanoid";
 import { formatBytes, formatDuration } from "@/lib/image-utils";
 import { requestEdit, requestGeneration } from "@/services/api/image";
-import { listFloraJobHistory, type FloraJobHistoryItem } from "@/services/api/flora-cloud";
+import { listPilipalaJobHistory, type PilipalaJobHistoryItem } from "@/services/api/pilipala-cloud";
 import { deleteStoredImages, ensureImagePreview, getImagePreviewRevision, previewUrlFor, resolveImageUrl, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useAuthStore } from "@/stores/use-auth-store";
@@ -65,9 +65,9 @@ type GenerationLogConfig = Pick<AiConfig, "model" | "imageModel" | "quality" | "
 
 type UpdateAiConfig = <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
 
-const LOG_STORE_KEY = "flora:image_generation_logs";
+const LOG_STORE_KEY = "pilipala:image_generation_logs";
 const RESULT_ACTION_BUTTON_CLASS = "min-w-0 px-1.5 [&_.ant-btn-icon]:shrink-0 [&>span:last-child]:min-w-0 [&>span:last-child]:truncate";
-const logStore = localforage.createInstance({ name: "flora", storeName: "image_generation_logs" });
+const logStore = localforage.createInstance({ name: "pilipala", storeName: "image_generation_logs" });
 
 export default function ImagePage() {
     const { message } = App.useApp();
@@ -115,7 +115,7 @@ export default function ImagePage() {
     const syncCloudHistory = async () => {
         if (!token) return;
         try {
-            const items = await listFloraJobHistory({ limit: 50 });
+            const items = await listPilipalaJobHistory({ limit: 50 });
             // WP12：视频任务不混进生图历史。
             setCloudLogs(items.filter((item) => item.capability === "image.generate").map(cloudHistoryToLog));
         } catch {
@@ -856,7 +856,7 @@ function serializeLog(log: GenerationLog): GenerationLog {
 }
 
 /** 云端任务历史 → 本地生成记录形状。result_urls 是后端现签的 TOS 读地址。 */
-function cloudHistoryToLog(item: FloraJobHistoryItem): GenerationLog {
+function cloudHistoryToLog(item: PilipalaJobHistoryItem): GenerationLog {
     const createdAt = Date.parse(item.created_at) || Date.now();
     const succeeded = item.status === "succeeded";
     return {

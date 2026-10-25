@@ -1,12 +1,12 @@
 import { create } from "zustand";
 
-import { fetchCurrentUser, fetchWallet, loginUser, logoutUser, registerUser, type FloraUser, type FloraWallet } from "@/services/api/flora-auth";
-import { FloraApiError, getStoredFloraToken, setStoredFloraToken } from "@/services/api/flora-client";
+import { fetchCurrentUser, fetchWallet, loginUser, logoutUser, registerUser, type PilipalaUser, type PilipalaWallet } from "@/services/api/pilipala-auth";
+import { PilipalaApiError, getStoredPilipalaToken, setStoredPilipalaToken } from "@/services/api/pilipala-client";
 
 type AuthStore = {
     token: string | null;
-    user: FloraUser | null;
-    wallet: FloraWallet | null;
+    user: PilipalaUser | null;
+    wallet: PilipalaWallet | null;
     loading: boolean;
     initialized: boolean;
     authModalOpen: boolean;
@@ -20,7 +20,7 @@ type AuthStore = {
 };
 
 export const useAuthStore = create<AuthStore>()((set, get) => ({
-    token: getStoredFloraToken(),
+    token: getStoredPilipalaToken(),
     user: null,
     wallet: null,
     loading: false,
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     authModalTab: "login",
 
     initialize: async (fetchImpl) => {
-        const token = getStoredFloraToken();
+        const token = getStoredPilipalaToken();
         if (!token) {
             set({ token: null, user: null, wallet: null, initialized: true });
             return;
@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             await get().refreshWallet(fetchImpl);
         } catch (error) {
             // 令牌失效（UNAUTHORIZED）就清掉本地令牌，按未登录处理。
-            if (error instanceof FloraApiError && error.errorCode === "UNAUTHORIZED") setStoredFloraToken(null);
+            if (error instanceof PilipalaApiError && error.errorCode === "UNAUTHORIZED") setStoredPilipalaToken(null);
             set({ token: null, user: null, wallet: null, initialized: true });
         } finally {
             set({ loading: false });
@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     },
 
     refreshWallet: async (fetchImpl) => {
-        if (!(get().token || getStoredFloraToken())) return;
+        if (!(get().token || getStoredPilipalaToken())) return;
         try {
             set({ wallet: await fetchWallet(fetchImpl) });
         } catch {
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         set({ loading: true });
         try {
             const session = await loginUser(input, fetchImpl);
-            setStoredFloraToken(session.token);
+            setStoredPilipalaToken(session.token);
             set({ token: session.token, user: session, authModalOpen: false });
             await get().refreshWallet(fetchImpl);
         } finally {
@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         set({ loading: true });
         try {
             const session = await registerUser(input, fetchImpl);
-            setStoredFloraToken(session.token);
+            setStoredPilipalaToken(session.token);
             set({ token: session.token, user: session, authModalOpen: false });
             await get().refreshWallet(fetchImpl);
         } finally {
@@ -87,7 +87,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         } catch {
             // 登出失败也要清本地登录态。
         }
-        setStoredFloraToken(null);
+        setStoredPilipalaToken(null);
         set({ token: null, user: null, wallet: null });
     },
 

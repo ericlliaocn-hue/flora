@@ -5,8 +5,8 @@ import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { localForageStorage } from "@/lib/localforage-storage";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
-import { getStoredFloraToken } from "@/services/api/flora-client";
-import { createCloudProject, deleteCloudProject, getCloudProject, isCloudProjectId, listCloudProjects, toCanvasDataSnapshot, updateCloudProject } from "@/services/api/flora-cloud";
+import { getStoredPilipalaToken } from "@/services/api/pilipala-client";
+import { createCloudProject, deleteCloudProject, getCloudProject, isCloudProjectId, listCloudProjects, toCanvasDataSnapshot, updateCloudProject } from "@/services/api/pilipala-cloud";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
 export type CanvasProject = {
@@ -52,7 +52,7 @@ type CanvasStore = {
 };
 
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 };
-const CANVAS_STORE_KEY = "flora:canvas_store";
+const CANVAS_STORE_KEY = "pilipala:canvas_store";
 
 /** 空画布骨架：本地新建、云端占位、云端详情还原都用它。 */
 function emptyProject(id: string, title: string, createdAt?: string, updatedAt?: string): CanvasProject {
@@ -152,7 +152,7 @@ export const useCanvasStore = create<CanvasStore>()(
                     projects: state.projects.map((project) => (project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project)),
                 })),
             syncProjectsFromCloud: async (fetchImpl) => {
-                if (!getStoredFloraToken()) {
+                if (!getStoredPilipalaToken()) {
                     set({ cloudSyncStatus: "local" });
                     return;
                 }
@@ -178,7 +178,7 @@ export const useCanvasStore = create<CanvasStore>()(
             },
             createCloudProjectAndOpen: async (title, fetchImpl) => {
                 const name = title || i18n.t("canvas.project.untitled");
-                if (!getStoredFloraToken()) {
+                if (!getStoredPilipalaToken()) {
                     set({ cloudSyncStatus: "local" });
                     return get().createProject(name);
                 }
@@ -199,7 +199,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 }
             },
             loadCloudProject: async (projectId, fetchImpl) => {
-                if (!getStoredFloraToken() || !isCloudProjectId(projectId)) return false;
+                if (!getStoredPilipalaToken() || !isCloudProjectId(projectId)) return false;
                 set({ cloudSyncStatus: "syncing" });
                 try {
                     const detail = await getCloudProject(projectId, { fetchImpl });
@@ -223,7 +223,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 }
             },
             saveProjectToCloud: async (projectId, fetchImpl) => {
-                if (!getStoredFloraToken()) {
+                if (!getStoredPilipalaToken()) {
                     set({ cloudSyncStatus: "local" });
                     return null;
                 }
@@ -252,7 +252,7 @@ export const useCanvasStore = create<CanvasStore>()(
                 }
             },
             deleteProjectsFromCloud: async (ids, fetchImpl) => {
-                if (!getStoredFloraToken()) return;
+                if (!getStoredPilipalaToken()) return;
                 const cloudIds = ids.filter((id) => isCloudProjectId(id));
                 if (!cloudIds.length) return;
                 await Promise.all(cloudIds.map((id) => deleteCloudProject(id, { fetchImpl }).catch(() => undefined)));

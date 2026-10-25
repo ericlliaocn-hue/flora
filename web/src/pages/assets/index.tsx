@@ -8,7 +8,7 @@ import { useCopyText } from "@/hooks/use-copy-text";
 import { formatBytes, readFileAsDataUrl } from "@/lib/image-utils";
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob, getImagePreviewRevision, subscribeImagePreviews, uploadImage } from "@/services/image-storage";
-import { deleteCloudAsset, fromCloudAssetToStoreAsset, listCloudAssets } from "@/services/api/flora-cloud";
+import { deleteCloudAsset, fromCloudAssetToStoreAsset, listCloudAssets } from "@/services/api/pilipala-cloud";
 import { cn } from "@/lib/utils";
 import { assetCoverUrl, useAssetStore, type Asset, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { useAuthStore } from "@/stores/use-auth-store";

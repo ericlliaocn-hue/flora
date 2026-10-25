@@ -8,7 +8,7 @@ export type PromptSourceSchedule = {
     lastFetchedAt: string;
 };
 
-const PROMPT_SOURCE_STORE_KEY = "flora:prompt_source_store_v2";
+const PROMPT_SOURCE_STORE_KEY = "pilipala:prompt_source_store_v2";
 
 const defaultSchedule: PromptSourceSchedule = {
     intervalMinutes: 30,
