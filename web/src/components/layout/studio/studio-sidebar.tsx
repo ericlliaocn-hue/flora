@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { DOCS_URL } from "@/constant/env";
+import { APP_VERSION, DOCS_URL } from "@/constant/env";
 import { studioNavGroups, type StudioNavItem } from "@/lib/studio-nav";
 import { cn } from "@/lib/utils";
 
@@ -95,10 +95,11 @@ export function StudioSidebar({ onAgent, onPlugins, className }: StudioSidebarPr
                 ))}
             </nav>
 
-            <div className="mt-2 border-t border-white/[0.08] px-2.5 pt-3 text-[11.5px] leading-snug text-neutral-500">
-                <strong className="font-medium text-neutral-400">flora</strong>
-                <br />
-                {t("studio.sidebar.foot")}
+            <div className="mt-2 space-y-2 border-t border-white/[0.08] px-2 pt-3">
+                <p className="text-[10.5px] tabular-nums text-neutral-600">{t("studio.sidebar.version", { version: APP_VERSION })}</p>
+                <div className="rounded-[10px] border border-[#1a6b6b]/25 bg-gradient-to-br from-[#0d3333]/80 to-[#0a2228]/60 px-2.5 py-2 text-[11px] leading-snug text-[#9fd9d4]">
+                    {t("studio.sidebar.prepaidTip")}
+                </div>
             </div>
         </aside>
     );

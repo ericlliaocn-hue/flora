@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [调整] Studio 首页视觉贴近 LibTV：方形 Hero 新建按钮、图标能力行、青绿活动条与圆角顶栏、最近项目横滑与能力亮点卡片、能力精选栅格与搜索筛选；侧栏底部改为版本与预付费提示。
 + [调整] 官网首页改版为深色 Studio 壳层：左侧导航、右侧工具顶栏、大画布 Hero、能力亮点与精选作品瀑布流（mockup v5）。
 + [新增] WP16：z-pay 支付宝 mapi 充值（套餐下单、验签 webhook、查单补单、Admin 退款）与 `/billing/recharge/result` 结果页。
 + [调整] 文档登记生产 `FLORA_PUBLIC_BASE_URL=https://pilipala.art`（仍仅经 env 配置，代码不写死）。
