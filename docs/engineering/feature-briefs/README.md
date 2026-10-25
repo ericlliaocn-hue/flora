@@ -9,6 +9,8 @@ Brief 是 flora 的需求源。Minimax 与人实现都从这里粘贴，不从�
 3. 把全文粘贴给 Minimax，并声明必须遵守 `docs/engineering/` 的 ADR 与冻结栈。
 4. PR 引用本文件路径；审查只对照 brief。
 
+> **持久化**：工程目标为 MyBatis-Plus（[ADR 0006](../adr/0006-mybatis-plus-persistence.md)）。WP0–WP12 等历史 brief 若仍写 JdbcTemplate /「不引入 ORM」，以 ADR 0006 与 `TECH_STACK.md` 为准，**不必**回改那些历史 brief 正文。
+
 ## 现有 brief
 
 | 文件 | WP | 说明 | 状态 |
@@ -26,5 +28,6 @@ Brief 是 flora 的需求源。Minimax 与人实现都从这里粘贴，不从�
 | [2026-10-24-wp10-cloud-persistence.md](./2026-10-24-wp10-cloud-persistence.md) | WP10 / M3 | C 端账号级云端持久化（项目 + 资产 + 历史 + TOS 虚拟主机域名兼容 + Anytoken 真实模型对齐） | 已实现 |
 | [2026-10-24-wp11-admin-ops.md](./2026-10-24-wp11-admin-ops.md) | WP11 / M4 | Admin 运维与配置后台（用户/钱包加额 + 任务与 `provider_task` 原文排障 + 动态文案 + 模型上下架） | 已实现 |
 | [2026-10-24-wp12-seedance-video-generation.md](./2026-10-24-wp12-seedance-video-generation.md) | WP12 / M2·M3 | Seedance 视频生成全链路（`video.generate` + Anytoken `/v1/videos/*` 三步协议 + TOS `.mp4` 归档 + `/video` 云历史） | 已实现 |
+| [2026-10-25-wp13-docs-mybatis-plus-domain.md](./2026-10-25-wp13-docs-mybatis-plus-domain.md) | WP13 | 工程文档对齐：MyBatis-Plus + 领域分包（docs-first；ORM 代码迁移另 WP） | 已确认 / 实现中 |
 
-后续 WP13 在开工当天按模板新增，不要提前写空 brief。上表里的行是 **真实 brief**（已落盘、可整份粘贴给 Minimax），不是占位行。
+上表里的行是 **真实 brief**（已落盘、可整份粘贴给 Minimax），不是占位行。

@@ -1,6 +1,6 @@
 # 架构
 
-本文描述 flora **目标架构**（M1 起）。当前仓库仍主要是 `web/` 前端。进程名、分层和时序按目标写，避免按现状倒推。
+本文描述 flora **目标架构**（M1 起）。仓库已包含 `web/`、`api/`、`worker/` 等进程；进程名、分层和时序以本文与 ADR 为准，避免按上游遗留倒推。
 
 ## 进程
 
@@ -28,14 +28,36 @@ flora worker ── Anytoken ── 上游模型
 
 ## 分层（api）
 
-从上到下，禁止跨层回流成上帝类。
+**按领域分包**（与仓内 `com.flora.api.*` 一致），每个 bounded context 内再分四层；禁止跨层回流成上帝类，也**禁止**改成仓库根下全局 `controller` / `service` / `mapper` 三目录。
 
-1. **Interface**：HTTP 控制器、Sa-Token 过滤器、内部 DTO 校验。只转合同，不写业务分支。
-2. **Application**：用例。例如「提交生图」= 校验幂等 → 估价 → 冻结 → 建 job → 写 outbox。一个用例一个类，避免 `TaskCenterService`。
-3. **Domain**：`Job` 状态机、钱包冻结单、错误码。状态迁移函数保持纯：非法迁移直接拒绝。
-4. **Infrastructure**：Postgres 仓储、Redis、RabbitMQ Transport、TOS 客户端、**唯一** Anytoken Client。
+已落地的领域包示例：`auth`、`billing`、`job`、`admin`、`project`、`i18n`；另有 `storage`、`gateway` 等基础设施适配。
+
+```
+com.flora.api.<domain>/
+  web/           # Interface：HTTP、DTO、Sa-Token 过滤器
+  application/   # 用例编排（一个用例一个类，避免 TaskCenterService）
+  domain/        # 状态机、不变量、仓储端口
+  infra/         # MyBatis-Plus Mapper、消息/TOS 等适配（迁移完成前可能仍见 Jdbc*Repository）
+```
+
+| 层 | 职责 |
+| --- | --- |
+| **web**（≈ Interface） | HTTP 控制器、内部 DTO 校验。只转合同，不写业务分支。 |
+| **application** | 用例。例如「提交生图」= 校验幂等 → 估价 → 冻结 → 建 job → 写 outbox。 |
+| **domain** | `Job` 状态机、钱包冻结单、错误码。状态迁移函数保持纯：非法迁移直接拒绝。 |
+| **infra**（Infrastructure） | Postgres + **MyBatis-Plus**（[ADR 0006](./adr/0006-mybatis-plus-persistence.md)）、Redis、RabbitMQ Transport、TOS、**唯一** Anytoken Client。application 依赖仓储端口，不在 web 层散落 SQL。 |
+
+**跨域调用**：只调用对方领域的 **application** 用例（或明确端口）。例如 `job` 提交时通过 `billing` 的 freeze/confirm/release 用例，**禁止** `job` 直接注入 `billing` 的 Mapper 或读写他域表。
+
+**与经典 MVC**：Controller / Service / Repository 角色仍在，但嵌在各自领域包内，不是全局三目录。
 
 worker 只有 Application（执行一步）+ Infrastructure（队列、Anytoken、仓储）。没有 canvas 包。
+
+### 领域与资金边界
+
+- **auth** / `users`：登录身份与资料（含 `password_hash`）；**不**存余额。
+- **billing**：钱包、`wallet_ledger`、`wallet_hold`；未来充值订单与支付渠道适配均属本域。
+- **job**：任务生命周期；通过 `hold_id` 关联冻结单，不直接改余额字段。
 
 ## Anytoken hop
 
@@ -140,14 +162,12 @@ qingfeng 的教训不是「Java 不行」，而是职责粘在一起：
 
 flora 用进程边界强制：web 只展示，api 只编排账本与任务，worker 只执行一跳，admin 只看和配置。
 
-## 目录预期（尚未全部存在）
+## 目录预期
 
 | 路径 | 状态 | 说明 |
 | --- | --- | --- |
 | `web/` | 已存在 | 前端 fork |
-| `api/` | 未入仓 | Spring Boot 业务 API，WP1 |
-| `worker/` | 未入仓 | 瘦 worker，WP1/WP5 |
+| `api/` | 已存在 | Spring Boot 业务 API（领域分包 + 四层） |
+| `worker/` | 已存在 | 瘦 worker |
 | `docs/engineering/` | 本树 | 工程真相源 |
 | `docs/content/` | 已存在 | 公开用户文档，勿改作工程站 |
-
-在 WP1 brief 落地前，不要先建空的巨型包结构。

@@ -54,6 +54,8 @@ Brief 模板：[feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md)。�
 - [ ] 静态 UI 文案走前端 locale；动态运维文案不硬编码多种语言 if-else。
 - [ ] Admin 改动（若有）仍是 ops/config，没有画布创作。
 - [ ] 超时/重试/大小/并发等边界值若是新行为，brief 里写了默认值与失败处理（未与用户确认过的经验值不要静默加入）。
+- [ ] 持久化与文档遵守 [ADR 0006](./adr/0006-mybatis-plus-persistence.md)（MyBatis-Plus 为目标；新代码不把「禁止 ORM」当冻结栈）。
+- [ ] 未把 Java 包改成全局 `controller` / `service` / `mapper`；新代码落在领域包的 `web` / `application` / `domain` / `infra`。
 
 ## 审查怎么做
 

@@ -42,6 +42,8 @@ WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)�
 
 列定义 **不** 在本页改：仍以本页为准，WP3 照抄实现。**不** 设计社交登录、角色矩阵。
 
+> `users` 只表示登录身份与资料（含 `password_hash`）。**禁止**在用户表存 `available` / `frozen` / 余额类字段；资金只在 [billing.md](./billing.md) 的 `wallet*`。
+
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | UUID | NO | PK | 默认 `gen_random_uuid()`；也是 Sa-Token 的 `loginId` |
@@ -125,7 +127,10 @@ WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md
 - 金额一律 `BIGINT`（flora credit 整数）。禁止 `DECIMAL` / `FLOAT`。
 - 字符串枚举存 `TEXT` + `CHECK`（或实现 WP 再用 PG enum，文档先写允许值）。
 - JSON 用 `JSONB`。
-- FK 指向 `users.id` 的列在 `users` 表落地前先不建物理约束，由实现 WP 决定顺序。
+- **前向策略（WP13 起）**：新表之间的关联默认用**逻辑外键**（列 + 索引 + 应用写路径校验 / 事务），**不以**数据库 `FOREIGN KEY` 约束作为主一致性手段。
+- 金额、状态机相关写入必须在用例事务内保证合法 `user_id` / `job_id` / `hold_id`；禁止依赖 `ON DELETE CASCADE` 级联删流水。
+- **存量**：已落地迁移中的物理 FK（如 `job.hold_id → wallet_hold`、`job_step.provider_task_id → provider_task`）**保留**；本 WP **不**批量 DROP。是否在未来迁移中弱化，另开 brief。
+- 文档列上的 `FK → …` 表示逻辑关联与索引要求，不强制「下一步迁移必须加物理 CONSTRAINT」。
 
 ## 字段级怎么改
 

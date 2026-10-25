@@ -1,6 +1,6 @@
 # 开发计划
 
-本文把 [MILESTONES.md](./MILESTONES.md) 拆成工作包 WP0–WP11，并规定 **brief → 实现 → PR → 对照 brief review** 的协作方式。
+本文把 [MILESTONES.md](./MILESTONES.md) 拆成工作包 WP0–WP13，并规定 **brief → 实现 → PR → 对照 brief review** 的协作方式。
 
 ## 协作流程（所有 WP 通用）
 
@@ -39,9 +39,13 @@ WP9 友好错误 + i18n_message
 WP10 C 端云端持久化
   ↓
 WP11 Admin（运维/配置）
+  ↓
+WP12 Seedance 视频生成
+  ↓
+WP13 工程文档对齐（MyBatis-Plus + 领域分包；docs-first，不阻塞已合并 WP12）
 ```
 
-WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地冻结。WP7 依赖内部 DTO 稳定，见 [api/gateway-contract.md](./api/gateway-contract.md)。
+WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地冻结。WP7 依赖内部 DTO 稳定，见 [api/gateway-contract.md](./api/gateway-contract.md)。WP13 为工程真相源修正，可与后续 ORM 代码迁移 WP 分开交付。
 
 ## WP0 — flora 白标
 
@@ -131,6 +135,14 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **做什么**：用户与钱包排查、任务与死信、模型展示配置、`i18n_message` 编辑。
 - **不做**：admin 里做画布、做社区、做第二套生成台。
 - **完成**：不连库也能完成日常运维；IA 上与 C 端隔离。
+
+## WP13 — 工程文档对齐（MyBatis-Plus + 领域分包）
+
+- **里程碑**：工程真相源（跨 M；docs-first）
+- **Brief**： [2026-10-25-wp13-docs-mybatis-plus-domain.md](./feature-briefs/2026-10-25-wp13-docs-mybatis-plus-domain.md)
+- **做什么**：原地更新 TECH_STACK / ARCHITECTURE / ADR（含新 0006）/ data-model / briefs 索引等，冻结 MyBatis-Plus 与领域分包；澄清用户/钱包边界与前向逻辑外键策略。
+- **不做**：全量 ORM 代码迁移；不改历史 WP0–WP12 brief 正文；不批量 DROP 物理 FK；不改成全局 MVC 目录。
+- **完成**：文档与 ADR 0006 一致；`api/pom.xml` 不再写「不引入 ORM」为目标。
 
 ## 每个 WP 的 PR 期望
 

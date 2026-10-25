@@ -34,6 +34,7 @@ M2 之前前端仍可能直连 OpenAI 兼容口（上游现状）。M2 托管路
 | 缓存 / 会话辅助 | Redis |
 | 对象存储 | 火山引擎 TOS（Volcengine TOS） |
 | API 风格 | JSON；内部任务合同见 [api/gateway-contract.md](./api/gateway-contract.md) |
+| 持久化框架 | **MyBatis-Plus**（目标）；见 [ADR 0006](./adr/0006-mybatis-plus-persistence.md)。JdbcTemplate 仅过渡，文档与新代码不得再写「禁止 ORM」 |
 
 不在 stage-1 用 Node/Nest、Go、Kotlin 写业务 API。不在业务 API 里再实现一套模型聚合网关。
 
@@ -64,7 +65,7 @@ flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 | --- | --- |
 | 模式 | 预付费钱包 |
 | 状态 | freeze（提交）→ confirm（成功）→ release（失败/取消） |
-| 账本位置 | 只在 flora 业务库 |
+| 账本位置 | 只在 flora 业务库（余额只在 `wallet*`；`users` 表不存余额） |
 
 ## 国际化与错误
 
@@ -95,6 +96,8 @@ flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 - 为了「兼容更多队列」在 job 表里写死 RabbitMQ 字段
 - 在 worker 里引入画布、创作编排、计费确认
 - 把工程文档搬进 `docs/content/docs/`
+
+说明：「明确不进 stage-1」**不是**「禁止一切 ORM」，而是禁止第二套账本、禁止上帝类、禁止 worker 持有画布/钱包确认逻辑。
 
 ## 现有仓库里还不是 flora 栈的部分
 
