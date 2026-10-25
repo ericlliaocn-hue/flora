@@ -57,6 +57,7 @@ sa-token:
 # WP5+ 的 Anytoken hop 才消费这两个值。本阶段的作用是把密钥注入路径
 # 固定成环境变量，仓库里不出现真实 Key。
 flora:
+  # 对外 URL 根（无尾 /）。生产经 env 设为 https://pilipala.art；本地联调用 http://127.0.0.1:5173 等，勿写死在代码里。
   public-base-url: ${FLORA_PUBLIC_BASE_URL:}
   # WP11：Admin 运维与配置后台。
   admin:

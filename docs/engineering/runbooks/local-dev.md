@@ -759,8 +759,9 @@ curl -s $API/projects/$PROJECT_ID -H "flora-token: $OTHER_TOKEN"
 
 ### 13. WP5 / WP6 / WP7 / WP8 / WP9 / WP10 的边界（不要误以为已经能用）
 
-- **C 端充值（WP16）**：需配置 `FLORA_PUBLIC_BASE_URL`（示例 `https://flora.example.com`，**不要**提交真实生产域名与商户密钥）、
-  `FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`（仅占位，值放本机 env / vault）。创建订单：
+- **C 端充值（WP16）**：`FLORA_PUBLIC_BASE_URL` 由 env 注入（**代码不写死域名**）。**生产**已确认为 `https://pilipala.art`（无尾 `/`），对应 notify
+  `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`、return `https://pilipala.art/billing/recharge/result`。
+  **本地**可设为 `http://127.0.0.1:5173`（或你的前端 origin）以便 z-pay 回调打到隧道；`FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY` 仅占位，值放本机 env / vault，**不要**入库。创建订单：
   `curl -H "flora-token: $TOKEN" -H "Content-Type: application/json" \
   -d '{"package_id":"p10"}' http://127.0.0.1:8080/api/v1/billing/recharge/orders`。
   未配置时创建订单应返回 `VALIDATION_ERROR`。webhook 路径 `/api/v1/billing/recharge/webhook/zpay` 无需登录。
@@ -769,7 +770,7 @@ curl -s $API/projects/$PROJECT_ID -H "flora-token: $OTHER_TOKEN"
   不是真的对象存储；配齐真实火山 TOS 桶与 AK/SK 并设 `FLORA_TOS_MODE=http` 才直连线上 TOS。
 - **签名 URL 是短期的**：默认 TTL 900 秒，过期后前端要重新调 `result` 拿新的地址。
 - **钱包不等于钱**：flora credit 是产品内部的计费单位；人民币支付经 WP16 `recharge_order` 换算为 credit 入账。
-  没有退款（M4 / WP11 之前都还没有）。
+  全额退款走 Admin `POST /api/v1/admin/billing/recharge-orders/{id}/refund`（WP16）。
 - **默认不连真上游**：`FLORA_GATEWAY_MODE=stub` 是本地假上游；`http` 模式才真的调 Anytoken，
   而且本 WP 没有接真实付费账号与账单。
 - **生成结果是假的**：WP5 还没接 TOS，`result[].url` 恒为 null，只有合成的 `object_key`。

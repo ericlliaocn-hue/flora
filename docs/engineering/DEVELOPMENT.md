@@ -171,7 +171,8 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **Brief**：[2026-10-25-wp16-recharge-zpay-alipay.md](./feature-briefs/2026-10-25-wp16-recharge-zpay-alipay.md)
 - **做什么**：`V9__create_recharge_order.sql`；billing 内 z-pay mapi 下单、验签 webhook、查单补单、套餐充值、Admin 列表与全额退款；入账 `topup` + `recharge_order_id`。
 - **不做**：wxpay；worker 改动；analytics ingest；改 freeze 语义。
-- **完成**：`mvn -pl api -am test` 通过；仓库无真实 `FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY`；`FLORA_PUBLIC_BASE_URL` 仅作配置占位。
+- **完成**：`mvn -pl api -am test` 通过；仓库无真实 `FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY`。
+- **生产 `FLORA_PUBLIC_BASE_URL`**（env，不入库硬编码）：`https://pilipala.art` → notify `/api/v1/billing/recharge/webhook/zpay`，return `/billing/recharge/result`。
 
 ## 每个 WP 的 PR 期望
 

@@ -99,7 +99,7 @@ job cancelled / dead / 不再重试的失败 → release（解冻）
 
 ## 充值
 
-运维脚本 / Admin 手工加额仍须同时记 `wallet_ledger（type=topup）`。WP16 起 C 端可通过 **z-pay 支付宝（mapi qrcode）** 自助充值：订单真相在 `recharge_order`，验签异步通知与服务端查单补单入账，流水 `type=topup` 且填写 `recharge_order_id`。`notify_url` / `return_url` 由部署环境 `FLORA_PUBLIC_BASE_URL` 拼接，**禁止**硬编码外站回调域名。
+运维脚本 / Admin 手工加额仍须同时记 `wallet_ledger（type=topup）`。WP16 起 C 端可通过 **z-pay 支付宝（mapi qrcode）** 自助充值：订单真相在 `recharge_order`，验签异步通知与服务端查单补单入账，流水 `type=topup` 且填写 `recharge_order_id`。`notify_url` / `return_url` 由部署环境 `FLORA_PUBLIC_BASE_URL` 拼接（生产 env：`https://pilipala.art`），**禁止**在代码里写死域名或抄外站回调 URL。
 
 ### `recharge_order`（WP16）
 

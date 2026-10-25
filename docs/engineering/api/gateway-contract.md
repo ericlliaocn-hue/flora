@@ -148,7 +148,9 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 
 ### 充值（WP16，z-pay 支付宝）
 
-环境变量（占位，**禁止**把真实商户密钥写入仓库）：`FLORA_PUBLIC_BASE_URL`（无尾 `/`）、`FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`、可选 `FLORA_ZPAY_CID`（默认 `12540`）、`FLORA_ZPAY_API_BASE`（默认 `https://api.z-pay.cn`）。缺配置时 **创建订单** 返回 `VALIDATION_ERROR`。
+环境变量（**禁止**把真实商户密钥写入仓库）：`FLORA_PUBLIC_BASE_URL`（无尾 `/`，经 env 注入、代码不写死）、`FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`、可选 `FLORA_ZPAY_CID`（默认 `12540`）、`FLORA_ZPAY_API_BASE`（默认 `https://api.z-pay.cn`）。缺配置时 **创建订单** 返回 `VALIDATION_ERROR`。
+
+**生产（已确认）**：`FLORA_PUBLIC_BASE_URL=https://pilipala.art`。
 
 | 方法 | 路径 | 鉴权 | 说明 |
 | --- | --- | --- | --- |
@@ -157,7 +159,7 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 | GET | `/api/v1/billing/recharge/orders/{outTradeNo}` | 登录、本人 | `pending_pay` 时可触发一次查单补单（限流） |
 | GET/POST | `/api/v1/billing/recharge/webhook/zpay` | 匿名 | 验签成功入账后 HTTP 200，body **恰好** `success`（纯文本）；失败 400 |
 
-`notify_url` = `{FLORA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay`；`return_url` = `{FLORA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不入账）。
+`notify_url` = `{FLORA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay`；`return_url` = `{FLORA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不入账）。生产示例：notify `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`，return `https://pilipala.art/billing/recharge/result`。
 
 Admin：`GET /api/v1/admin/billing/recharge-orders`；`POST /api/v1/admin/billing/recharge-orders/{id}/refund`（全额退，`paid` 且余额足够扣回）。
 

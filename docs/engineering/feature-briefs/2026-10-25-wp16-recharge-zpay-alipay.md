@@ -254,7 +254,7 @@ Java：`WalletLedgerType` 增加 `REFUND`；`topup` 语义不变。
 
 ```yaml
 flora:
-  public-base-url: ${FLORA_PUBLIC_BASE_URL:}   # 例：https://flora.example.com  —— 不要提交真实域名密钥
+  public-base-url: ${FLORA_PUBLIC_BASE_URL:}   # 生产：https://pilipala.art（env）；勿提交商户密钥
   billing:
     zpay:
       api-base: ${FLORA_ZPAY_API_BASE:https://api.z-pay.cn}
@@ -285,7 +285,7 @@ flora:
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `FLORA_PUBLIC_BASE_URL` | 是（创建订单时） | 无尾 `/` |
+| `FLORA_PUBLIC_BASE_URL` | 是（创建订单时） | 无尾 `/`；**生产** `https://pilipala.art` |
 | `FLORA_ZPAY_PID` | 是 | 商户号 |
 | `FLORA_ZPAY_PKEY` | 是 | 商户密钥 |
 | `FLORA_ZPAY_CID` | 否 | 默认 `12540` |
@@ -492,6 +492,6 @@ sign = md5(stringSign).hex.lower()
 
 | 问题 | 处理 |
 | --- | --- |
-| 生产 `FLORA_PUBLIC_BASE_URL` 尚未最终域名 | **不阻塞**：当作必填配置；实现者**禁止**写死某个生产域名。部署时再填。 |
+| 生产 `FLORA_PUBLIC_BASE_URL` | **已确认** `https://pilipala.art`（仅经 env / 部署配置；Java 仍读 `flora.public-base-url`，单测用 localhost 假值）。 |
 | 套餐 credits 是否要改促销数字 | 默认表已锁定；运营改 yaml 即可，不必改代码。 |
 | 与 oioio 共商户的对账责任 | 靠 `flr_` 前缀隔离订单号；跨系统财务对账不在本 WP。 |
