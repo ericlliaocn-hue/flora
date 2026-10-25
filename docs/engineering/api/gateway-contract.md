@@ -143,8 +143,27 @@ HTTP 状态码仍是 200。充值后用户可用 **同一个 `idempotency_key`**
 }
 ```
 
-用户还没有钱包行时惰性建一行 `available=0, frozen=0` 后返回。**本 WP 不提供 C 端自助充值接口**
-（没有 `POST /api/v1/wallet/topup`）：充值走运维 SQL 或未来的 Admin 加额接口。
+用户还没有钱包行时惰性建一行 `available=0, frozen=0` 后返回。C 端自助充值走 **WP16** `/api/v1/billing/recharge/**`（z-pay 支付宝 mapi qrcode），
+不再提供 `POST /api/v1/wallet/topup`。运维 SQL 与 Admin 手工加额仍可用。
+
+### 充值（WP16，z-pay 支付宝）
+
+环境变量（**禁止**把真实商户密钥写入仓库）：`FLORA_PUBLIC_BASE_URL`（无尾 `/`，经 env 注入、代码不写死）、`FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`、可选 `FLORA_ZPAY_CID`（默认 `12540`）、`FLORA_ZPAY_API_BASE`（默认 `https://api.z-pay.cn`）。缺配置时 **创建订单** 返回 `VALIDATION_ERROR`。
+
+**生产（已确认）**：`FLORA_PUBLIC_BASE_URL=https://pilipala.art`。
+
+| 方法 | 路径 | 鉴权 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/api/v1/billing/recharge/packages` | 登录 | 可购套餐列表 |
+| POST | `/api/v1/billing/recharge/orders` | 登录 | body：`package_id`，可选 `device=mobile`；返回 `out_trade_no`、`pay_url`、`qrcode_url` 等 |
+| GET | `/api/v1/billing/recharge/orders/{outTradeNo}` | 登录、本人 | `pending_pay` 时可触发一次查单补单（限流） |
+| GET/POST | `/api/v1/billing/recharge/webhook/zpay` | 匿名 | 验签成功入账后 HTTP 200，body **恰好** `success`（纯文本）；失败 400 |
+
+`notify_url` = `{FLORA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay`；`return_url` = `{FLORA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不入账）。生产示例：notify `https://pilipala.art/api/v1/billing/recharge/webhook/zpay`，return `https://pilipala.art/billing/recharge/result`。
+
+Admin：`GET /api/v1/admin/billing/recharge-orders`；`POST /api/v1/admin/billing/recharge-orders/{id}/refund`（全额退，`paid` 且余额足够扣回）。
+
+错误码：`RECHARGE_ORDER_NOT_FOUND`、`RECHARGE_PROVIDER_ERROR`、`RECHARGE_NOT_REFUNDABLE`（见 [errors.md](../data-model/errors.md)）。
 
 
 ## Projects（`/api/v1/projects`）

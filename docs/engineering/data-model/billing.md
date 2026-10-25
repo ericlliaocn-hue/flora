@@ -17,6 +17,7 @@ flora 只做 **预付费钱包**。Anytoken 侧额度是公司成本，不映射
 | `wallet` | 余额 | WP6 |
 | `wallet_hold` | 冻结单 | WP6 |
 | `wallet_ledger` | 流水，stage-1 必建 | WP6 |
+| `recharge_order` | C 端充值订单（z-pay 支付宝） | WP16 |
 
 ## 状态：冻结 → 确认 / 释放
 
@@ -68,17 +69,19 @@ job cancelled / dead / 不再重试的失败 → release（解冻）
 | `id` | UUID | NO | PK | |
 | `wallet_id` | UUID | NO | FK → `wallet.id`；IDX (`wallet_id`, `created_at`) | |
 | `user_id` | UUID | NO | | 冗余便于对账 |
-| `type` | TEXT | NO | CHECK ∈ `topup` \| `freeze` \| `confirm` \| `release` | |
+| `type` | TEXT | NO | CHECK ∈ `topup` \| `freeze` \| `confirm` \| `release` \| `refund` | |
 | `amount` | BIGINT | NO | CHECK != 0 | 符号约定见下表 |
 | `hold_id` | UUID | YES | FK → `wallet_hold.id` | |
 | `job_id` | UUID | YES | | 追溯到任务 |
+| `recharge_order_id` | UUID | YES | IDX（可空） | 逻辑关联 `recharge_order.id`；**无** `ON DELETE CASCADE` |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 
 ### 金额符号约定
 
 | type | `available` | `frozen` | 含义 |
 | --- | --- | --- | --- |
-| `topup` | `+amount` | — | 充值 |
+| `topup` | `+amount` | — | 充值（含 WP16 渠道入账） |
+| `refund` | `-amount` | — | 充值退款扣回（须 `available >= amount`） |
 | `freeze` | `-amount` | `+amount` | 冻结：可用转已冻 |
 | `confirm` | — | `-amount` | 确认：已冻转实扣 |
 | `release` | `+amount` | `-amount` | 释放：已冻退回可用 |
@@ -96,9 +99,31 @@ job cancelled / dead / 不再重试的失败 → release（解冻）
 
 ## 充值
 
-M2 可以用运维脚本 / SQL 加 `available`，但**必须同时记一笔 `wallet_ledger`（`type=topup`）**。C 端自助充值与支付渠道不是 M2 退出条件。M4 admin 提供有限加额。
+运维脚本 / Admin 手工加额仍须同时记 `wallet_ledger（type=topup）`。WP16 起 C 端可通过 **z-pay 支付宝（mapi qrcode）** 自助充值：订单真相在 `recharge_order`，验签异步通知与服务端查单补单入账，流水 `type=topup` 且填写 `recharge_order_id`。`notify_url` / `return_url` 由部署环境 `FLORA_PUBLIC_BASE_URL` 拼接（生产 env：`https://pilipala.art`），**禁止**在代码里写死域名或抄外站回调 URL。
 
-> 未来 C 端/支付渠道充值：`recharge_order`（名待定）与微信/支付宝等适配代码均属 **billing** 域；回调验签、订单状态机、入账 `topup` 流水在 billing 内闭环。`auth` 只提供已认证 `user_id`，不实现支付。
+### `recharge_order`（WP16）
+
+| 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
+| --- | --- | --- | --- | --- |
+| `id` | UUID | NO | PK | |
+| `user_id` | UUID | NO | IDX (`user_id`, `created_at` DESC)；REFERENCES `users(id)` **无 CASCADE** | |
+| `out_trade_no` | TEXT | NO | UNIQUE | 前缀 `flr_` + 日期 + 随机 |
+| `provider` | TEXT | NO | DEFAULT `zpay` | |
+| `provider_trade_no` | TEXT | YES | IDX（可空） | 上游 `trade_no` |
+| `package_id` | TEXT | NO | | 配置套餐 id |
+| `money_fen` | BIGINT | NO | CHECK > 0 | 人民币分 |
+| `credits` | BIGINT | NO | CHECK > 0 | 入账 credit |
+| `status` | TEXT | NO | CHECK ∈ `created` \| `pending_pay` \| `paid` \| `failed` \| `closed` \| `refunded` | |
+| `client_ip` | TEXT | NO | | 下单 `clientip` |
+| `device` | TEXT | YES | | `mobile` 或 null |
+| `pay_url` / `qrcode_url` | TEXT | YES | | 规范化绝对 URL |
+| `product_name` | TEXT | NO | | 上游商品名 |
+| `ledger_id` | UUID | YES | | 入账后 `wallet_ledger.id` |
+| `paid_at` / `refunded_at` | TIMESTAMPTZ | YES | | |
+| `fail_reason` | TEXT | YES | | 勿存密钥 |
+| `created_at` / `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
+
+渠道适配、签名、对账调度均在 **billing** 域；`auth` 只提供已认证 `user_id`。webhook 路径 `/api/v1/billing/recharge/webhook/zpay` 在 `AuthPathPolicy` 匿名放行。
 
 ## 与其它域的接口
 

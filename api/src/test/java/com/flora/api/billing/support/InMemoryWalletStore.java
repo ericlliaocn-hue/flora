@@ -92,6 +92,17 @@ public class InMemoryWalletStore implements WalletRepository, WalletHoldReposito
     }
 
     @Override
+    public boolean deductAvailable(UUID walletId, long amount) {
+        Wallet wallet = wallets.get(walletId);
+        if (wallet == null || wallet.available() < amount) {
+            return false;
+        }
+        wallets.put(walletId, new Wallet(wallet.id(), wallet.userId(), wallet.available() - amount,
+                wallet.frozen(), Instant.now()));
+        return true;
+    }
+
+    @Override
     public boolean consumeFrozen(UUID walletId, long amount) {
         Wallet wallet = wallets.get(walletId);
         if (wallet == null || wallet.frozen() < amount) {
@@ -169,9 +180,9 @@ public class InMemoryWalletStore implements WalletRepository, WalletHoldReposito
 
     @Override
     public WalletLedgerEntry insert(UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId,
-            UUID jobId) {
+            UUID jobId, UUID rechargeOrderId) {
         WalletLedgerEntry entry = new WalletLedgerEntry(UUID.randomUUID(), walletId, userId, type, amount, holdId,
-                jobId, Instant.now());
+                jobId, rechargeOrderId, Instant.now());
         ledger.add(entry);
         return entry;
     }
@@ -183,7 +194,7 @@ public class InMemoryWalletStore implements WalletRepository, WalletHoldReposito
             WalletLedgerEntry entry = ledger.get(i);
             if (entry.holdId() != null && entry.holdId().equals(holdId) && entry.jobId() == null) {
                 ledger.set(i, new WalletLedgerEntry(entry.id(), entry.walletId(), entry.userId(), entry.type(),
-                        entry.amount(), entry.holdId(), jobId, entry.createdAt()));
+                        entry.amount(), entry.holdId(), jobId, entry.rechargeOrderId(), entry.createdAt()));
                 updated = true;
             }
         }

@@ -38,6 +38,18 @@ public class JobException extends RuntimeException {
         return new JobException(ErrorCodes.WALLET_INSUFFICIENT);
     }
 
+    public static JobException rechargeOrderNotFound() {
+        return new JobException(ErrorCodes.RECHARGE_ORDER_NOT_FOUND);
+    }
+
+    public static JobException rechargeProviderError() {
+        return new JobException(ErrorCodes.RECHARGE_PROVIDER_ERROR);
+    }
+
+    public static JobException rechargeNotRefundable() {
+        return new JobException(ErrorCodes.RECHARGE_NOT_REFUNDABLE);
+    }
+
     public String errorCode() {
         return errorCode;
     }

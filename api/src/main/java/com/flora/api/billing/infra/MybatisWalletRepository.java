@@ -42,6 +42,11 @@ public class MybatisWalletRepository implements WalletRepository {
     }
 
     @Override
+    public boolean deductAvailable(UUID walletId, long amount) {
+        return mapper.deductAvailable(walletId, amount) > 0;
+    }
+
+    @Override
     public boolean consumeFrozen(UUID walletId, long amount) {
         return mapper.consumeFrozen(walletId, amount) > 0;
     }

@@ -31,7 +31,8 @@ Brief 是 flora 的需求源。Minimax 与人实现都从这里粘贴，不从�
 | [2026-10-25-wp13-docs-mybatis-plus-domain.md](./2026-10-25-wp13-docs-mybatis-plus-domain.md) | WP13 | 工程文档对齐：MyBatis-Plus + 领域分包（docs-first；ORM 代码迁移另 WP） | 已确认 / 实现中 |
 | [2026-10-25-wp14-mybatis-plus-code-migration.md](./2026-10-25-wp14-mybatis-plus-code-migration.md) | WP14 | MyBatis-Plus 3.5.17 代码迁移：`Jdbc*Repository` → 域内 Mapper（api + worker） | 已确认 / 实现中 |
 | [2026-10-25-wp15-analytics-events-reports.md](./2026-10-25-wp15-analytics-events-reports.md) | WP15 | 数据分析：事件字典 v0 + 必出报表 + analytics 域（docs-first；采集可选 Phase 2） | 已确认 / 实现中 |
+| [2026-10-25-wp16-recharge-zpay-alipay.md](./2026-10-25-wp16-recharge-zpay-alipay.md) | WP16 | C 端 z-pay 支付宝充值（mapi qrcode）+ 入账/补单/Admin 退款 | 已确认 / 实现中 |
 
-> **编号**：**WP14** = MyBatis-Plus **代码**迁移；**WP15** = 数据分析文档基线。勿混用编号。
+> **编号**：**WP14** = MyBatis-Plus **代码**迁移；**WP15** = 数据分析文档基线；**WP16** = 预付费充值渠道。勿混用编号。
 
 上表里的行是 **真实 brief**（已落盘、可整份粘贴给 Minimax），不是占位行。

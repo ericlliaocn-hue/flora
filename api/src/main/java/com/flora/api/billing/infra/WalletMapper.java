@@ -32,6 +32,10 @@ public interface WalletMapper {
     @Update("UPDATE wallet SET available = available + #{amount}, updated_at = now() WHERE id = #{walletId}")
     int addAvailable(@Param("walletId") UUID walletId, @Param("amount") long amount);
 
+    @Update("UPDATE wallet SET available = available - #{amount}, updated_at = now() "
+            + "WHERE id = #{walletId} AND available >= #{amount}")
+    int deductAvailable(@Param("walletId") UUID walletId, @Param("amount") long amount);
+
     @Update("UPDATE wallet SET frozen = frozen - #{amount}, updated_at = now() "
             + "WHERE id = #{walletId} AND frozen >= #{amount}")
     int consumeFrozen(@Param("walletId") UUID walletId, @Param("amount") long amount);

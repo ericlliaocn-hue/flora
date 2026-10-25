@@ -13,7 +13,8 @@ import com.flora.api.billing.domain.WalletLedgerType;
  */
 public interface WalletLedgerRepository {
 
-    WalletLedgerEntry insert(UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId, UUID jobId);
+    WalletLedgerEntry insert(
+            UUID walletId, UUID userId, WalletLedgerType type, long amount, UUID holdId, UUID jobId, UUID rechargeOrderId);
 
     /** 回填流水关联的 job；已回填时不覆盖。 */
     boolean bindJobId(UUID holdId, UUID jobId);

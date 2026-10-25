@@ -14,6 +14,8 @@ public final class AuthPathPolicy {
     public static final String PROTECTED_PREFIX = "/api/v1/";
     public static final String REGISTER_PATH = "/api/v1/auth/register";
     public static final String LOGIN_PATH = "/api/v1/auth/login";
+    /** WP16：z-pay 异步通知（验签入账，非登录）。 */
+    public static final String ZPAY_RECHARGE_WEBHOOK_PATH = "/api/v1/billing/recharge/webhook/zpay";
 
     private AuthPathPolicy() {
     }
@@ -31,6 +33,8 @@ public final class AuthPathPolicy {
         if (!normalized.startsWith(PROTECTED_PREFIX)) {
             return false;
         }
-        return !REGISTER_PATH.equals(normalized) && !LOGIN_PATH.equals(normalized);
+        return !REGISTER_PATH.equals(normalized)
+                && !LOGIN_PATH.equals(normalized)
+                && !ZPAY_RECHARGE_WEBHOOK_PATH.equals(normalized);
     }
 }

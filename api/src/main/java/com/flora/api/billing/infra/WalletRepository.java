@@ -26,6 +26,9 @@ public interface WalletRepository {
     /** 充值：可用加。 */
     boolean addAvailable(UUID walletId, long amount);
 
+    /** 退款扣回：可用减。{@code available < amount} 时不更新，返回 false。 */
+    boolean deductAvailable(UUID walletId, long amount);
+
     /** 确认实扣：已冻减。已冻不足时不更新，返回 false。 */
     boolean consumeFrozen(UUID walletId, long amount);
 

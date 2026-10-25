@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- |
 | `users` | 账号 | WP3 | [下方字段](#userswp3-已落地) | 登录主体；Sa-Token 会话指向 `user_id` |
 | `wallet` / `wallet_hold` / `wallet_ledger` | 计费 | WP6 已落地 | [billing.md](./billing.md) | 余额 + 冻结单 + 流水；单账本 |
+| `recharge_order` | 计费 | WP16 已落地（`V9`） | [billing.md](./billing.md) | z-pay 支付宝充值订单 |
 | `job` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 状态机权威行 |
 | `job_step` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
 | `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |

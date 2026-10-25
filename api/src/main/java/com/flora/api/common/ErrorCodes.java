@@ -34,6 +34,12 @@ public final class ErrorCodes {
     public static final String GATEWAY_INVALID_RESPONSE = "GATEWAY_INVALID_RESPONSE";
     /** WP12 起启用：上游视频任务进入失败终态（不可重试）。 */
     public static final String UPSTREAM_VIDEO_FAILED = "UPSTREAM_VIDEO_FAILED";
+    /** WP16：充值订单不存在或不属于当前用户。 */
+    public static final String RECHARGE_ORDER_NOT_FOUND = "RECHARGE_ORDER_NOT_FOUND";
+    /** WP16：z-pay 下单/查单/退款上游失败。 */
+    public static final String RECHARGE_PROVIDER_ERROR = "RECHARGE_PROVIDER_ERROR";
+    /** WP16：订单不可退款或余额不足以扣回。 */
+    public static final String RECHARGE_NOT_REFUNDABLE = "RECHARGE_NOT_REFUNDABLE";
 
     private ErrorCodes() {
     }
