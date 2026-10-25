@@ -95,7 +95,7 @@ export FLORA_JOB_EXCHANGE=flora.jobs
 export FLORA_JOB_ROUTING_KEY=job.execute
 export FLORA_JOB_QUEUE=flora.jobs.execute
 export FLORA_JOB_DEAD_LETTER_QUEUE=flora.jobs.execute.dlq
-export FLORA_JOB_LEASE_TTL_SECONDS=60      # worker 领取 job 的 Redis 短锁 TTL
+export FLORA_JOB_LEASE_TTL_SECONDS=660     # worker 领取 job 的 Redis 短锁 TTL（要盖住 600s 视频轮询窗口）
 export FLORA_OUTBOX_POLL_MS=500            # outbox 轮询间隔
 export FLORA_OUTBOX_BATCH_SIZE=50          # 单轮最多投递多少条
 export FLORA_OUTBOX_MAX_ATTEMPTS=10        # 同一条消息连续失败多少次后停在 failed
@@ -158,15 +158,20 @@ WP12：Seedance 视频是**三步异步协议**（`POST /v1/videos/generations` 
 ```bash
 export FLORA_GATEWAY_VIDEO_GENERATE_PATH=/v1/videos/generations   # 提交端点
 export FLORA_GATEWAY_VIDEO_STATUS_PATH_PREFIX=/v1/videos           # 轮询端点前缀
-export FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS=2000                  # 轮询间隔
-export FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS=90                   # 轮询上限（默认 90 × 2s ≈ 180s）
+export FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS=5000                  # 轮询间隔（对齐上游 poll_after_ms）
+export FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS=120                  # 轮询上限（默认 120 × 5s = 600s）
 ```
 
-> **实测提醒**：真实 Seedance 出 5 秒片耗时约 **170–200 秒**，默认预算（180s）**刚好压线**。
-> 上游自己的响应里带 `poll_after_ms: 5000`，说明它建议 5 秒轮询一次。
-> 若视频比默认预算更慢，任务会以可重试的 `GATEWAY_TIMEOUT` 失败并**重新提交一次上游任务**
-> （等于多生成一条视频、多花一份钱）。视频时长更长或上游更慢时，请调大
-> `FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS`（例如 `180` = 360s）。
+> **实测提醒**：真实 Seedance 出 5 秒片耗时约 **170–200 秒**。默认预算是
+> `5000ms × 120 次 = 600s`，已盖住这个量级；上游响应里带 `poll_after_ms: 5000`，
+> 说明它建议 5 秒轮询一次，轮询更密只是多打请求、不会更快出片。
+>
+> 若视频比默认预算更慢（更长时长或上游更慢），任务会以可重试的 `GATEWAY_TIMEOUT` 失败并
+> **重新提交一次上游任务**（等于多生成一条视频、多花一份钱）。这时调大
+> `FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS`（例如 `240` = 1200s）。
+>
+> 注意 **Redis 租约 TTL 必须 ≥ 视频轮询窗口**（默认 `FLORA_JOB_LEASE_TTL_SECONDS=660`）：
+> 租约比轮询窗口短，锁会在视频生成中途过期，两个 worker 可能并发跑同一个 job。
 
 也可以把本地私有文件放在未入库的 `api/config/` 或 `worker/config/` 下再指过去（这两个目录已在 `.gitignore` 里）：
 
