@@ -87,6 +87,13 @@ flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 
 技术选型可复用 `web/` 的 React 栈并做路由隔离，或独立轻量后台；选定在 WP11 brief 里定，本页只冻结「它不是第二产品」。
 
+## 产品数据分析
+
+| 项 | 冻结值 |
+| --- | --- |
+| 基线 | 仓内 [事件字典 + 业务库 SQL 报表](./data-model/analytics.md)（[ADR 0007](./adr/0007-analytics-events-and-reports.md)） |
+| 第三方 SDK / 数仓 | **非** stage-1 冻结必选；神策 / GA / Mixpanel 等为可选后续 |
+
 ## 明确不进 stage-1
 
 - NewAPI / qfzy-api fork

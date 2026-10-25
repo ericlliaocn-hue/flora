@@ -22,12 +22,15 @@
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
 | 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
 
+**分析事件与报表口径**见 [analytics.md](./analytics.md)（WP15；Phase 1 无强制新表）。**余额与流水权威仍在** [billing.md](./billing.md)。
+
 不建的表（非目标）：
 
 - NewAPI 风格的 `tokens` / `quotas` / `channels` 用户额度镜像
 - 按 RabbitMQ queue 名拆的业务表（`queue_name` / `routing_key` 不进业务表，见 ADR 0003）
 - Postgres `job_lease` 表（lease 等价物 = `status=running` + Redis 短锁，见 [jobs.md](./jobs.md)）
 - admin 专用「第二套用户」
+- WP15 Phase 1 的 **ads / campaign / growth** 营销表（仅事件 props 预留 `campaign_id`）
 
 ## 权威与缓存
 

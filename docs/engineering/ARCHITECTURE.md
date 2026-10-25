@@ -30,7 +30,7 @@ flora worker ── Anytoken ── 上游模型
 
 **按领域分包**（与仓内 `com.flora.api.*` 一致），每个 bounded context 内再分四层；禁止跨层回流成上帝类，也**禁止**改成仓库根下全局 `controller` / `service` / `mapper` 三目录。
 
-已落地的领域包示例：`auth`、`billing`、`job`、`admin`、`project`、`i18n`；另有 `storage`、`gateway` 等基础设施适配。
+已落地的领域包示例：`auth`、`billing`、`job`、`admin`、`project`、`i18n`；**analytics**（WP15，先文档后代码）；另有 `storage`、`gateway` 等基础设施适配。
 
 ```
 com.flora.api.<domain>/
@@ -58,6 +58,13 @@ worker 只有 Application（执行一步）+ Infrastructure（队列、Anytoken�
 - **auth** / `users`：登录身份与资料（含 `password_hash`）；**不**存余额。
 - **billing**：钱包、`wallet_ledger`、`wallet_hold`；未来充值订单与支付渠道适配均属本域。
 - **job**：任务生命周期；通过 `hold_id` 关联冻结单，不直接改余额字段。
+
+### 领域：analytics
+
+- **职责**：事件契约、（未来）客户端/服务端事件采集、报表口径 R1–R6；只读 Postgres 业务事实（`users` / `job*` / `wallet*`）或只追加事件行；见 [data-model/analytics.md](./data-model/analytics.md) 与 [ADR 0007](./adr/0007-analytics-events-and-reports.md)。
+- **不职责**：不改钱包（freeze/confirm/release/topup）；不做广告竞价、优惠券引擎、投放后台；不把埋点逻辑塞进 `job` / `billing` 包。
+- **与 auth / billing / job**：身份在 `auth`；资金与任务终态在 `billing` / `job`；analytics **消费**其数据或旁路记录意图事件，不替代账本。
+- **后续域**：`growth` / `ads` / `campaign` 尚未建仓；账本不双写；活动发奖仍走 `billing` 用例，与 ADR 0001 单账本一致。事件 `props` 可预留 `campaign_id`。
 
 ## Anytoken hop
 
