@@ -86,7 +86,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 ) : (
                     <button
                         type="button"
-                        className="h-8 rounded-full bg-white px-4 text-[12px] font-semibold text-neutral-900 transition hover:bg-neutral-100"
+                        className="studio-solid-on-white h-8 rounded-full bg-white px-4 text-[12px] font-semibold transition hover:bg-neutral-100"
                         onClick={() => setAuthModalOpen(true, "login")}
                     >
                         {t("auth.needLogin")}

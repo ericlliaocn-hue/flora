@@ -377,7 +377,7 @@ function ShowcaseCard({
                     </button>
                     <button
                         type="button"
-                        className="pointer-events-auto h-7 rounded-full bg-white px-3 text-[11px] font-medium text-neutral-900 transition hover:bg-neutral-100"
+                        className="studio-solid-on-white pointer-events-auto h-7 rounded-full bg-white px-3 text-[11px] font-medium transition hover:bg-neutral-100"
                         onClick={(event) => {
                             event.stopPropagation();
                             onMakeSame();

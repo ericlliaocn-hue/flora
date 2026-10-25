@@ -56,10 +56,10 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
             </p>
             <button
                 type="button"
-                className="h-7 shrink-0 rounded-full bg-white px-3.5 text-xs font-semibold transition hover:bg-[#e8fffc]"
+                className="studio-solid-on-white h-7 shrink-0 rounded-full bg-white px-3.5 text-xs font-semibold transition hover:bg-[#e8fffc]"
                 onClick={onRecharge}
             >
-                <span className="text-[#0a2f2f]">{t("studio.promo.cta")}</span>
+                {t("studio.promo.cta")}
             </button>
             <button
                 type="button"
