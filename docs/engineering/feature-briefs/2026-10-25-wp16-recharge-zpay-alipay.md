@@ -1,7 +1,7 @@
 # Feature brief：WP16 预付费钱包充值 — z-pay 彩虹易支付（支付宝 qrcode / mapi.php）
 
 - 日期：2026-10-25
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP16 / M4+（C 端自助充值闭环；接 WP6 钱包 + WP14 MyBatis-Plus）
 - 状态：已确认（待实现）
 - 建议分支：`feat/wp16-recharge-zpay-alipay`
@@ -27,7 +27,7 @@
 10. `docs/engineering/api/gateway-contract.md`
 11. `docs/engineering/feature-briefs/2026-10-24-wp6-prepaid-wallet.md`（`topup` / freeze 语义）
 12. `docs/engineering/feature-briefs/2026-10-25-wp14-mybatis-plus-code-migration.md`（infra 现状）
-13. `api/src/main/java/com/flora/api/billing/**`（尤其 `TopUpWallet`、`WalletService`、`WalletLedgerType`、`AuthPathPolicy`）
+13. `api/src/main/java/com/pilipala/api/billing/**`（尤其 `TopUpWallet`、`WalletService`、`WalletLedgerType`、`AuthPathPolicy`）
 14. `api/src/main/resources/db/migration/V4__create_wallet_domain.sql` 与最新迁移编号（本 WP 用 **V9**）
 
 **本 WP 的硬约束：**
@@ -36,12 +36,12 @@
 - **入账**：支付成功后**必须**走现有 `TopUpWallet` / `WalletService.credit`（或等价、同一事务路径），写下 `wallet_ledger.type = 'topup'`，并关联 `recharge_order_id`。**禁止**只 `UPDATE wallet.available` 不写流水。
 - **渠道**：仅 **支付宝**（`type=alipay`，`cid` 来自配置默认 `12540`）。**禁止**实现 `wxpay` / 微信通道。
 - **下单**：只走 **`mapi.php` + qrcode 模式**。**禁止**走 `submit.php`。
-- **回调 URL**：每笔订单自带 flora 的 `notify_url` / `return_url`，由 **`FLORA_PUBLIC_BASE_URL`** 拼出。**严禁**照抄 oioio：
+- **回调 URL**：每笔订单自带 pilipala 的 `notify_url` / `return_url`，由 **`PILIPALA_PUBLIC_BASE_URL`** 拼出。**严禁**照抄 oioio：
   - ~~`https://oioio.chat/api/v1/payment/webhook/easypay`~~
   - ~~`https://oioio.chat/payment/result`~~
 - **密钥**：**禁止**把真实 `pid` / `pkey` 写入任何入库文件、测试 fixture、截图、PR 描述或注释。只用 env 占位符（见 §7）。本地联调密钥放部署环境 / 本机 env / vault，不进 git。
 - **与 oioio 共商户**：`out_trade_no` **全局唯一**，前缀**不得**用 oioio 的 `sub2_`（见 §7 锁定 `flr_`）。
-- **持久化**：MyBatis-Plus 3.5.17；包结构 `com.flora.api.billing.{web,application,domain,infra}`；入账/状态迁移用显式条件 `@Update`（ADR 0006）。
+- **持久化**：MyBatis-Plus 3.5.17；包结构 `art.pilipala.api.billing.{web,application,domain,infra}`；入账/状态迁移用显式条件 `@Update`（ADR 0006）。
 - **worker**：**零改动**（不依赖 z-pay、不碰 `recharge_order`）。
 - **不做**：analytics Phase 2 ingest；改 job freeze/confirm/release 语义；微信；把商户密钥硬编码。
 
@@ -60,7 +60,7 @@ WP14 已将 billing infra 迁到 MyBatis-Plus；本 WP 在同一分包内新增�
 ## 2. 目标（可验证）
 
 1. Flyway **`V9__create_recharge_order.sql`**：新建 `recharge_order`；`wallet_ledger` 增加可空 `recharge_order_id`（逻辑关联 + 索引；**不要** `ON DELETE CASCADE`）。
-2. 配置齐全且可启动：`FLORA_PUBLIC_BASE_URL`、`FLORA_ZPAY_PID`、`FLORA_ZPAY_PKEY`、`FLORA_ZPAY_CID`（默认 12540）；缺必填配置时**创建订单应失败**（清晰 `VALIDATION_ERROR` / 启动期校验二选一，brief 锁定见 §7）。
+2. 配置齐全且可启动：`PILIPALA_PUBLIC_BASE_URL`、`PILIPALA_ZPAY_PID`、`PILIPALA_ZPAY_PKEY`、`PILIPALA_ZPAY_CID`（默认 12540）；缺必填配置时**创建订单应失败**（清晰 `VALIDATION_ERROR` / 启动期校验二选一，brief 锁定见 §7）。
 3. 已登录用户可按**套餐**创建支付宝充值单，拿到**绝对 URL** 的 `qrcode` / `payurl`（手机优先 `payurl2`）。
 4. z-pay 异步通知：验签 → 字段白名单 → `TRADE_SUCCESS` → 金额一致 → **幂等入账一次** → HTTP 200 正文恰好 `success`。
 5. 主动查单补单：notify 丢失时，定时对账 + 客户端查询接口可把订单收敛到 `paid` 并入账；**不**只靠 return 页。
@@ -83,13 +83,13 @@ WP14 已将 billing infra 迁到 MyBatis-Plus；本 WP 在同一分包内新增�
 | `docs/engineering/api/gateway-contract.md` | 充值 API + webhook 行为 |
 | `docs/engineering/runbooks/local-dev.md` | env 占位、curl 验收（**无真实密钥**） |
 | `api/src/main/resources/db/migration/V9__create_recharge_order.sql` | **新增** |
-| `api/src/main/resources/application.yml` | `flora.public-base-url`、`flora.billing.zpay.*`、`flora.billing.recharge.*` |
+| `api/src/main/resources/application.yml` | `pilipala.public-base-url`、`pilipala.billing.zpay.*`、`pilipala.billing.recharge.*` |
 | `.env.example`（若仓内已有惯例文件） | 只加占位符键名 |
-| `api/src/main/java/com/flora/api/billing/**` | 充值用例、状态机、Zpay 客户端、Mapper、Controller、对账调度 |
-| `api/src/main/java/com/flora/api/auth/infra/AuthPathPolicy.java` | **放行** webhook 路径（见 §7） |
-| `api/src/main/java/com/flora/api/common/ErrorCodes.java` + i18n 文案路径 | 新码 |
-| `api/src/main/java/com/flora/api/admin/**` | 列表 + 退款入口（调用 billing 用例） |
-| `api/src/test/java/com/flora/api/billing/**` | 签名、验签、白名单、幂等入账、金额校验、查单解析单测（**mock HTTP**，不打真 z-pay） |
+| `api/src/main/java/com/pilipala/api/billing/**` | 充值用例、状态机、Zpay 客户端、Mapper、Controller、对账调度 |
+| `api/src/main/java/com/pilipala/api/auth/infra/AuthPathPolicy.java` | **放行** webhook 路径（见 §7） |
+| `api/src/main/java/com/pilipala/api/common/ErrorCodes.java` + i18n 文案路径 | 新码 |
+| `api/src/main/java/com/pilipala/api/admin/**` | 列表 + 退款入口（调用 billing 用例） |
+| `api/src/test/java/com/pilipala/api/billing/**` | 签名、验签、白名单、幂等入账、金额校验、查单解析单测（**mock HTTP**，不打真 z-pay） |
 | `web/`（最小） | 结果页路由 `/billing/recharge/result` +（可选）充值入口调 create API；不要求完整运营后台 UI |
 
 ---
@@ -100,7 +100,7 @@ WP14 已将 billing infra 迁到 MyBatis-Plus；本 WP 在同一分包内新增�
 - 改 job 的 freeze / confirm / release 语义或 SQL。
 - analytics Phase 2 ingest / `analytics_event` 表。
 - 照抄 oioio notify/return URL。
-- 提交真实 `FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY` 值。
+- 提交真实 `PILIPALA_ZPAY_PID` / `PILIPALA_ZPAY_PKEY` 值。
 - 新建全局 `payment` 域或把充值塞进 `auth`。
 - Stripe / 微信官方直连 / 苹果 IAP。
 - 套餐运营中台、优惠券、活动赠额引擎（套餐仅配置列表）。
@@ -118,19 +118,19 @@ WP14 已将 billing infra 迁到 MyBatis-Plus；本 WP 在同一分包内新增�
 | Flyway | `V9__create_recharge_order.sql`（**严禁**改 V1–V8） |
 | 表名 | `recharge_order` |
 | 支付平台 | 彩虹易支付协议；服务商 z-pay；`apiBase=https://api.z-pay.cn`（可配置，默认该值） |
-| 支付方式 | **仅** `type=alipay`；`cid` 默认 `12540`（`FLORA_ZPAY_CID` 可覆盖） |
+| 支付方式 | **仅** `type=alipay`；`cid` 默认 `12540`（`PILIPALA_ZPAY_CID` 可覆盖） |
 | 下单入口 | `POST {apiBase}/mapi.php`，`Content-Type: application/x-www-form-urlencoded`；**禁止** `submit.php` |
 | 查单 | 优先 `GET {apiBase}/api.php?act=order&pid=...&key=PKEY&out_trade_no=...`；GET 无合法 JSON 再 **POST** 同参；查单用 **`key=pkey`**，**不**走 MD5 签名 |
 | 退款 | `POST {apiBase}/api.php?act=refund`，表单 `pid`、`key=pkey`、`money`，加 `out_trade_no` 或 `trade_no`；**不**走 MD5；`code=1` 或 `"1"` 成功；先 `out_trade_no`，上游称不存在再换 `trade_no` |
 | `out_trade_no` 格式 | **`flr_` + `yyyyMMdd`（UTC+8 日历日）+ 10 位 `[A-Za-z0-9]` 随机**。例：`flr_20261025Ab12Cd34Ef`。总长固定可校验；**禁止** `sub2_` 前缀 |
-| `notify_url` | `{FLORA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay` |
-| `return_url` | `{FLORA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不在 `/api/v1`） |
-| `FLORA_PUBLIC_BASE_URL` | **必填**（无尾斜杠）。**禁止**实现者臆造生产域名；未配置则拒绝创建订单 |
+| `notify_url` | `{PILIPALA_PUBLIC_BASE_URL}/api/v1/billing/recharge/webhook/zpay` |
+| `return_url` | `{PILIPALA_PUBLIC_BASE_URL}/billing/recharge/result`（前端页，不在 `/api/v1`） |
+| `PILIPALA_PUBLIC_BASE_URL` | **必填**（无尾斜杠）。**禁止**实现者臆造生产域名；未配置则拒绝创建订单 |
 | 签名（下单 + 通知验签） | 去掉 `sign`、`sign_type`、空值 → 参数名 ASCII 升序 → `k=v&k=v` → **末尾直接拼接 pkey（pkey 前不加 `&`）** → MD5 → **小写** hex；请求带 `sign` + `sign_type=MD5` |
 | 通知字段白名单 | **只接受**：`pid, trade_no, out_trade_no, type, name, money, trade_status, param, sign, sign_type`。**多任一字段 → 拒绝**（不入账、不回 `success`） |
 | 入账条件 | `trade_status=TRADE_SUCCESS` **且** 金额与本地订单一致 **且** 订单存在 **且** 尚未入账 |
 | 成功应答 | HTTP **200**，body **恰好** `success`（无 JSON、无多余空白策略：trim 后等于 `success`；推荐直接写纯文本 `success`） |
-| 钱包单位 | 继续 **BIGINT flora credit**；与 WP6 一致 |
+| 钱包单位 | 继续 **BIGINT pilipala credit**；与 WP6 一致 |
 | 人民币存储 | 订单存 **`money_fen` BIGINT**（人民币**分**，正整数）；调 z-pay 时用 `BigDecimal.valueOf(money_fen, 2).toPlainString()` 得到 `money` 字符串（如 `10.00`）。**禁止** `double`/`float` 算钱 |
 | 通知金额校验 | 将回调 `money` 解析为分（`BigDecimal` 严格 2 位或可规范化后 ×100）与 `recharge_order.money_fen` **相等**；否则拒绝 |
 | 套餐（C 端只选 package_id） | 配置白名单，**禁止**客户端自报任意金额/credits。默认三档（可用 env/yaml 覆盖，但实现须支持列表）：见下表 |
@@ -167,7 +167,7 @@ paid ──(admin 退款成功)──► refunded
 
 - `created`：本地已占 `out_trade_no`，尚未拿到上游成功码（若实现选择「先插后调」，mapi 失败则 `failed`）。
 - **推荐写入顺序**：先插 `pending_pay` 前的行（`created`）→ 调 mapi → 成功则更新 `pending_pay` + 填 `provider_trade_no`/`pay_url`/`qrcode_url`；失败则 `failed` + 返回 `msg`。
-- `closed`：超过 `flora.billing.recharge.order-ttl-minutes`（默认 **30**）仍未支付，对账任务标记关闭（不入账）。已 `paid` 不可 closed。
+- `closed`：超过 `pilipala.billing.recharge.order-ttl-minutes`（默认 **30**）仍未支付，对账任务标记关闭（不入账）。已 `paid` 不可 closed。
 
 ### 5.3 为何 notify 挂在 `/api/v1/billing/...`？
 
@@ -200,7 +200,7 @@ paid ──(admin 退款成功)──► refunded
 | `device` | TEXT | YES | | `mobile` 或 null |
 | `pay_url` | TEXT | YES | | 规范化后的绝对/协议 URL |
 | `qrcode_url` | TEXT | YES | | 规范化后的**绝对** URL（给二维码） |
-| `product_name` | TEXT | NO | | 传给 z-pay 的 `name`，如 `flora credits p10` |
+| `product_name` | TEXT | NO | | 传给 z-pay 的 `name`，如 `pilipala credits p10` |
 | `ledger_id` | UUID | YES | | 入账成功后的 `wallet_ledger.id` |
 | `paid_at` | TIMESTAMPTZ | YES | | |
 | `refunded_at` | TIMESTAMPTZ | YES | | |
@@ -253,43 +253,43 @@ Java：`WalletLedgerType` 增加 `REFUND`；`topup` 语义不变。
 ## 7. 配置与密钥（占位符 only）
 
 ```yaml
-flora:
-  public-base-url: ${FLORA_PUBLIC_BASE_URL:}   # 生产：https://pilipala.art（env）；勿提交商户密钥
+pilipala:
+  public-base-url: ${PILIPALA_PUBLIC_BASE_URL:}   # 生产：https://pilipala.art（env）；勿提交商户密钥
   billing:
     zpay:
-      api-base: ${FLORA_ZPAY_API_BASE:https://api.z-pay.cn}
-      pid: ${FLORA_ZPAY_PID:}
-      pkey: ${FLORA_ZPAY_PKEY:}
-      cid: ${FLORA_ZPAY_CID:12540}
+      api-base: ${PILIPALA_ZPAY_API_BASE:https://api.z-pay.cn}
+      pid: ${PILIPALA_ZPAY_PID:}
+      pkey: ${PILIPALA_ZPAY_PKEY:}
+      cid: ${PILIPALA_ZPAY_CID:12540}
       # type 固定 alipay，代码写死，不配 wxpay
     recharge:
-      order-ttl-minutes: ${FLORA_RECHARGE_ORDER_TTL_MINUTES:30}
-      reconcile-poll-ms: ${FLORA_RECHARGE_RECONCILE_POLL_MS:5000}
-      reconcile-batch-size: ${FLORA_RECHARGE_RECONCILE_BATCH_SIZE:50}
+      order-ttl-minutes: ${PILIPALA_RECHARGE_ORDER_TTL_MINUTES:30}
+      reconcile-poll-ms: ${PILIPALA_RECHARGE_RECONCILE_POLL_MS:5000}
+      reconcile-batch-size: ${PILIPALA_RECHARGE_RECONCILE_BATCH_SIZE:50}
       packages:
         - id: p10
           money-fen: 1000
           credits: 100
-          name: "flora credits 100"
+          name: "pilipala credits 100"
         - id: p50
           money-fen: 5000
           credits: 550
-          name: "flora credits 550"
+          name: "pilipala credits 550"
         - id: p100
           money-fen: 10000
           credits: 1200
-          name: "flora credits 1200"
+          name: "pilipala credits 1200"
 ```
 
 环境变量键（写入 `.env.example` / runbook，**值为空或占位**）：
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `FLORA_PUBLIC_BASE_URL` | 是（创建订单时） | 无尾 `/`；**生产** `https://pilipala.art` |
-| `FLORA_ZPAY_PID` | 是 | 商户号 |
-| `FLORA_ZPAY_PKEY` | 是 | 商户密钥 |
-| `FLORA_ZPAY_CID` | 否 | 默认 `12540` |
-| `FLORA_ZPAY_API_BASE` | 否 | 默认 `https://api.z-pay.cn` |
+| `PILIPALA_PUBLIC_BASE_URL` | 是（创建订单时） | 无尾 `/`；**生产** `https://pilipala.art` |
+| `PILIPALA_ZPAY_PID` | 是 | 商户号 |
+| `PILIPALA_ZPAY_PKEY` | 是 | 商户密钥 |
+| `PILIPALA_ZPAY_CID` | 否 | 默认 `12540` |
+| `PILIPALA_ZPAY_API_BASE` | 否 | 默认 `https://api.z-pay.cn` |
 
 **启动策略（锁定）**：应用可以启动；`CreateRechargeOrder` 时若 `public-base-url` / `pid` / `pkey` 为空 → `VALIDATION_ERROR`（或专用 `PAYMENT_CONFIG_ERROR`，见 §8）。单测用假配置，不读真实密钥。
 
@@ -366,7 +366,7 @@ flora:
 ## 9. 建议包结构（billing 内扩展）
 
 ```
-com.flora.api.billing
+art.pilipala.api.billing
   domain/
     RechargeOrder.java
     RechargeOrderStatus.java
@@ -393,7 +393,7 @@ com.flora.api.billing
     ZpayWebhookController.java     （produces TEXT_PLAIN）
 ```
 
-Admin 控制器放 `com.flora.api.admin.web`，用例可放 admin.application 但**必须**调用 billing 的 `RefundRechargeOrder` / 查询端口。
+Admin 控制器放 `art.pilipala.api.admin.web`，用例可放 admin.application 但**必须**调用 billing 的 `RefundRechargeOrder` / 查询端口。
 
 ---
 
@@ -444,7 +444,7 @@ sign = md5(stringSign).hex.lower()
 - [ ] 分支 `feat/wp16-recharge-zpay-alipay`（或 PR 说明等价）。
 - [ ] `V9__create_recharge_order.sql` 存在；**未**改 V1–V8。
 - [ ] `out_trade_no` 前缀为 **`flr_`**，格式符合 §5；**无** `sub2_`。
-- [ ] notify/return **仅**由 `FLORA_PUBLIC_BASE_URL` 拼接为 §5 路径；代码与文档中**无** `oioio.chat` 支付回调 URL。
+- [ ] notify/return **仅**由 `PILIPALA_PUBLIC_BASE_URL` 拼接为 §5 路径；代码与文档中**无** `oioio.chat` 支付回调 URL。
 - [ ] 仅 alipay + mapi.php；代码路径**无** wxpay/submit.php 实现。
 - [ ] 签名算法单测覆盖；通知额外字段被拒；错误金额不入账；重复通知不二次 `topup`。
 - [ ] 入账走 `topup` 流水且 `recharge_order_id` 有值；`available` 增加等于 `credits`。
@@ -492,6 +492,6 @@ sign = md5(stringSign).hex.lower()
 
 | 问题 | 处理 |
 | --- | --- |
-| 生产 `FLORA_PUBLIC_BASE_URL` | **已确认** `https://pilipala.art`（仅经 env / 部署配置；Java 仍读 `flora.public-base-url`，单测用 localhost 假值）。 |
+| 生产 `PILIPALA_PUBLIC_BASE_URL` | **已确认** `https://pilipala.art`（仅经 env / 部署配置；Java 仍读 `pilipala.public-base-url`，单测用 localhost 假值）。 |
 | 套餐 credits 是否要改促销数字 | 默认表已锁定；运营改 yaml 即可，不必改代码。 |
 | 与 oioio 共商户的对账责任 | 靠 `flr_` 前缀隔离订单号；跨系统财务对账不在本 WP。 |

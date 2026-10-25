@@ -1,7 +1,7 @@
 # Feature brief：WP3 认证与用户
 
 - 日期：2026-10-24
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP3 / M1
 - 状态：已确认（实现中）
 
@@ -39,8 +39,8 @@ WP0 白标、WP1 api/worker 空骨架、WP2 字段级 schema 已合入 main。ap
 | --- | --- |
 | 登录方式 | 仅 username + password（无 OAuth / 短信 / 邮箱魔法链） |
 | 密码哈希 | BCrypt（spring-security-crypto 的 `BCryptPasswordEncoder`，strength 10）。只引 crypto，不要拉起整套 Spring Security FilterChain 抢 Sa-Token |
-| 会话 | Sa-Token；`loginId` = `users.id` 的 UUID 字符串；token 名沿用 `flora-token` |
-| token 传递 | 响应体返回 token；客户端之后用请求头 `flora-token: <token>`。`is-read-header=true`；本 WP 关闭 cookie 读（`is-read-cookie=false`） |
+| 会话 | Sa-Token；`loginId` = `users.id` 的 UUID 字符串；token 名沿用 `pilipala-token` |
+| token 传递 | 响应体返回 token；客户端之后用请求头 `pilipala-token: <token>`。`is-read-header=true`；本 WP 关闭 cookie 读（`is-read-cookie=false`） |
 | 会话存储 | Redis（`sa-token-redis-jackson` + `spring-boot-starter-data-redis`）。禁止只用进程内存冒充「已完成会话」 |
 | 用户表 | 仅 WP2 预留列：`id, username, password_hash, locale, created_at, updated_at` |
 | 迁移 | Flyway；首个脚本只建 users（见下方 SQL 语义） |
@@ -55,7 +55,7 @@ WP0 白标、WP1 api/worker 空骨架、WP2 字段级 schema 已合入 main。ap
 - Cookie 会话、跨域 Cookie、前端登录页 / 画布改打 API（WP7）
 - `users` 上加 `email` / `phone` / `role` / `status` 等列（要加必须先改 data-model + 新 brief）
 - Admin 角色矩阵、权限中台、RBAC UI（WP11）
-- 完整 `docker-compose.flora.yml`（web+api+worker+全家桶）；本 WP 最多给 Postgres+Redis 的可选依赖 compose，且不得写真实密码
+- 完整 `docker-compose.pilipala.yml`（web+api+worker+全家桶）；本 WP 最多给 Postgres+Redis 的可选依赖 compose，且不得写真实密码
 - Job / outbox / RabbitMQ / 钱包 / Anytoken / TOS
 - 新的 `error_code`（需要时先改 errors.md）
 
@@ -82,9 +82,9 @@ WP0 白标、WP1 api/worker 空骨架、WP2 字段级 schema 已合入 main。ap
 | `api/src/main/resources/application.yml` | 补 Postgres / Redis / Flyway / Sa-Token 完备配置；密钥与密码全部 `${ENV:}`；修正注释「WP2 登录」→「WP3」 |
 | `api/src/main/resources/application-local.yml` | 本地非密钥默认（本地 JDBC/Redis 地址端口）；禁止提交真实密码 |
 | `api/src/main/resources/db/migration/V1__create_users.sql` | 仅 users 表 |
-| `api/src/main/java/com/flora/api/auth/**`（建议分包） | Interface 控制器、Application 用例、Domain 用户、Infrastructure 仓储 / Sa-Token 配置 / 统一异常与错误信封 |
-| `api/src/main/java/com/flora/api/ApiApplication.java` | 更新过时注释（WP 编号） |
-| `api/src/main/java/com/flora/api/{job,billing,gateway}/package-info.java` | 仅修正 WP 编号注释（`job` 应为 WP4 起，勿在本 WP 写 job 实现） |
+| `api/src/main/java/com/pilipala/api/auth/**`（建议分包） | Interface 控制器、Application 用例、Domain 用户、Infrastructure 仓储 / Sa-Token 配置 / 统一异常与错误信封 |
+| `api/src/main/java/com/pilipala/api/ApiApplication.java` | 更新过时注释（WP 编号） |
+| `api/src/main/java/com/pilipala/api/{job,billing,gateway}/package-info.java` | 仅修正 WP 编号注释（`job` 应为 WP4 起，勿在本 WP 写 job 实现） |
 | `docs/engineering/runbooks/local-dev.md` | WP3 启动与 curl 验收；诚实标注仍无 Job/钱包 |
 | `docs/engineering/data-model/README.md` | `users`「首次落地」保持 WP3；可将「仅字段预留」改为「WP3 已落地」并链到本 brief（不要改列定义） |
 | 可选 `docker-compose.deps.yml`（或 `deploy/docker-compose.deps.yml`） | 仅 Postgres + Redis；示例密码用占位；写入 runbook。不做 web/api/worker 一键编排 |
@@ -93,7 +93,7 @@ WP0 白标、WP1 api/worker 空骨架、WP2 字段级 schema 已合入 main。ap
 ### 建议 Java 包（可微调命名，但职责必须拆开，禁止上帝类）
 
 ```
-com.flora.api.auth
+art.pilipala.api.auth
   web/          AuthController, 全局异常 → 信封
   application/  RegisterUser, LoginUser, LogoutUser, GetCurrentUser
   domain/       User（或 record）
@@ -107,7 +107,7 @@ com.flora.api.auth
 - 任何 Job / job_step / outbox / idempotency / RabbitMQ 消费者或生产者
 - 钱包 freeze/confirm/release、ledger
 - Anytoken HTTP 客户端、TOS、STS、回调
-- 前端 `web/` 登录 UI、改打 flora API、locale 大改
+- 前端 `web/` 登录 UI、改打 pilipala API、locale 大改
 - Admin、RBAC、角色列、第二套用户表
 - NewAPI / 双账本 / 胖 worker
 - `docs/content/**`、公开 Fumadocs、CHANGELOG 用户叙事
@@ -162,7 +162,7 @@ com.flora.api.auth
 | `user_id` | string (uuid) | |
 | `username` | string | |
 | `locale` | string \| null | |
-| `token` | string | Sa-Token 值；随后用头 `flora-token` |
+| `token` | string | Sa-Token 值；随后用头 `pilipala-token` |
 
 失败：`VALIDATION_ERROR`（格式不合法 / username 已存在）。不要用上游 SQL 原文当 message。
 
@@ -205,7 +205,7 @@ com.flora.api.auth
 匿名 ──register/login──► 已登录（Redis 会话）──logout / 超时──► 匿名
 ```
 
-超时沿用现有配置默认 `FLORA_TOKEN_TIMEOUT`（2592000 秒），不要静默改默认值。
+超时沿用现有配置默认 `PILIPALA_TOKEN_TIMEOUT`（2592000 秒），不要静默改默认值。
 
 ## 验收
 
@@ -214,7 +214,7 @@ com.flora.api.auth
 - [ ] Flyway `V1__create_users.sql` 仅建 users，列与 data-model 一致
 - [ ] `POST /api/v1/auth/register` 成功写入 BCrypt 哈希；库中看不到明文密码
 - [ ] `POST /api/v1/auth/login` 返回 `user_id` + token；Redis 中可见会话（或等价可观测：logout 后 token 失效）
-- [ ] `GET /api/v1/auth/me` 带 `flora-token` 返回同一 `user_id`
+- [ ] `GET /api/v1/auth/me` 带 `pilipala-token` 返回同一 `user_id`
 - [ ] 无 token / 坏 token 调 `/api/v1/auth/me` → `error_code=UNAUTHORIZED`，message 为友好短句（非堆栈）
 - [ ] 非法 username/password 格式 → `VALIDATION_ERROR`
 - [ ] 重复 username → `VALIDATION_ERROR`（或明确同码）；无 SQL 原文泄漏
@@ -232,7 +232,7 @@ com.flora.api.auth
 ## 非目标
 
 - 不在本任务证明 job 状态机或出图闭环
-- 不把「能登录」写成「托管 flora 已可用」
+- 不把「能登录」写成「托管 pilipala 已可用」
 - 不做社交登录全家桶与企业 IdP
 - Admin 不是本任务
 
@@ -272,11 +272,11 @@ git push -u origin feat/wp3-auth-users
 ## 环境变量提示（写入 runbook，勿填真实值）
 
 ```bash
-export FLORA_API_PORT=8080
-export FLORA_TOKEN_NAME=flora-token
-export FLORA_TOKEN_TIMEOUT=2592000
-export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/flora
-export SPRING_DATASOURCE_USERNAME=flora
+export PILIPALA_API_PORT=8080
+export PILIPALA_TOKEN_NAME=pilipala-token
+export PILIPALA_TOKEN_TIMEOUT=2592000
+export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/pilipala
+export SPRING_DATASOURCE_USERNAME=pilipala
 export SPRING_DATASOURCE_PASSWORD=replace-me
 export SPRING_DATA_REDIS_HOST=127.0.0.1
 export SPRING_DATA_REDIS_PORT=6379
@@ -295,7 +295,7 @@ curl -s -X POST http://127.0.0.1:8080/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"alice","password":"password1"}'
 # me
-curl -s http://127.0.0.1:8080/api/v1/auth/me -H "flora-token: $TOKEN"
+curl -s http://127.0.0.1:8080/api/v1/auth/me -H "pilipala-token: $TOKEN"
 # 无 token → UNAUTHORIZED
 curl -s http://127.0.0.1:8080/api/v1/auth/me
 ```

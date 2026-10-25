@@ -13,7 +13,7 @@ import java.util.UUID;
  * @param userId            提交者
  * @param status            状态机权威
  * @param capability        如 image.generate
- * @param model             flora 内部模型名
+ * @param model             pilipala 内部模型名
  * @param paramsJson        已物化参数（JSON 文本）
  * @param attempt           已开始的 attempt 数
  * @param maxAttempts       重试上限

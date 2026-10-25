@@ -1,7 +1,7 @@
 # Feature brief：WP14 MyBatis-Plus 代码迁移（Jdbc*Repository → Mapper，保留领域分包）
 
 - 日期：2026-10-25
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP14 / 工程实现（跨 M；接 WP13 ADR 0006）
 - 状态：已确认（待实现）
 - 建议分支：`feat/wp14-mybatis-plus-code-migration`
@@ -28,7 +28,7 @@
 **本 WP 的硬约束：**
 
 - **做代码迁移**：引入 MyBatis-Plus，替换 `api` / `worker` 中基于 `JdbcTemplate` 的业务仓储实现。
-- **包结构不变**：继续 `com.flora.api.<domain>.{web,application,domain,infra}`（worker 侧保持现有 `com.flora.worker...infra`）。**禁止**改成全局 `controller` / `service` / `mapper`。
+- **包结构不变**：继续 `art.pilipala.api.<domain>.{web,application,domain,infra}`（worker 侧保持现有 `art.pilipala.worker...infra`）。**禁止**改成全局 `controller` / `service` / `mapper`。
 - **跨域**：仍只经对方 `application`；禁止 `job` 直接依赖 `billing` 的 Mapper。
 - **显式 SQL 保留**：钱包 `freeze` / `confirm` / `release`（含 `wallet` / `wallet_hold` 条件更新）与 job 乐观状态迁移**必须**用 `@Update` / `@Select` / XML 的显式 `WHERE …`，禁止「load → 改字段 → `updateById`」丢掉条件。
 - **不要**新 Flyway、**不要**批量 DROP 物理 FK、**不要**改 `docs/content/**`、**不要**重写 WP15 analytics 文档 / ADR 0007、**不要**改公开 HTTP 契约与前端。
@@ -67,9 +67,9 @@ WP13 已把工程真相源改成「目标持久化 = MyBatis-Plus + 领域分包
 | --- | --- |
 | `pom.xml` | 可选：`mybatis-plus.version` + `dependencyManagement` |
 | `api/pom.xml`、`worker/pom.xml` | 增加 `mybatis-plus-spring-boot3-starter:3.5.17`；更新注释 |
-| `api/src/main/java/com/flora/api/**/infra/**` | Mapper + 替换 Jdbc 实现；可增 `config`（MapperScan） |
-| `api/src/main/java/com/flora/api/auth/infra/UserRepository.java` | 迁离 JdbcTemplate（拆端口+实现或内部改 Mapper） |
-| `worker/src/main/java/com/flora/worker/**/infra/**` | 同上 |
+| `api/src/main/java/com/pilipala/api/**/infra/**` | Mapper + 替换 Jdbc 实现；可增 `config`（MapperScan） |
+| `api/src/main/java/com/pilipala/api/auth/infra/UserRepository.java` | 迁离 JdbcTemplate（拆端口+实现或内部改 Mapper） |
+| `worker/src/main/java/com/pilipala/worker/**/infra/**` | 同上 |
 | `api/src/main/resources/**`、`worker/src/main/resources/**` | 可选 `application.yml` mybatis-plus 段；可选 `mapper/**/*.xml`（优先注解，复杂 SQL 才 XML） |
 | `api/src/test/**`、`worker/src/test/**` | 仅当编译/装配需要时调整；InMemory* 测应继续绿 |
 | `docs/engineering/feature-briefs/2026-10-25-wp14-mybatis-plus-code-migration.md` | **新增**（本文件全文） |
@@ -229,9 +229,9 @@ auth 若暂无 interface：可抽 `UserRepository` 为 interface + `MybatisUserR
 ### 9.2 Mapper 扫描
 
 - api：在 `ApiApplication` 或独立 `@Configuration` 上  
-  `@MapperScan("com.flora.api")`  
+  `@MapperScan("art.pilipala.api")`  
   （仅接口带 `@Mapper`；不要把普通 `@Repository` 扫成 Mapper）
-- worker：对 `com.flora.worker` 同样处理。
+- worker：对 `art.pilipala.worker` 同样处理。
 
 可选 `application.yml`：
 

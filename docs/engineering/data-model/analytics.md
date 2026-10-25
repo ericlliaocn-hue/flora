@@ -1,6 +1,6 @@
 # 数据分析：事件字典与报表口径
 
-本页是 flora **analytics** 域的工程真相源：统一事件契约、事件字典 v0、必出报表 R1–R6 与隐私红线。架构决策见 [ADR 0007](../adr/0007-analytics-events-and-reports.md)。
+本页是 pilipala **analytics** 域的工程真相源：统一事件契约、事件字典 v0、必出报表 R1–R6 与隐私红线。架构决策见 [ADR 0007](../adr/0007-analytics-events-and-reports.md)。
 
 ## 与 billing / job 的关系
 

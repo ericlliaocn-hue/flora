@@ -72,7 +72,7 @@ test("the managed video model falls back to seedance2 for unknown models", () =>
     expect(resolvePilipalaVideoModel({ ...remoteConfig, model: "unknown-video", videoModel: "unknown-video" })).toBe("seedance2");
 });
 
-test("a managed video job submits video.generate and returns a flora provider task", async () => {
+test("a managed video job submits video.generate and returns a pilipala provider task", async () => {
     const stub = stubFetch((url) => {
         if (url === "/api/v1/jobs/submit") return json({ ok: true, data: { job_id: JOB_ID, status: "queued", hold_id: "hold-1" }, error_code: null, message: null });
         return json({ ok: false, data: null, error_code: "VALIDATION_ERROR", message: `unexpected ${url}` });

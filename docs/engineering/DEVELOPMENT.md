@@ -30,7 +30,7 @@ WP3 认证 ──→ WP4 Job+Outbox+RabbitMQ ──→ WP5 瘦 worker + Anytoken
                 ↓                         ↓
               WP6 钱包冻结/确认/释放 ←────┘
                 ↓
-WP7 前端改打 flora API
+WP7 前端改打 pilipala API
   ↓
 WP8 TOS 结果落地
   ↓
@@ -52,13 +52,13 @@ WP16 z-pay 支付宝充值（billing / `recharge_order`；worker 零改动）
 
 WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地冻结。WP7 依赖内部 DTO 稳定，见 [api/gateway-contract.md](./api/gateway-contract.md)。WP13 为工程真相源修正，可与 WP14 ORM 代码迁移、WP15 分析文档分开交付。
 
-## WP0 — flora 白标
+## WP0 — pilipala 白标
 
 - **里程碑**：M0
-- **Brief**： [2026-10-24-wp0-white-label-flora.md](./feature-briefs/2026-10-24-wp0-white-label-flora.md)（可直接粘贴给 Minimax）
-- **做什么**：用户可见品牌改为 flora；根 README 保留上游说明但顶部标明 fork 身份。
+- **Brief**： [2026-10-24-wp0-white-label-pilipala.md](./feature-briefs/2026-10-24-wp0-white-label-pilipala.md)（可直接粘贴给 Minimax）
+- **做什么**：用户可见品牌改为 pilipala；根 README 保留上游说明但顶部标明 fork 身份。
 - **不做**：Java 后端、计费、重写公开文档站、删掉上游功能说明。
-- **完成**：浏览器标题/主文案是 flora；工程文档入口可发现。
+- **完成**：浏览器标题/主文案是 pilipala；工程文档入口可发现。
 
 ## WP1 — 仓库布局与 Java 骨架
 
@@ -106,12 +106,12 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **不做**：后付费、套餐引擎、Anytoken 侧额度对账双写。
 - **完成**：余额不足不能开跑；成功不重复确认；失败不吞冻。
 
-## WP7 — 前端 generation 走 flora API
+## WP7 — 前端 generation 走 pilipala API
 
 - **里程碑**：M2
 - **做什么**：托管模式下，画布生图改为 `submit / query / result` 内部合同；浏览器不再保存供应商 Key 作为正式路径。
 - **不做**：删掉所有本地开源直连代码（若暂留，必须明确是非托管调试路径，且不走钱包）。
-- **完成**：画布至少一条官方生图路径只打 flora API。
+- **完成**：画布至少一条官方生图路径只打 pilipala API。
 
 ## WP8 — 火山 TOS
 
@@ -171,8 +171,8 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **Brief**：[2026-10-25-wp16-recharge-zpay-alipay.md](./feature-briefs/2026-10-25-wp16-recharge-zpay-alipay.md)
 - **做什么**：`V9__create_recharge_order.sql`；billing 内 z-pay mapi 下单、验签 webhook、查单补单、套餐充值、Admin 列表与全额退款；入账 `topup` + `recharge_order_id`。
 - **不做**：wxpay；worker 改动；analytics ingest；改 freeze 语义。
-- **完成**：`mvn -pl api -am test` 通过；仓库无真实 `FLORA_ZPAY_PID` / `FLORA_ZPAY_PKEY`。
-- **生产 `FLORA_PUBLIC_BASE_URL`**（env，不入库硬编码）：`https://pilipala.art` → notify `/api/v1/billing/recharge/webhook/zpay`，return `/billing/recharge/result`。
+- **完成**：`mvn -pl api -am test` 通过；仓库无真实 `PILIPALA_ZPAY_PID` / `PILIPALA_ZPAY_PKEY`。
+- **生产 `PILIPALA_PUBLIC_BASE_URL`**（env，不入库硬编码）：`https://pilipala.art` → notify `/api/v1/billing/recharge/webhook/zpay`，return `/billing/recharge/result`。
 
 ## 每个 WP 的 PR 期望
 
@@ -184,7 +184,7 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 
 实现时对照这些失败，而不是「先堆出来再拆」：
 
-| 反模式 | 规模 | flora 对应禁令 |
+| 反模式 | 规模 | pilipala 对应禁令 |
 | --- | --- | --- |
 | `TaskCenterService` | ~3k LOC | 任务协调拆成小服务：创建、投递、状态迁移、查询各管一段 |
 | `CanvasAgentProductionService` | ~5k LOC | 创作编排不进 worker，不进单一生产大类 |

@@ -1,9 +1,9 @@
 > [!IMPORTANT]
-> **pilipala**（官网 https://pilipala.art）是本仓库的产品品牌；GitHub 仓库名仍为 [ericlliaocn-hue/flora](https://github.com/ericlliaocn-hue/flora)（后续可单独改名）。基于 infinite-canvas 的白标 fork，正在补齐托管架构（账号、预付费、任务、Anytoken hop）。
+> **pilipala**（官网 https://pilipala.art）是本仓库的产品品牌；GitHub 仓库名仍为 [ericlliaocn-hue/pilipala](https://github.com/ericlliaocn-hue/pilipala)（后续可单独改名）。基于 infinite-canvas 的白标 fork，正在补齐托管架构（账号、预付费、任务、Anytoken hop）。
 >
 > 工程文档（愿景、里程碑、架构、ADR、feature brief）见 **[docs/engineering](docs/engineering/README.md)**。大改动先写 brief，再实现。
 >
-> 用户可见品牌、npm 包名、Java `art.pilipala` 模块与 `PILIPALA_*` 环境变量已统一为 pilipala；未设 env 时 Sa-Token / Rabbit / TOS / Postgres 默认亦为 pilipala 命名。`FLORA_*` 与 `flora:` localStorage 键仍可读一个版本以便生产 `.env` 与浏览器本地数据平滑迁移。
+> 运行时配置仅使用 `PILIPALA_*` 环境变量；未设 env 时 Sa-Token / Rabbit / TOS / Postgres 默认亦为 pilipala 命名。浏览器启动时会将旧版 `flora:` localStorage 键一次性迁移到 `pilipala:`。
 
 <p align="center">
   <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">

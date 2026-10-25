@@ -1,6 +1,6 @@
 # pilipala 工程文档
 
-本目录是 **pilipala**（[ericlliaocn-hue/flora](https://github.com/ericlliaocn-hue/flora)）的工程文档树。pilipala 是 infinite-canvas 的白标 fork，目标是做成可托管、预付费、画布优先的商业创作工作台。
+本目录是 **pilipala**（[ericlliaocn-hue/pilipala](https://github.com/ericlliaocn-hue/pilipala)）的工程文档树。pilipala 是 infinite-canvas 的白标 fork，目标是做成可托管、预付费、画布优先的商业创作工作台。
 
 公开用户文档（Fumadocs / Next.js）仍在 `docs/content/` 与 `docs/` 站点配置里，**不要把工程文档写进那套内容目录**。本树给人类、Minimax 与其它 AI agent 用。
 

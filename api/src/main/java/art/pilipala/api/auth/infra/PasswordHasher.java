@@ -15,7 +15,7 @@ public class PasswordHasher {
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
 
     /** 等时校验用的假哈希：用户不存在时也走一次 BCrypt，避免用耗时差异暴露「用户是否存在」。 */
-    private final String equalizerHash = encoder.encode("flora-login-equalizer");
+    private final String equalizerHash = encoder.encode("pilipala-login-equalizer");
 
     public String hash(String rawPassword) {
         return encoder.encode(rawPassword);

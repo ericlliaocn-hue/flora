@@ -25,7 +25,7 @@ public class JobCostPolicy {
      * 本次任务要冻结多少 credit。
      *
      * @param capability 能力标识，如 image.generate
-     * @param model      flora 内部模型名
+     * @param model      pilipala 内部模型名
      */
     public long costOf(String capability, String model) {
         return properties.defaultJobCost();

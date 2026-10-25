@@ -1,5 +1,5 @@
 server:
-  port: ${PILIPALA_WORKER_PORT:${FLORA_WORKER_PORT:8081}}
+  port: ${PILIPALA_WORKER_PORT:8081}
 
 mybatis-plus:
   configuration:
@@ -20,7 +20,7 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:pilipala}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
-      maximum-pool-size: ${PILIPALA_DB_POOL_SIZE:${FLORA_DB_POOL_SIZE:5}}
+      maximum-pool-size: ${PILIPALA_DB_POOL_SIZE:5}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
@@ -36,7 +36,7 @@ spring:
     listener:
       simple:
         # 一次只预取一条：worker 端到端是「领取 → 调上游 → 收尾」的串行动作。
-        prefetch: ${PILIPALA_WORKER_PREFETCH:${FLORA_WORKER_PREFETCH:1}}
+        prefetch: ${PILIPALA_WORKER_PREFETCH:1}
         # 死信靠 AmqpRejectAndDontRequeueException + 队列自带的 x-dead-letter-routing-key；
         # 关闭 requeue 避免未处理异常把消息无限塞回自己。
         requeue-rejected: false
@@ -52,37 +52,37 @@ management:
 pilipala:
   # 队列名只是传输配置，不进 job 表（ADR 0003）。
   job:
-    exchange: ${PILIPALA_JOB_EXCHANGE:${FLORA_JOB_EXCHANGE:pilipala.jobs}}
-    routing-key: ${PILIPALA_JOB_ROUTING_KEY:${FLORA_JOB_ROUTING_KEY:job.execute}}
-    queue: ${PILIPALA_JOB_QUEUE:${FLORA_JOB_QUEUE:pilipala.jobs.execute}}
-    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:${FLORA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}}
+    exchange: ${PILIPALA_JOB_EXCHANGE:pilipala.jobs}
+    routing-key: ${PILIPALA_JOB_ROUTING_KEY:job.execute}
+    queue: ${PILIPALA_JOB_QUEUE:pilipala.jobs.execute}
+    dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}
     # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑。
-    lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:${FLORA_JOB_LEASE_TTL_SECONDS:60}}
+    lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:60}
   # 唯一的模型供应商适配器（ADR 0001：只走 Anytoken，没有第二个适配器）。
   gateway:
     # stub = 本地确定性假上游（默认，无需真实密钥即可跑通）；http = 调真实 Anytoken HTTP 接口
-    mode: ${PILIPALA_GATEWAY_MODE:${FLORA_GATEWAY_MODE:stub}}
-    base-url: ${PILIPALA_GATEWAY_BASE_URL:${FLORA_GATEWAY_BASE_URL:http://127.0.0.1:18080}}
-    api-key: ${PILIPALA_GATEWAY_API_KEY:${FLORA_GATEWAY_API_KEY:}}
+    mode: ${PILIPALA_GATEWAY_MODE:stub}
+    base-url: ${PILIPALA_GATEWAY_BASE_URL:http://127.0.0.1:18080}
+    api-key: ${PILIPALA_GATEWAY_API_KEY:}
     # 视频分组（如 Seedance）可单独注入 Key；留空时回退 api-key。
-    video-api-key: ${PILIPALA_GATEWAY_VIDEO_API_KEY:${FLORA_GATEWAY_VIDEO_API_KEY:}}
-    timeout-ms: ${PILIPALA_GATEWAY_TIMEOUT_MS:${FLORA_GATEWAY_TIMEOUT_MS:30000}}
-    generate-path: ${PILIPALA_GATEWAY_GENERATE_PATH:${FLORA_GATEWAY_GENERATE_PATH:/v1/images/generations}}
+    video-api-key: ${PILIPALA_GATEWAY_VIDEO_API_KEY:}
+    timeout-ms: ${PILIPALA_GATEWAY_TIMEOUT_MS:30000}
+    generate-path: ${PILIPALA_GATEWAY_GENERATE_PATH:/v1/images/generations}
     # WP12 的 Seedance 视频三步协议：提交 → 轮询状态 → 下载内容。
-    video-generate-path: ${PILIPALA_GATEWAY_VIDEO_GENERATE_PATH:${FLORA_GATEWAY_VIDEO_GENERATE_PATH:/v1/videos/generations}}
-    video-status-path-prefix: ${PILIPALA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:${FLORA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:/v1/videos}}
-    video-poll-interval-ms: ${PILIPALA_GATEWAY_VIDEO_POLL_INTERVAL_MS:${FLORA_GATEWAY_VIDEO_POLL_INTERVAL_MS:2000}}
-    video-max-poll-attempts: ${PILIPALA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:${FLORA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:90}}
+    video-generate-path: ${PILIPALA_GATEWAY_VIDEO_GENERATE_PATH:/v1/videos/generations}
+    video-status-path-prefix: ${PILIPALA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:/v1/videos}
+    video-poll-interval-ms: ${PILIPALA_GATEWAY_VIDEO_POLL_INTERVAL_MS:2000}
+    video-max-poll-attempts: ${PILIPALA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:90}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:
       # stub = 本地零密钥模式（写 local-dir）；http = 调真实火山 TOS HTTP 接口
-      mode: ${PILIPALA_TOS_MODE:${FLORA_TOS_MODE:stub}}
-      endpoint: ${PILIPALA_TOS_ENDPOINT:${FLORA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}}
-      region: ${PILIPALA_TOS_REGION:${FLORA_TOS_REGION:cn-beijing}}
-      bucket: ${PILIPALA_TOS_BUCKET:${FLORA_TOS_BUCKET:pilipala-dev}}
-      access-key: ${PILIPALA_TOS_ACCESS_KEY:${FLORA_TOS_ACCESS_KEY:pilipala-local-ak}}
-      secret-key: ${PILIPALA_TOS_SECRET_KEY:${FLORA_TOS_SECRET_KEY:pilipala-local-sk}}
-      presign-ttl-seconds: ${PILIPALA_TOS_PRESIGN_TTL_SECONDS:${FLORA_TOS_PRESIGN_TTL_SECONDS:900}}
-      timeout-ms: ${PILIPALA_TOS_TIMEOUT_MS:${FLORA_TOS_TIMEOUT_MS:15000}}
-      local-dir: ${PILIPALA_TOS_LOCAL_DIR:${FLORA_TOS_LOCAL_DIR:/tmp/pilipala-tos}}
+      mode: ${PILIPALA_TOS_MODE:stub}
+      endpoint: ${PILIPALA_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}
+      region: ${PILIPALA_TOS_REGION:cn-beijing}
+      bucket: ${PILIPALA_TOS_BUCKET:pilipala-dev}
+      access-key: ${PILIPALA_TOS_ACCESS_KEY:pilipala-local-ak}
+      secret-key: ${PILIPALA_TOS_SECRET_KEY:pilipala-local-sk}
+      presign-ttl-seconds: ${PILIPALA_TOS_PRESIGN_TTL_SECONDS:900}
+      timeout-ms: ${PILIPALA_TOS_TIMEOUT_MS:15000}
+      local-dir: ${PILIPALA_TOS_LOCAL_DIR:/tmp/pilipala-tos}

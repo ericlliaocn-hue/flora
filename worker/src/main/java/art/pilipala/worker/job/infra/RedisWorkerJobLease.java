@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 /**
  * Redis 短锁：{@code SET job:lease:{job_id} {worker_id} NX EX {ttl}}。
  *
- * <p>TTL 默认 60 秒，可用 {@code FLORA_JOB_LEASE_TTL_SECONDS} 调。
+ * <p>TTL 默认 60 秒，可用 {@code PILIPALA_JOB_LEASE_TTL_SECONDS} 调。
  * 释放用 Lua 做「只有持有者本人能删」，避免误删别人的租约。
  */
 @Component

@@ -320,7 +320,7 @@ function aiApiUrl(config: AiConfig, path: string) {
  *
  * <p>显式选了 channelId::modelName 就按本地直连处理（那是本地调试路径）。
  */
-function usesFloraManagedChannel(config: AiConfig) {
+function usesPilipalaManagedChannel(config: AiConfig) {
     if (config.channelMode !== "remote") return false;
     const model = (config.model || config.imageModel || "").trim();
     if (!model) return true;
@@ -706,7 +706,7 @@ function parseGeminiImagePayload(payload: GeminiPayload) {
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions): Promise<GeneratedImageItem[]> {
     // 托管云端模式：走 pilipala 后端网关的异步任务合同（submit → query → result）。
-    if (usesFloraManagedChannel(config)) return await runPilipalaImageJob(config, prompt, undefined, options);
+    if (usesPilipalaManagedChannel(config)) return await runPilipalaImageJob(config, prompt, undefined, options);
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -768,7 +768,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<GeneratedImageItem[]> {
     // 托管云端模式：走 pilipala 后端网关的异步任务合同（submit → query → result）。
-    if (usesFloraManagedChannel(config)) return await runPilipalaImageJob(config, prompt, references, options);
+    if (usesPilipalaManagedChannel(config)) return await runPilipalaImageJob(config, prompt, references, options);
     const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
     const n = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);

@@ -1,6 +1,6 @@
 # 贡献指南（人与 Minimax）
 
-flora 用 **feature brief** 当需求源，而不是用聊天记录当需求源。人与 Minimax 同一套规则。
+pilipala 用 **feature brief** 当需求源，而不是用聊天记录当需求源。人与 Minimax 同一套规则。
 
 ## 开始之前
 
@@ -20,7 +20,7 @@ flora 用 **feature brief** 当需求源，而不是用聊天记录当需求源�
 - 用户可见错误合同或 i18n 策略变化。
 - Admin 任何功能。
 
-Brief 模板：[feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md)。已有示例：[WP0 白标](./feature-briefs/2026-10-24-wp0-white-label-flora.md)。
+Brief 模板：[feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md)。已有示例：[WP0 白标](./feature-briefs/2026-10-24-wp0-white-label-pilipala.md)。
 
 ## 给 Minimax 的用法
 
@@ -61,7 +61,7 @@ Brief 模板：[feature-briefs/_TEMPLATE.md](./feature-briefs/_TEMPLATE.md)。�
 
 ## 审查怎么做
 
-把「需求价值」和「实现质量」分开写，见根目录 `AGENTS.md` 的 PR 规则。补充 flora 特定判断：
+把「需求价值」和「实现质量」分开写，见根目录 `AGENTS.md` 的 PR 规则。补充 pilipala 特定判断：
 
 - 需求价值：是否在当前里程碑、是否服务 C 端最小闭环、是否违反非目标。
 - 实现质量：是否可对照 brief 验收、是否出现 qingfeng 反模式、是否破坏冻结栈。

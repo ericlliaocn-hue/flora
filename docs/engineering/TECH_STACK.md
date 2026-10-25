@@ -6,8 +6,8 @@
 
 | 项 | 冻结值 |
 | --- | --- |
-| 品牌 | flora |
-| 仓库 | https://github.com/ericlliaocn-hue/flora |
+| 品牌 | pilipala |
+| 仓库 | https://github.com/ericlliaocn-hue/pilipala |
 | 前端来源 | infinite-canvas 的 TypeScript fork，目录 `web/` |
 
 ## 前端（已在仓）
@@ -21,7 +21,7 @@
 | 本地持久化 | 业务列表/图片/大 JSON 用 `localforage`；`localStorage` 只放极小配置 |
 | 静态文案 | 前端 locale（先 zh-CN / en-US） |
 
-M2 之前前端仍可能直连 OpenAI 兼容口（上游现状）。M2 托管路径改为只打 flora 业务 API。
+M2 之前前端仍可能直连 OpenAI 兼容口（上游现状）。M2 托管路径改为只打 pilipala 业务 API。
 
 ## 业务 API（将入仓）
 
@@ -44,10 +44,10 @@ M2 之前前端仍可能直连 OpenAI 兼容口（上游现状）。M2 托管路
 | --- | --- |
 | 唯一网关 | **Anytoken** |
 | 禁止 | fork 或内嵌 NewAPI / qfzy-api |
-| 禁止 | flora 与 Anytoken 双用户、双额度、双账单 |
+| 禁止 | pilipala 与 Anytoken 双用户、双额度、双账单 |
 | 浏览器 | 不持有 Anytoken 或上游供应商密钥 |
 
-flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
+pilipala 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 
 ## 队列与任务
 
@@ -65,7 +65,7 @@ flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 | --- | --- |
 | 模式 | 预付费钱包 |
 | 状态 | freeze（提交）→ confirm（成功）→ release（失败/取消） |
-| 账本位置 | 只在 flora 业务库（余额只在 `wallet*`；`users` 表不存余额） |
+| 账本位置 | 只在 pilipala 业务库（余额只在 `wallet*`；`users` 表不存余额） |
 
 ## 国际化与错误
 
@@ -106,9 +106,9 @@ flora 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
 
 说明：「明确不进 stage-1」**不是**「禁止一切 ORM」，而是禁止第二套账本、禁止上帝类、禁止 worker 持有画布/钱包确认逻辑。
 
-## 现有仓库里还不是 flora 栈的部分
+## 现有仓库里还不是 pilipala 栈的部分
 
-以下是 **上游遗留**，不是目标栈，不要在文档里写成「flora 已采用」：
+以下是 **上游遗留**，不是目标栈，不要在文档里写成「pilipala 已采用」：
 
 - 浏览器保存 AI API Key，前端直连供应商
 - 画布/素材以浏览器本地为主

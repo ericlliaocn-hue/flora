@@ -688,13 +688,13 @@ class AnytokenGatewayAdapterTest {
     }
 
     /**
-     * WP12 修复：上游视频报文**不能**带 flora 内部字段。
+     * WP12 修复：上游视频报文**不能**带 pilipala 内部字段。
      *
      * <p>实测 Anytoken 看到 {@code capability} 会把请求路由到 xAI 上游并返回 400
      * （"xAI upstream returned status 400"），Seedance 视频根本起不来。
      */
     @Test
-    void httpVideoPayloadCarriesNoFloraInternalFields() throws IOException {
+    void httpVideoPayloadCarriesNoInternalProductFields() throws IOException {
         AtomicReference<String> submitted = new AtomicReference<>();
         HttpServer server = videoServer(exchange -> {
             if ("POST".equals(exchange.getRequestMethod())) {

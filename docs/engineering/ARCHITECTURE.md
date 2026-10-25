@@ -1,12 +1,12 @@
 # 架构
 
-本文描述 flora **目标架构**（M1 起）。仓库已包含 `web/`、`api/`、`worker/` 等进程；进程名、分层和时序以本文与 ADR 为准，避免按上游遗留倒推。
+本文描述 pilipala **目标架构**（M1 起）。仓库已包含 `web/`、`api/`、`worker/` 等进程；进程名、分层和时序以本文与 ADR 为准，避免按上游遗留倒推。
 
 ## 进程
 
 | 进程 | 职责 | 不职责 |
 | --- | --- | --- |
-| **web** | C 端画布与托管 UI。托管模式只调用 flora API。静态文案走 locale。 | 不持有 Anytoken/供应商密钥；不实现钱包；不直接打上游模型。 |
+| **web** | C 端画布与托管 UI。托管模式只调用 pilipala API。静态文案走 locale。 | 不持有 Anytoken/供应商密钥；不实现钱包；不直接打上游模型。 |
 | **api** | Java 21 + Spring Boot 3。认证（Sa-Token）、钱包冻结、创建 job、outbox、查询、签发 TOS 读地址、把内部错误映射成 `error_code`。 | 不在请求线程里同步跑长生成；不 fork NewAPI；不做画布渲染。 |
 | **worker** | 瘦执行器。按 `job_id` 加载任务，调 Anytoken，写 `job_step` / `provider_task` / 结果键，ack 或重试或进 DLQ。 | 不读画布图；不拼节点拓扑；不 confirm/release 钱包（由 api 领域服务在状态迁移时做，或经明确的领域事件，不得散落在 worker 里复制一套账本）；不做 HTTP 面向用户的 API。 |
 | **admin** | M4 才做。运维查询与配置。 | 不是第二套创作产品；不复制画布。 |
@@ -17,10 +17,10 @@
 浏览器 (web)
     │  JSON + 会话
     ▼
-flora api  ── Postgres / Redis / TOS 签名
+pilipala api  ── Postgres / Redis / TOS 签名
     │  outbox → RabbitMQ (body = job_id)
     ▼
-flora worker ── Anytoken ── 上游模型
+pilipala worker ── Anytoken ── 上游模型
     │
     ▼
 写回 job_step / provider_task / TOS 对象键
@@ -28,12 +28,12 @@ flora worker ── Anytoken ── 上游模型
 
 ## 分层（api）
 
-**按领域分包**（与仓内 `com.flora.api.*` 一致），每个 bounded context 内再分四层；禁止跨层回流成上帝类，也**禁止**改成仓库根下全局 `controller` / `service` / `mapper` 三目录。
+**按领域分包**（与仓内 `art.pilipala.api.*` 一致），每个 bounded context 内再分四层；禁止跨层回流成上帝类，也**禁止**改成仓库根下全局 `controller` / `service` / `mapper` 三目录。
 
 已落地的领域包示例：`auth`、`billing`、`job`、`admin`、`project`、`i18n`；**analytics**（WP15，先文档后代码）；另有 `storage`、`gateway` 等基础设施适配。
 
 ```
-com.flora.api.<domain>/
+art.pilipala.api.<domain>/
   web/           # Interface：HTTP、DTO、Sa-Token 过滤器
   application/   # 用例编排（一个用例一个类，避免 TaskCenterService）
   domain/        # 状态机、不变量、仓储端口
@@ -68,7 +68,7 @@ worker 只有 Application（执行一步）+ Infrastructure（队列、Anytoken�
 
 ## Anytoken hop
 
-flora **不** 做模型聚合网关，只做一跳：
+pilipala **不** 做模型聚合网关，只做一跳：
 
 ```
 web → api（内部 DTO）→ worker → Anytoken → 上游
@@ -77,7 +77,7 @@ web → api（内部 DTO）→ worker → Anytoken → 上游
 规则：
 
 - 浏览器永不拿到 Anytoken token 或上游 Key。
-- flora 用户表 / 钱包是唯一账本。Anytoken 侧若有 token 额度，那是运维成本，不映射成用户余额。
+- pilipala 用户表 / 钱包是唯一账本。Anytoken 侧若有 token 额度，那是运维成本，不映射成用户余额。
 - 禁止再接 NewAPI、qfzy-api 或「临时再写一个 OpenAI 兼容代理」。供应商差异在 Anytoken 消化。
 - api 给 worker 的是内部任务合同（模型名、能力、参数引用、job_id），不是把前端原始请求原样转抛。
 
@@ -94,7 +94,7 @@ created → queued → running → succeeded
 
 - MQ 消息体只有 `job_id`。worker 以数据库为准。
 - `job_step` 记录每一次 attempt 的开始/结束、映射后的 `error_code`、指向 `provider_task` 的关联。
-- 取消：api 标记取消意图；worker 在运行前检查；已在上游的尽量 best-effort 取消，但账本以 flora 状态为准。
+- 取消：api 标记取消意图；worker 在运行前检查；已在上游的尽量 best-effort 取消，但账本以 pilipala 状态为准。
 
 ## 计费与任务的交界
 
@@ -167,7 +167,7 @@ qingfeng 的教训不是「Java 不行」，而是职责粘在一起：
 - worker 为了「方便」去拉创作上下文，最后变成第二个业务后端。
 - 两个网关适配器并存，账本对不齐。
 
-flora 用进程边界强制：web 只展示，api 只编排账本与任务，worker 只执行一跳，admin 只看和配置。
+pilipala 用进程边界强制：web 只展示，api 只编排账本与任务，worker 只执行一跳，admin 只看和配置。
 
 ## 目录预期
 

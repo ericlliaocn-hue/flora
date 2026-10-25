@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * flora worker 进程入口。
+ * pilipala worker 进程入口。
  *
  * <p>保持瘦：MQ 消息体只有 {@code job_id}，worker 读 job、调唯一 Anytoken 适配器、
  * 写 step 与结果、ack / 重试 / DLQ。画布拓扑、提示词拼装与计费确认都不在本进程里。

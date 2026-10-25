@@ -8,7 +8,7 @@
 
 | 字段 | 受众 | 内容 | 出现位置 |
 | --- | --- | --- | --- |
-| `error_code` | 用户 + 客服 | 稳定大写蛇形，由 flora 定义 | C 端响应体、DB `job.error_code` / `job_step.error_code` |
+| `error_code` | 用户 + 客服 | 稳定大写蛇形，由 pilipala 定义 | C 端响应体、DB `job.error_code` / `job_step.error_code` |
 | `message` | 用户 | 当前 locale 的友好短句 | C 端响应体 |
 | 原始 HTTP 状态 / 原始 JSON / 上游堆栈 | 运营 | 原文 | 服务端日志、`provider_task.raw_status` / `provider_task.raw_body` |
 

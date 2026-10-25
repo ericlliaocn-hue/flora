@@ -1,7 +1,7 @@
 # Feature brief：WP13 工程文档对齐 — MyBatis-Plus 持久化 + 领域分包（改历史文档，非另开修订页）
 
 - 日期：2026-10-25
-- 作者：flora engineering
+- 作者：pilipala engineering
 - 对应 WP / 里程碑：WP13 / 工程真相源对齐（docs-first；ORM 代码迁移为后续 WP）
 - 状态：已确认（待实现）
 - 建议分支：`feat/wp13-docs-mybatis-plus-domain`
@@ -25,7 +25,7 @@
 8. `docs/engineering/feature-briefs/README.md`
 9. `api/pom.xml`（约第 44 行注释：`用户表由 Flyway 建，JDBC 直连，不引入 ORM。`）
 10. 对照真实包布局（只读，本 WP 不改 Java 业务逻辑）：
-    `api/src/main/java/com/flora/api/{auth,billing,job,admin,project,i18n}/` 下已有 `web` / `application` / `domain` / `infra`
+    `api/src/main/java/com/pilipala/api/{auth,billing,job,admin,project,i18n}/` 下已有 `web` / `application` / `domain` / `infra`
 
 **本 WP 的硬约束：**
 
@@ -44,7 +44,7 @@ Stage-1（WP0–WP12）落地时，`api` 用 `spring-boot-starter-jdbc` + 手写
 产品侧已拍板：
 
 1. **长期持久化 = MyBatis-Plus**（JdbcTemplate 仅过渡）。
-2. **包结构继续领域分包**：`com.flora.api.<domain>.{web,application,domain,infra}`，**不是**经典全局 MVC 三目录。
+2. **包结构继续领域分包**：`art.pilipala.api.<domain>.{web,application,domain,infra}`，**不是**经典全局 MVC 三目录。
 3. **工程文档必须原地改到与上述一致**，不能只写一份「修订笔记」而让 TECH_STACK / ARCHITECTURE 仍暗示「无 ORM / 仅 JDBC」。
 4. 按可扩展量级设计文档口径：用户表只扛身份；余额只在钱包；充值订单与第三方支付适配属 **billing**；**前向策略**以逻辑外键 + 索引 + 写路径保证为主（已有迁移里的物理 FK 本 WP 不批量拆除）。
 
@@ -145,9 +145,9 @@ Stage-1 早期用 Spring `JdbcTemplate` + 手写 SQL 实现仓储，便于控制
 
 ## 决策（Decision）
 
-- flora `api`（及需要访问同一业务库的 JVM 模块）的**目标持久化框架**为 **MyBatis-Plus**（基于 MyBatis）。
+- pilipala `api`（及需要访问同一业务库的 JVM 模块）的**目标持久化框架**为 **MyBatis-Plus**（基于 MyBatis）。
 - `JdbcTemplate` / 手写 `Jdbc*Repository` 视为**过渡实现**，须通过后续实现 WP 迁到 Mapper；新写的文档与新代码不得再把「不引入 ORM」写成冻结栈。
-- **包结构不变**：按领域分包 `com.flora.api.<bounded-context>.{web,application,domain,infra}`。
+- **包结构不变**：按领域分包 `art.pilipala.api.<bounded-context>.{web,application,domain,infra}`。
   - `web` ≈ Interface（HTTP）
   - `application` = 用例
   - `domain` = 状态机与不变量
@@ -196,7 +196,7 @@ Stage-1 早期用 Spring `JdbcTemplate` + 手写 SQL 实现仓储，便于控制
 
 - 不是「禁止一切 ORM」，而是禁止第二套账本、禁止上帝类、禁止 worker 持有画布/钱包确认逻辑。
 
-计费表可补半句：余额只在 flora `wallet*`；用户表不存余额。
+计费表可补半句：余额只在 pilipala `wallet*`；用户表不存余额。
 
 ### 8.5 修改 `docs/engineering/ARCHITECTURE.md`
 

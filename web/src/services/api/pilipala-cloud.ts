@@ -5,7 +5,7 @@ import type { ImageAsset, VideoAsset } from "@/stores/use-asset-store";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
-export type FloraProjectSummary = {
+export type PilipalaProjectSummary = {
     id: string;
     name: string;
     version: number;
@@ -13,7 +13,7 @@ export type FloraProjectSummary = {
     updated_at: string;
 };
 
-export type FloraCanvasDataSnapshot = {
+export type PilipalaCanvasDataSnapshot = {
     nodes?: CanvasNodeData[];
     connections?: CanvasConnection[];
     chatSessions?: CanvasAssistantSession[];
@@ -23,8 +23,8 @@ export type FloraCanvasDataSnapshot = {
     viewport?: ViewportTransform;
 };
 
-export type FloraProjectDetail = FloraProjectSummary & {
-    canvas_data: FloraCanvasDataSnapshot;
+export type PilipalaProjectDetail = PilipalaProjectSummary & {
+    canvas_data: PilipalaCanvasDataSnapshot;
 };
 
 export type PilipalaUserAsset = {
@@ -53,7 +53,7 @@ export type PilipalaJobHistoryItem = {
     finished_at: string | null;
 };
 
-export type FloraCloudCallOptions = { fetchImpl?: typeof fetch };
+export type PilipalaCloudCallOptions = { fetchImpl?: typeof fetch };
 
 /** 云端项目 id 是后端 UUID；本地项目用 nanoid，两者不能混用。 */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -62,50 +62,50 @@ export function isCloudProjectId(value: string) {
     return UUID_PATTERN.test(value.trim());
 }
 
-export function listCloudProjects(options?: FloraCloudCallOptions) {
-    return pilipalaRequest<FloraProjectSummary[]>("/api/v1/projects", { fetchImpl: options?.fetchImpl });
+export function listCloudProjects(options?: PilipalaCloudCallOptions) {
+    return pilipalaRequest<PilipalaProjectSummary[]>("/api/v1/projects", { fetchImpl: options?.fetchImpl });
 }
 
-export function getCloudProject(projectId: string, options?: FloraCloudCallOptions) {
-    return pilipalaRequest<FloraProjectDetail>(`/api/v1/projects/${encodeURIComponent(projectId)}`, { fetchImpl: options?.fetchImpl });
+export function getCloudProject(projectId: string, options?: PilipalaCloudCallOptions) {
+    return pilipalaRequest<PilipalaProjectDetail>(`/api/v1/projects/${encodeURIComponent(projectId)}`, { fetchImpl: options?.fetchImpl });
 }
 
-export function createCloudProject(input: { name: string; canvas_data?: FloraCanvasDataSnapshot }, options?: FloraCloudCallOptions) {
-    return pilipalaRequest<FloraProjectDetail>("/api/v1/projects", {
+export function createCloudProject(input: { name: string; canvas_data?: PilipalaCanvasDataSnapshot }, options?: PilipalaCloudCallOptions) {
+    return pilipalaRequest<PilipalaProjectDetail>("/api/v1/projects", {
         method: "POST",
         body: JSON.stringify({ name: input.name, canvas_data: input.canvas_data ?? {} }),
         fetchImpl: options?.fetchImpl,
     });
 }
 
-export function updateCloudProject(projectId: string, input: { name?: string; canvas_data?: FloraCanvasDataSnapshot }, options?: FloraCloudCallOptions) {
-    return pilipalaRequest<FloraProjectDetail>(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
+export function updateCloudProject(projectId: string, input: { name?: string; canvas_data?: PilipalaCanvasDataSnapshot }, options?: PilipalaCloudCallOptions) {
+    return pilipalaRequest<PilipalaProjectDetail>(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
         method: "PUT",
         body: JSON.stringify({ ...(input.name ? { name: input.name } : {}), ...(input.canvas_data ? { canvas_data: input.canvas_data } : {}) }),
         fetchImpl: options?.fetchImpl,
     });
 }
 
-export function deleteCloudProject(projectId: string, options?: FloraCloudCallOptions) {
+export function deleteCloudProject(projectId: string, options?: PilipalaCloudCallOptions) {
     return pilipalaRequest<{ id: string; deleted: boolean }>(`/api/v1/projects/${encodeURIComponent(projectId)}`, { method: "DELETE", fetchImpl: options?.fetchImpl });
 }
 
-export function listCloudAssets(options?: FloraCloudCallOptions & { limit?: number }) {
+export function listCloudAssets(options?: PilipalaCloudCallOptions & { limit?: number }) {
     const limit = options?.limit ?? 100;
     return pilipalaRequest<PilipalaUserAsset[]>(`/api/v1/assets?limit=${limit}`, { fetchImpl: options?.fetchImpl });
 }
 
-export function deleteCloudAsset(assetId: string, options?: FloraCloudCallOptions) {
+export function deleteCloudAsset(assetId: string, options?: PilipalaCloudCallOptions) {
     return pilipalaRequest<{ id: string; deleted: boolean }>(`/api/v1/assets/${encodeURIComponent(assetId)}`, { method: "DELETE", fetchImpl: options?.fetchImpl });
 }
 
-export function listPilipalaJobHistory(options?: FloraCloudCallOptions & { limit?: number }) {
+export function listPilipalaJobHistory(options?: PilipalaCloudCallOptions & { limit?: number }) {
     const limit = options?.limit ?? 50;
     return pilipalaRequest<PilipalaJobHistoryItem[]>(`/api/v1/jobs/history?limit=${limit}`, { fetchImpl: options?.fetchImpl });
 }
 
 /** 画布快照：只带可序列化的画布状态，图片字节仍留在浏览器本地（ADR 0003）。 */
-export function toCanvasDataSnapshot(project: Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">): FloraCanvasDataSnapshot {
+export function toCanvasDataSnapshot(project: Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">): PilipalaCanvasDataSnapshot {
     return {
         nodes: project.nodes ?? [],
         connections: project.connections ?? [],
@@ -118,7 +118,7 @@ export function toCanvasDataSnapshot(project: Pick<CanvasProject, "nodes" | "con
 }
 
 /** 云端详情 → 本地画布项目。 */
-export function fromCloudProjectDetail(detail: FloraProjectDetail): CanvasProject {
+export function fromCloudProjectDetail(detail: PilipalaProjectDetail): CanvasProject {
     const data = detail.canvas_data ?? {};
     return {
         id: detail.id,

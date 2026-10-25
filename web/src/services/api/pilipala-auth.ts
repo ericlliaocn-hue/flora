@@ -8,7 +8,7 @@ export type PilipalaUser = {
     role?: "user" | "admin";
 };
 
-export type FloraAuthSession = PilipalaUser & {
+export type PilipalaAuthSession = PilipalaUser & {
     token: string;
 };
 
@@ -20,7 +20,7 @@ export type PilipalaWallet = {
 };
 
 export function registerUser(input: { username: string; password: string; locale?: "zh" | "en" }, fetchImpl?: typeof fetch) {
-    return pilipalaRequest<FloraAuthSession>("/api/v1/auth/register", {
+    return pilipalaRequest<PilipalaAuthSession>("/api/v1/auth/register", {
         method: "POST",
         body: JSON.stringify({ username: input.username, password: input.password, ...(input.locale ? { locale: input.locale } : {}) }),
         fetchImpl,
@@ -28,7 +28,7 @@ export function registerUser(input: { username: string; password: string; locale
 }
 
 export function loginUser(input: { username: string; password: string }, fetchImpl?: typeof fetch) {
-    return pilipalaRequest<FloraAuthSession>("/api/v1/auth/login", {
+    return pilipalaRequest<PilipalaAuthSession>("/api/v1/auth/login", {
         method: "POST",
         body: JSON.stringify({ username: input.username, password: input.password }),
         fetchImpl,

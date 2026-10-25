@@ -12,9 +12,9 @@ Stage-1 早期用 Spring `JdbcTemplate` + 手写 SQL 实现仓储，便于控制
 
 ## 决策（Decision）
 
-- flora `api`（及需要访问同一业务库的 JVM 模块）的**目标持久化框架**为 **MyBatis-Plus**（基于 MyBatis）。
+- pilipala `api`（及需要访问同一业务库的 JVM 模块）的**目标持久化框架**为 **MyBatis-Plus**（基于 MyBatis）。
 - `JdbcTemplate` / 手写 `Jdbc*Repository` 视为**过渡实现**，须通过后续实现 WP 迁到 Mapper；新写的文档与新代码不得再把「不引入 ORM」写成冻结栈。
-- **包结构不变**：按领域分包 `com.flora.api.<bounded-context>.{web,application,domain,infra}`。
+- **包结构不变**：按领域分包 `art.pilipala.api.<bounded-context>.{web,application,domain,infra}`。
   - `web` ≈ Interface（HTTP）
   - `application` = 用例
   - `domain` = 状态机与不变量

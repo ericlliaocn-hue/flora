@@ -1,7 +1,7 @@
 -- WP6 预付费钱包：wallet / wallet_hold / wallet_ledger。
 -- 列与 docs/engineering/data-model/billing.md 逐字一致。
 --
--- 金额一律 BIGINT（flora credit 整数），钱包三表只记用户余额（ADR 0001 单账本）：
+-- 金额一律 BIGINT（pilipala credit 整数），钱包三表只记用户余额（ADR 0001 单账本）：
 -- 不建 NewAPI 风格的 tokens / quotas / channels 镜像表。
 --
 -- job.hold_id 的物理外键在本迁移末尾补齐（V2 时 wallet_hold 还不存在）。

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Redis 短锁：{@code SET job:lease:{job_id} {worker_id} NX EX {ttl}}。
  *
- * <p>TTL 默认 60 秒，可用 {@code FLORA_JOB_LEASE_TTL_SECONDS} 调。
+ * <p>TTL 默认 60 秒，可用 {@code PILIPALA_JOB_LEASE_TTL_SECONDS} 调。
  * 锁丢了但 DB 仍为 running 的孤儿回收属于运维策略，本 WP 不做（见 brief 的「不拍板」）。
  */
 @Component
