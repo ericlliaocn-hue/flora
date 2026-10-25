@@ -1,0 +1,31 @@
+<svg width="120" height="88" viewBox="0 0 120 88" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="pilipala">
+  <g transform="translate(32 4)">
+    <path
+      d="M14.5 36V12.5C14.5 7.2 19.2 4 23.8 6.2C27.4 8 28.8 12.2 26.4 15.6C24.6 18.2 21.2 19.2 18.2 17.8"
+      stroke="#FFFFFF"
+      stroke-width="4.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M41.5 36V12.5C41.5 7.2 36.8 4 32.2 6.2C28.6 8 27.2 12.2 29.6 15.6C31.4 18.2 34.8 19.2 37.8 17.8"
+      stroke="#FFFFFF"
+      stroke-width="4.8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <rect x="24.6" y="15.2" width="6.8" height="6.8" rx="1.6" transform="rotate(45 28 19.6)" fill="#E8867A" />
+  </g>
+  <text
+    x="60"
+    y="78"
+    text-anchor="middle"
+    fill="#FFFFFF"
+    font-family="ui-rounded, 'SF Pro Rounded', 'Nunito', 'Varela Round', system-ui, sans-serif"
+    font-size="22"
+    font-weight="600"
+    letter-spacing="-0.02em"
+  >
+    pilipala
+  </text>
+</svg>

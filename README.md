@@ -6,7 +6,7 @@
 > 运行时配置仅使用 `PILIPALA_*` 环境变量；未设 env 时 Sa-Token / Rabbit / TOS / Postgres 默认亦为 pilipala 命名。浏览器启动时会将旧版 `flora:` localStorage 键一次性迁移到 `pilipala:`。
 
 <p align="center">
-  <img src="web/public/logo.svg" width="96" alt="infinite-canvas logo">
+  <img src="web/public/logo-lockup.svg" width="120" alt="pilipala logo">
 </p>
 
 <h1 align="center">无限画布 (infinite-canvas)</h1>

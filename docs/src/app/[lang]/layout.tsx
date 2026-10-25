@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import { Provider } from '@/components/provider';
 import '../global.css';
 import { i18n } from '@/lib/i18n';
+
+export const metadata: Metadata = {
+  icons: {
+    icon: '/logo.svg',
+    apple: '/logo.svg',
+  },
+};
 
 export default async function Layout({ params, children }: LayoutProps<'/[lang]'>) {
   const { lang } = await params;

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { App, Button, Form, Input, Modal, Tabs } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { PilipalaLogo } from "@/components/brand/pilipala-logo";
 import { PilipalaApiError } from "@/services/api/pilipala-client";
 import { useAuthStore } from "@/stores/use-auth-store";
 
@@ -48,7 +49,19 @@ export function AuthModal() {
     };
 
     return (
-        <Modal open={open} onCancel={() => setAuthModalOpen(false)} footer={null} title={t("auth.title")} destroyOnHidden centered>
+        <Modal
+            open={open}
+            onCancel={() => setAuthModalOpen(false)}
+            footer={null}
+            title={
+                <span className="flex flex-col items-center gap-3 pt-1">
+                    <PilipalaLogo variant="lockup" className="h-[72px] w-[100px] text-stone-900 dark:text-stone-100" />
+                    <span>{t("auth.title")}</span>
+                </span>
+            }
+            destroyOnHidden
+            centered
+        >
             <Tabs
                 activeKey={tab}
                 onChange={(key) => setAuthModalOpen(true, key as "login" | "register")}
