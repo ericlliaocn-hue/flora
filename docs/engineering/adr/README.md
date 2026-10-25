@@ -12,8 +12,10 @@
 | [0004](./0004-thin-worker-no-god-classes.md) | Worker 必须瘦，禁止上帝类 | Accepted |
 | [0005](./0005-friendly-errors-vs-raw-upstream.md) | 用户友好错误 vs 上游原文 | Accepted |
 | [0006](./0006-mybatis-plus-persistence.md) | 业务库持久化采用 MyBatis-Plus（保留领域分包） | Accepted |
+| [0007](./0007-analytics-events-and-reports.md) | 数据分析：analytics 域、事件契约与报表口径 | Accepted |
 
 ## 何时新写一条
 
 - 换栈、换网关、加第二条账本、改状态机、改计费语义、换 ORM / 改持久化框架。
+- 新增分析域 / 改埋点真相源策略。
 - 「我们以后再拆」不能替代 ADR。先写决策再写几千行服务。
