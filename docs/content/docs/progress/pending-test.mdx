@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Luna Pro / pro 号池 text: with an OpenAI-format provider using a **pro号池** API key (e.g. oioio), select a Luna Pro text model (e.g. `gpt-5.6-luna-pro`) on a canvas text node or generation-config text run. With reasoning effort **auto**, the request should include `reasoning.mode=pro` (and default `effort=medium`) on `/v1/responses` and complete successfully; explicit low/medium/high should still work. Non-Luna models should behave as before (no reasoning block when effort is auto).
+
 - Brand logo (Concept D locked PNG): Studio sidebar mark (`/logo-mark.png`), auth modal lockup (`/logo-lockup.png`), favicon (`/logo.png`), docs nav, and README should match the user-confirmed Concept D assets—no hand-drawn SVG geometry.
 
 - Studio home contrast (logged out, dark theme): top-bar **登录/注册** white pill, showcase hover **做同款** white button, and promo-strip CTA (when `VITE_STUDIO_PROMO_STRIP=true`) must show **dark readable text** on white—not inherited light body text.
