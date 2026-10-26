@@ -28,7 +28,7 @@ public class OtpService {
     }
 
     public SendOtpResult send(String channel, String destination, OtpPurpose purpose) {
-        if (store.onCooldown(purpose.redisValue(), destination)) {
+        if (store.onCooldown(destination)) {
             throw AuthException.otpRateLimited();
         }
         if (store.isOverHourlyLimit(destination) || store.isOverDailyLimit(destination)) {
@@ -42,7 +42,7 @@ public class OtpService {
             emailSender.sendOtp(destination, purpose.redisValue(), code);
         }
         store.saveCode(purpose.redisValue(), destination, code);
-        store.markCooldown(purpose.redisValue(), destination);
+        store.markCooldown(destination);
         store.recordSend(destination);
         return new SendOtpResult(300, 60);
     }
@@ -56,7 +56,30 @@ public class OtpService {
     }
 
     public boolean verifyAndConsume(OtpPurpose purpose, String destination, String otp) {
+        if (consumeIfMatches(purpose, destination, otp)) {
+            return true;
+        }
+        OtpPurpose counterpart = loginRegisterCounterpart(purpose);
+        if (counterpart != null && consumeIfMatches(counterpart, destination, otp)) {
+            return true;
+        }
         return store.verifyAndConsume(purpose.redisValue(), destination, otp);
+    }
+
+    private boolean consumeIfMatches(OtpPurpose purpose, String destination, String otp) {
+        if (!store.matches(purpose.redisValue(), destination, otp)) {
+            return false;
+        }
+        store.consume(purpose.redisValue(), destination);
+        return true;
+    }
+
+    private static OtpPurpose loginRegisterCounterpart(OtpPurpose purpose) {
+        return switch (purpose) {
+            case LOGIN -> OtpPurpose.REGISTER;
+            case REGISTER -> OtpPurpose.LOGIN;
+            default -> null;
+        };
     }
 
     public record SendOtpResult(int expiresIn, int cooldown) {

@@ -65,14 +65,16 @@ WP3 已落地 `users` + 注册/登录/登出/`me`，登录键为 `username`。�
 
 ```
 pilipala:otp:{purpose}:{normalized_dest}     → code + meta（TTL 300s）
-pilipala:otp:cooldown:{purpose}:{dest}       → 1（TTL 60s）
+pilipala:otp:cooldown:{dest}                 → 1（TTL 60s；按目的地共享，切换 login/register 不能绕过）
 pilipala:otp:rate:h:{dest}                   → count（TTL ~1h）
 pilipala:otp:rate:d:{dest}                   → count（TTL 到次日 0 点或 24h）
 ```
 
 `purpose` ∈ `register` | `login` | `rebind_phone` | `rebind_email` | `reset_password`
 
-发送前：冷却未过 → `OTP_RATE_LIMITED`；小时/日超限 → `OTP_RATE_LIMITED`。
+发送前：冷却未过 → `OTP_RATE_LIMITED`；小时/日超限 → `OTP_RATE_LIMITED`。  
+发送前还须按 purpose 核对账号：`login` / `reset_password` 账号不存在 → `AUTH_ACCOUNT_NOT_FOUND`；`register` 已注册 → `AUTH_IDENTITY_ALREADY_REGISTERED`；`rebind_*` 被他人占用 → `AUTH_IDENTITY_OCCUPIED`。  
+校验：`login` ↔ `register` 可互认同一 `dest` 上未消费的有效码（短信正文相同）。
 
 ### 短信 / 邮件配置（环境变量占位，禁止提交真值）
 
