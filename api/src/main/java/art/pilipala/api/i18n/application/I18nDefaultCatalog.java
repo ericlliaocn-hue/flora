@@ -79,7 +79,13 @@ public final class I18nDefaultCatalog {
                     "en", "Too many verification code requests. Please try again later.")),
             Map.entry(AuthException.MESSAGE_KEY_IDENTITY_OCCUPIED, Map.of(
                     "zh", "该手机号或邮箱已被其他账号绑定。",
-                    "en", "This phone number or email is already bound to another account.")));
+                    "en", "This phone number or email is already bound to another account.")),
+            Map.entry(AuthException.MESSAGE_KEY_EMAIL_REGISTER_DISABLED, Map.of(
+                    "zh", "暂不支持邮箱注册。",
+                    "en", "Email registration is not available yet.")),
+            Map.entry(AuthException.MESSAGE_KEY_EMAIL_LOGIN_DISABLED, Map.of(
+                    "zh", "暂不支持邮箱登录。",
+                    "en", "Email sign-in is not available yet.")));
 
     private I18nDefaultCatalog() {
     }

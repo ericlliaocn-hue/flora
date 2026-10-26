@@ -26,8 +26,8 @@ public class SmtpEmailSender implements EmailSender {
     public void sendOtp(String email, String purpose, String code) {
         AuthChannelProperties.MailSmtp mail = properties.mail();
         if (mail == null || mail.host() == null || mail.host().isBlank()) {
-            log.warn("SMTP 未配置，跳过邮件 OTP purpose={}", purpose);
-            return;
+            log.error("SMTP 未配置 purpose={} email={}", purpose, maskEmail(email));
+            throw AuthException.providerUnavailable();
         }
         String from = mail.from() != null && !mail.from().isBlank() ? mail.from() : mail.username();
         SimpleMailMessage message = new SimpleMailMessage();
@@ -39,6 +39,7 @@ public class SmtpEmailSender implements EmailSender {
             mailSender.send(message);
         } catch (Exception e) {
             log.error("SMTP 发送失败 email={}", maskEmail(email), e);
+            throw AuthException.providerUnavailable();
         }
     }
 

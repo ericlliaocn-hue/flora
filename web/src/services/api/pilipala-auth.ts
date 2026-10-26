@@ -21,6 +21,23 @@ export type PilipalaWallet = {
 
 export type OtpPurpose = "register" | "login" | "rebind_phone" | "rebind_email" | "reset_password";
 
+export type AuthFeatures = {
+    email_login_enabled: boolean;
+    email_register_enabled: boolean;
+};
+
+let authFeaturesCache: { data: AuthFeatures; at: number } | null = null;
+
+export function fetchAuthFeatures(fetchImpl?: typeof fetch) {
+    if (authFeaturesCache && Date.now() - authFeaturesCache.at < 60_000) {
+        return Promise.resolve(authFeaturesCache.data);
+    }
+    return pilipalaRequest<AuthFeatures>("/api/v1/auth/features", { fetchImpl }).then((data) => {
+        authFeaturesCache = { data, at: Date.now() };
+        return data;
+    });
+}
+
 export function sendAuthOtp(
     input: { channel: "sms" | "email"; destination: string; purpose: OtpPurpose },
     fetchImpl?: typeof fetch,

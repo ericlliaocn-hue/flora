@@ -18,14 +18,16 @@ public class LoginUser {
     private final AuthSessionService sessions;
     private final AdminBootstrap adminBootstrap;
     private final OtpService otpService;
+    private final EmailAuthPolicy emailAuthPolicy;
 
     public LoginUser(UserLookup lookup, PasswordHasher hasher, AuthSessionService sessions, AdminBootstrap adminBootstrap,
-            OtpService otpService) {
+            OtpService otpService, EmailAuthPolicy emailAuthPolicy) {
         this.lookup = lookup;
         this.hasher = hasher;
         this.sessions = sessions;
         this.adminBootstrap = adminBootstrap;
         this.otpService = otpService;
+        this.emailAuthPolicy = emailAuthPolicy;
     }
 
     public AuthSession login(LoginCommand command) {
@@ -35,6 +37,9 @@ public class LoginUser {
         boolean hasEmail = rawEmail != null && !rawEmail.isBlank();
         if (hasPhone == hasEmail) {
             throw AuthException.validation();
+        }
+        if (hasEmail) {
+            emailAuthPolicy.assertLoginWithEmail();
         }
         boolean hasPassword = command.password() != null && !command.password().isBlank();
         boolean hasOtp = command.otp() != null && !command.otp().isBlank();

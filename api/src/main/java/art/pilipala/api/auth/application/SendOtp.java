@@ -10,9 +10,11 @@ import org.springframework.stereotype.Service;
 public class SendOtp {
 
     private final OtpService otpService;
+    private final EmailAuthPolicy emailAuthPolicy;
 
-    public SendOtp(OtpService otpService) {
+    public SendOtp(OtpService otpService, EmailAuthPolicy emailAuthPolicy) {
         this.otpService = otpService;
+        this.emailAuthPolicy = emailAuthPolicy;
     }
 
     public OtpService.SendOtpResult send(String channel, String destination, String purposeRaw) {
@@ -27,6 +29,7 @@ public class SendOtp {
         if ("sms".equals(channel)) {
             normalized = IdentityNormalizer.normalizePhone(destination);
         } else if ("email".equals(channel)) {
+            emailAuthPolicy.assertEmailOtp(purpose);
             normalized = IdentityNormalizer.normalizeEmail(destination);
         } else {
             throw AuthException.validation();

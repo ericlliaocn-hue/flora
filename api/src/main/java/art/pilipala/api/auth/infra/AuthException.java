@@ -8,6 +8,8 @@ import art.pilipala.api.common.ErrorCodes;
 public class AuthException extends RuntimeException {
 
     public static final String MESSAGE_KEY_IDENTITY_OCCUPIED = "AUTH_IDENTITY_OCCUPIED";
+    public static final String MESSAGE_KEY_EMAIL_REGISTER_DISABLED = "AUTH_EMAIL_REGISTER_DISABLED";
+    public static final String MESSAGE_KEY_EMAIL_LOGIN_DISABLED = "AUTH_EMAIL_LOGIN_DISABLED";
 
     private final String errorCode;
     private final String messageKey;
@@ -41,6 +43,14 @@ public class AuthException extends RuntimeException {
     /** 短信 / 邮件等 OTP 通道上游不可用或发送失败（详情仅服务端日志）。 */
     public static AuthException providerUnavailable() {
         return new AuthException(ErrorCodes.PROVIDER_UNAVAILABLE, null);
+    }
+
+    public static AuthException emailRegisterDisabled() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_EMAIL_REGISTER_DISABLED);
+    }
+
+    public static AuthException emailLoginDisabled() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_EMAIL_LOGIN_DISABLED);
     }
 
     public String errorCode() {

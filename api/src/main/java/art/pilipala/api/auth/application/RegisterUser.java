@@ -25,15 +25,17 @@ public class RegisterUser {
     private final TopUpWallet topUpWallet;
     private final AdminBootstrap adminBootstrap;
     private final OtpService otpService;
+    private final EmailAuthPolicy emailAuthPolicy;
 
     public RegisterUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, TopUpWallet topUpWallet,
-            AdminBootstrap adminBootstrap, OtpService otpService) {
+            AdminBootstrap adminBootstrap, OtpService otpService, EmailAuthPolicy emailAuthPolicy) {
         this.users = users;
         this.hasher = hasher;
         this.sessions = sessions;
         this.topUpWallet = topUpWallet;
         this.adminBootstrap = adminBootstrap;
         this.otpService = otpService;
+        this.emailAuthPolicy = emailAuthPolicy;
     }
 
     public AuthSession register(RegisterCommand command) {
@@ -43,6 +45,9 @@ public class RegisterUser {
         boolean hasEmail = rawEmail != null && !rawEmail.isBlank();
         if (hasPhone == hasEmail) {
             throw AuthException.validation();
+        }
+        if (hasEmail) {
+            emailAuthPolicy.assertRegisterWithEmail();
         }
         String phone = hasPhone ? IdentityNormalizer.normalizePhone(rawPhone) : null;
         String email = hasEmail ? IdentityNormalizer.normalizeEmail(rawEmail) : null;
