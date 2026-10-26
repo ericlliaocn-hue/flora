@@ -12,7 +12,7 @@ import { DOCS_URL } from "@/constant/env";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { useAuthStore } from "@/stores/use-auth-store";
+import { formatAuthIdentity, useAuthStore } from "@/stores/use-auth-store";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
@@ -70,7 +70,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                         </Tooltip>
                     ) : null}
                     <span className="hidden max-w-24 truncate text-xs font-medium text-stone-600 sm:inline dark:text-stone-300" style={iconStyle}>
-                        {t("auth.signedInAs", { username: user.username })}
+                        {t("auth.signedInAs", { identity: formatAuthIdentity(user) })}
                     </span>
                     {/* WP11：只有管理员才看到运维后台入口。 */}
                     {user.role === "admin" ? (

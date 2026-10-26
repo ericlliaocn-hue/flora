@@ -3,14 +3,13 @@ package art.pilipala.api.auth.application;
 import java.util.UUID;
 
 /**
- * 注册 / 登录成功后返回的会话信息。
- *
- * @param token Sa-Token 值，客户端之后用请求头 {@code pilipala-token} 携带
- * @param role  user 或 admin；WP11 起前端据此决定是否展示运维后台入口
+ * 注册 / 登录 / 重置密码成功后返回的会话信息（WP17：脱敏 phone/email，不含 username）。
  */
-public record AuthSession(UUID userId, String username, String locale, String token, String role) {
-    /** 兼容构造器：WP11 之前没有 role，默认普通用户。 */
-    public AuthSession(UUID userId, String username, String locale, String token) {
-        this(userId, username, locale, token, "user");
-    }
+public record AuthSession(
+        UUID userId,
+        String phone,
+        String email,
+        String locale,
+        String token,
+        String role) {
 }

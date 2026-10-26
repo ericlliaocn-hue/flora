@@ -6,12 +6,6 @@ import java.util.UUID;
 import art.pilipala.api.auth.domain.User;
 import org.springframework.stereotype.Repository;
 
-/**
- * users 表的仓储。SQL 只在这里，Controller 与应用层都不写 SQL。
- *
- * <p>表结构由 Flyway 的 V1__create_users.sql 建，列与
- * docs/engineering/data-model/README.md 一致。
- */
 @Repository
 public class UserRepository {
 
@@ -25,29 +19,43 @@ public class UserRepository {
         return Optional.ofNullable(mapper.findByUsername(username));
     }
 
+    public Optional<User> findByPhone(String phone) {
+        return Optional.ofNullable(mapper.findByPhone(phone));
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return Optional.ofNullable(mapper.findByEmail(email));
+    }
+
     public Optional<User> findById(UUID id) {
         return Optional.ofNullable(mapper.findById(id));
     }
 
-    public boolean existsByUsername(String username) {
-        return mapper.countByUsername(username) > 0;
+    public boolean existsByPhone(String phone) {
+        return mapper.countByPhone(phone) > 0;
     }
 
-    /**
-     * 插入用户；主键由数据库的 {@code gen_random_uuid()} 默认值生成。
-     */
-    public User insert(String username, String passwordHash, String locale) {
-        return mapper.insert(username, passwordHash, locale);
+    public boolean existsByEmail(String email) {
+        return mapper.countByEmail(email) > 0;
     }
 
-    /**
-     * 改角色：WP11 的 bootstrap admin 升权用。
-     *
-     * <p>只允许 {@code user} / {@code admin} 两个值（DB 有 CHECK 约束兜底）。
-     *
-     * @return 是否真的改了
-     */
+    public User insert(String phone, String email, String passwordHash, String locale) {
+        return mapper.insertIdentity(phone, email, passwordHash, locale);
+    }
+
     public boolean updateRole(UUID id, String role) {
         return mapper.updateRole(id, role) > 0;
+    }
+
+    public boolean updatePhone(UUID id, String phone) {
+        return mapper.updatePhone(id, phone) > 0;
+    }
+
+    public boolean updateEmail(UUID id, String email) {
+        return mapper.updateEmail(id, email) > 0;
+    }
+
+    public boolean updatePasswordHash(UUID id, String passwordHash) {
+        return mapper.updatePasswordHash(id, passwordHash) > 0;
     }
 }

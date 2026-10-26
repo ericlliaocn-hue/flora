@@ -2,6 +2,9 @@
 
 ## Unreleased
 
++ [新增] WP17：手机 / 邮箱身份认证（OTP、密码登录、换绑占用校验、可插拔短信通道默认短信宝 + 阿里云备选、自建 SMTP；前端登录注册改为手机或邮箱）。
++ [修复] WP17：换绑占用校验先于 OTP 消费，避免占用失败时烧掉验证码。
++ [修复] WP17：短信宝/阿里云发送失败时 OTP 接口返回 `PROVIDER_UNAVAILABLE`，且不在 Redis 记为已发送。
 + [修复] 概念 **D** logo：侧栏与文档导航改用透明底紧裁 PNG（`logo-mark` / `logo-lockup` / `logo`），`PilipalaLogo` mark 增加 3x `srcSet`，与 favicon/文档站同源引用锁定稿位图；移除手绘 SVG 路径与带深色底的烘焙 PNG。
 + [调整] 全站产品标识替换为概念 **D** logo：新增 `logo-mark.svg` / `logo-lockup.svg` 与共享 `PilipalaLogo` 组件，覆盖 Studio 侧栏、登录弹窗、favicon、文档站导航与 README；移除临时侧栏「p」字标与旧三角 `logo.svg`。
 + [修复] Studio 顶栏未登录「登录/注册」白底胶囊、能力精选卡片「做同款」白底按钮，以及活动条 CTA：antd reset 的未分层 `button { color: inherit }` 使 Tailwind 深色文字类在 `<button>` 上失效，改为 `studio-solid-on-white` 未分层文字色恢复对比度。

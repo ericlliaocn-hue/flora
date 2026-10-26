@@ -4,32 +4,51 @@ import art.pilipala.api.common.ErrorCodes;
 
 /**
  * 带稳定 error_code 的认证异常。
- *
- * <p>异常本身不携带可出站的文案：短句统一由 {@code I18nMessageService} 按 locale 解析，
- * 禁止把 {@code e.getMessage()} 直接回给客户端。
  */
 public class AuthException extends RuntimeException {
 
-    private final String errorCode;
+    public static final String MESSAGE_KEY_IDENTITY_OCCUPIED = "AUTH_IDENTITY_OCCUPIED";
 
-    private AuthException(String errorCode) {
+    private final String errorCode;
+    private final String messageKey;
+
+    private AuthException(String errorCode, String messageKey) {
         super(errorCode, null, false, false);
         this.errorCode = errorCode;
+        this.messageKey = messageKey;
     }
 
     public static AuthException unauthorized() {
-        return new AuthException(ErrorCodes.UNAUTHORIZED);
+        return new AuthException(ErrorCodes.UNAUTHORIZED, null);
     }
 
     public static AuthException validation() {
-        return new AuthException(ErrorCodes.VALIDATION_ERROR);
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, null);
     }
-    /** WP11：已登录但不是管理员，访问运维后台被拒。 */
+
+    public static AuthException identityOccupied() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_IDENTITY_OCCUPIED);
+    }
+
+    public static AuthException otpRateLimited() {
+        return new AuthException(ErrorCodes.OTP_RATE_LIMITED, null);
+    }
+
     public static AuthException forbidden() {
-        return new AuthException(ErrorCodes.FORBIDDEN);
+        return new AuthException(ErrorCodes.FORBIDDEN, null);
+    }
+
+    /** 短信 / 邮件等 OTP 通道上游不可用或发送失败（详情仅服务端日志）。 */
+    public static AuthException providerUnavailable() {
+        return new AuthException(ErrorCodes.PROVIDER_UNAVAILABLE, null);
     }
 
     public String errorCode() {
         return errorCode;
+    }
+
+    /** 非空时用此 key 解析 message，error_code 仍为 {@link #errorCode()}。 */
+    public String messageKey() {
+        return messageKey;
     }
 }

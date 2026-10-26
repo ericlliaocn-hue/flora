@@ -11,6 +11,8 @@
 | TOS AK/SK、签名密钥 | api/worker 环境变量或云角色 | 提交到 git；发到浏览器长期有效的 AK |
 | Postgres / Redis / RabbitMQ 密码 | 环境变量 / Secrets | compose 样例里写生产密码 |
 | Sa-Token 或 cookie 签名 | 环境变量 | 默认 `123456` 进生产 |
+| 短信 OTP（短信宝 / 阿里云） | `PILIPALA_SMS_SMSBAO_*` 或 `PILIPALA_SMS_ALIYUN_*`；`PILIPALA_SMS_PROVIDER` 选型 | 仓库、brief、runbook 只写占位；`logging` 仅供本地 |
+| 邮件 OTP（SMTP） | `PILIPALA_MAIL_*` | 禁止把 SMTP 密码写进 compose 样例 |
 
 本地文件用 `.env`（gitignore）。文档示例只写 `ANYTOKEN_TOKEN=replace-me`。
 

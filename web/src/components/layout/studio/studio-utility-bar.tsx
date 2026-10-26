@@ -3,7 +3,7 @@ import { Bot, Building2, Coins, Menu, Star, Zap } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useAuthStore } from "@/stores/use-auth-store";
+import { formatAuthIdentity, useAuthStore } from "@/stores/use-auth-store";
 
 type StudioUtilityBarProps = {
     onOpenMenu: () => void;
@@ -73,7 +73,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 </button>
 
                 {user ? (
-                    <Tooltip title={t("auth.signedInAs", { username: user.username })}>
+                    <Tooltip title={t("auth.signedInAs", { identity: formatAuthIdentity(user) })}>
                         <button
                             type="button"
                             className="relative size-8 overflow-hidden rounded-full border border-white/[0.12] bg-gradient-to-br from-[#2a3340] to-[#1a1e26] transition hover:border-white/20"

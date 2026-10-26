@@ -3,49 +3,63 @@ package art.pilipala.api.auth.application;
 import java.util.Optional;
 
 import art.pilipala.api.admin.infra.AdminBootstrap;
+import art.pilipala.api.auth.domain.OtpPurpose;
 import art.pilipala.api.auth.domain.User;
 import art.pilipala.api.auth.infra.AuthException;
 import art.pilipala.api.auth.infra.AuthSessionService;
 import art.pilipala.api.auth.infra.PasswordHasher;
-import art.pilipala.api.auth.infra.UserRepository;
 import org.springframework.stereotype.Service;
 
-/**
- * 登录用例：校验凭证 → 开启会话。
- *
- * <p>「用户不存在」与「密码错误」返回同一个 {@code UNAUTHORIZED}，
- * 不暴露用户是否存在；用户不存在时也走一次等时哈希校验。
- */
 @Service
 public class LoginUser {
 
-    private final UserRepository users;
+    private final UserLookup lookup;
     private final PasswordHasher hasher;
     private final AuthSessionService sessions;
     private final AdminBootstrap adminBootstrap;
+    private final OtpService otpService;
 
-    public LoginUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, AdminBootstrap adminBootstrap) {
-        this.users = users;
+    public LoginUser(UserLookup lookup, PasswordHasher hasher, AuthSessionService sessions, AdminBootstrap adminBootstrap,
+            OtpService otpService) {
+        this.lookup = lookup;
         this.hasher = hasher;
         this.sessions = sessions;
         this.adminBootstrap = adminBootstrap;
+        this.otpService = otpService;
     }
 
     public AuthSession login(LoginCommand command) {
-        String username = command.username() == null ? "" : command.username().trim();
-        String password = command.password() == null ? "" : command.password();
-
-        if (username.isEmpty() || password.isEmpty()) {
-            hasher.matchEqualizer(password);
-            throw AuthException.unauthorized();
+        String rawPhone = command.phone();
+        String rawEmail = command.email();
+        boolean hasPhone = rawPhone != null && !rawPhone.isBlank();
+        boolean hasEmail = rawEmail != null && !rawEmail.isBlank();
+        if (hasPhone == hasEmail) {
+            throw AuthException.validation();
+        }
+        boolean hasPassword = command.password() != null && !command.password().isBlank();
+        boolean hasOtp = command.otp() != null && !command.otp().isBlank();
+        if (hasPassword == hasOtp) {
+            throw AuthException.validation();
         }
 
-        Optional<User> found = users.findByUsername(username);
+        Optional<User> found = lookup.byLoginIdentity(rawPhone, rawEmail);
+        if (hasOtp) {
+            if (found.isEmpty()) {
+                throw AuthException.validation();
+            }
+            User user = found.get();
+            String dest = user.phone() != null ? user.phone() : user.email();
+            if (!otpService.verifyAndConsume(OtpPurpose.LOGIN, dest, command.otp())) {
+                throw AuthException.validation();
+            }
+            return sessions.start(adminBootstrap.ensureRole(user));
+        }
+
+        String password = command.password();
         if (found.isEmpty()) {
             hasher.matchEqualizer(password);
             throw AuthException.unauthorized();
         }
-
         User user = found.get();
         if (!hasher.matches(password, user.passwordHash())) {
             throw AuthException.unauthorized();

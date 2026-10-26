@@ -30,6 +30,8 @@ class AuthPathPolicyTest {
     void allowsRegisterAndLogin() {
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.REGISTER_PATH)).isFalse();
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.LOGIN_PATH)).isFalse();
+        assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.OTP_SEND_PATH)).isFalse();
+        assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.PASSWORD_RESET_PATH)).isFalse();
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.ZPAY_RECHARGE_WEBHOOK_PATH)).isFalse();
     }
 
