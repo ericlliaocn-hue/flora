@@ -2,7 +2,12 @@
 
 ## Unreleased
 
+<<<<<<< HEAD
++ [修复] 概念 **D** logo 位图：侧栏与文档导航改用透明底紧裁 PNG（`logo-mark` / `logo-lockup` / `logo`），`PilipalaLogo` mark 增加 3x `srcSet`，替代带深色底的烘焙 PNG。
++ [修复] 概念 **D** logo mark 路径：改为闭合双 lowercase-p 丝带环与中心珊瑚菱形关节，与锁定稿一致；同步 `PilipalaLogo`、Studio favicon/lockup 与文档站 SVG（此前开放笔画在侧栏呈 owl/M 形）。
+=======
 + [修复] 概念 **D** logo：改用用户锁定稿 PNG（`logo-mark.png` / `logo-lockup.png`），`PilipalaLogo` 与 favicon/文档站同源引用；移除手绘 SVG 路径。
+>>>>>>> origin/main
 + [调整] 全站产品标识替换为概念 **D** logo：新增 `logo-mark.svg` / `logo-lockup.svg` 与共享 `PilipalaLogo` 组件，覆盖 Studio 侧栏、登录弹窗、favicon、文档站导航与 README；移除临时侧栏「p」字标与旧三角 `logo.svg`。
 + [修复] Studio 顶栏未登录「登录/注册」白底胶囊、能力精选卡片「做同款」白底按钮，以及活动条 CTA：antd reset 的未分层 `button { color: inherit }` 使 Tailwind 深色文字类在 `<button>` 上失效，改为 `studio-solid-on-white` 未分层文字色恢复对比度。
 + [调整] Studio 首页与壳层：默认关闭全宽充值倒计时条；压缩新建 Hero 与区块间距；圆角高对比「+」、八宫格入口、16:9 特色卡片与能力精选吸顶筛选；展示卡悬停露出「用这个/做同款」；侧栏 240px 与顶栏登录实心胶囊样式。
