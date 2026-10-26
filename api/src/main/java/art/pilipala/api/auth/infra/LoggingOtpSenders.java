@@ -8,20 +8,13 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
 /**
- * local / dev profile：验证码只打日志，便于 curl 验收（生产禁止明文 OTP 日志）。
+ * local / dev profile：邮件验证码只打日志（短信请设 {@code PILIPALA_SMS_PROVIDER=logging}）。
  */
 @Configuration
 @Profile({"local", "dev"})
 public class LoggingOtpSenders {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingOtpSenders.class);
-
-    @Bean
-    @Primary
-    SmsSender loggingSmsSender() {
-        return (phone, purpose, code) ->
-                log.info("[WP17 OTP local] SMS purpose={} phone={} code={}", purpose, phone, code);
-    }
 
     @Bean
     @Primary

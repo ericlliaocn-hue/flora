@@ -46,6 +46,14 @@ public class OtpService {
         return new SendOtpResult(300, 60);
     }
 
+    public boolean verify(OtpPurpose purpose, String destination, String otp) {
+        return store.verify(purpose.redisValue(), destination, otp);
+    }
+
+    public void consume(OtpPurpose purpose, String destination) {
+        store.consume(purpose.redisValue(), destination);
+    }
+
     public boolean verifyAndConsume(OtpPurpose purpose, String destination, String otp) {
         return store.verifyAndConsume(purpose.redisValue(), destination, otp);
     }

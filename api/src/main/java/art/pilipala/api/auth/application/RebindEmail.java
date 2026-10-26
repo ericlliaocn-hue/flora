@@ -28,14 +28,15 @@ public class RebindEmail {
         if (newEmail == null) {
             throw AuthException.validation();
         }
-        if (!otpService.verifyAndConsume(OtpPurpose.REBIND_EMAIL, newEmail, otp)) {
-            throw AuthException.validation();
-        }
         User current = currentUser();
         if (users.findByEmail(newEmail).filter(other -> !other.id().equals(current.id())).isPresent()) {
             throw AuthException.identityOccupied();
         }
+        if (!otpService.verify(OtpPurpose.REBIND_EMAIL, newEmail, otp)) {
+            throw AuthException.validation();
+        }
         users.updateEmail(current.id(), newEmail);
+        otpService.consume(OtpPurpose.REBIND_EMAIL, newEmail);
     }
 
     private User currentUser() {

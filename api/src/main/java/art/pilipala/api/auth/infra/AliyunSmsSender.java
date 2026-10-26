@@ -14,26 +14,22 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
 /**
- * 阿里云 Dysmsapi HTTP 调用（不引入整包 SDK，签名走官方 POP 规范）。
+ * 阿里云 Dysmsapi HTTP 调用（{@code PILIPALA_SMS_PROVIDER=aliyun}）。
  */
-@Component
 public class AliyunSmsSender implements SmsSender {
 
     private static final Logger log = LoggerFactory.getLogger(AliyunSmsSender.class);
 
-    private final AuthChannelProperties properties;
+    private final AuthChannelProperties.SmsAliyun sms;
 
-    public AliyunSmsSender(AuthChannelProperties properties) {
-        this.properties = properties;
+    public AliyunSmsSender(AuthChannelProperties.SmsAliyun sms) {
+        this.sms = sms;
     }
 
     @Override
     public void sendOtp(String phoneE164, String purpose, String code) {
-        AuthChannelProperties.SmsAliyun sms = properties.sms();
-        if (sms == null || isBlank(sms.accessKeyId()) || isBlank(sms.accessKeySecret())) {
+        if (this.sms == null || isBlank(sms.accessKeyId()) || isBlank(sms.accessKeySecret())) {
             log.warn("Aliyun SMS 未配置，跳过发送 purpose={} phone={}", purpose, maskPhone(phoneE164));
             return;
         }

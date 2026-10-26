@@ -69,19 +69,32 @@ public class OtpRedisStore {
     }
 
     /**
-     * 校验验证码；成功则消费并删除。失败则累加次数，超限作废。
-     *
-     * @return true 表示校验通过且已消费
+     * 只校验，不删除 OTP（用于占用等业务校验须先于消费的流程）。
      */
-    public boolean verifyAndConsume(String purpose, String destination, String otp) {
+    public boolean verify(String purpose, String destination, String otp) {
         String key = otpKey(purpose, destination);
         String stored = redis.opsForValue().get(key);
         if (stored == null || otp == null || !stored.equals(otp.trim())) {
             bumpAttempts(purpose, destination, key);
             return false;
         }
-        redis.delete(key);
+        return true;
+    }
+
+    /** 校验通过后显式消费，避免占用失败时烧掉验证码。 */
+    public void consume(String purpose, String destination) {
+        redis.delete(otpKey(purpose, destination));
         redis.delete(attemptsKey(purpose, destination));
+    }
+
+    /**
+     * 校验验证码；成功则消费并删除。失败则累加次数，超限作废。
+     */
+    public boolean verifyAndConsume(String purpose, String destination, String otp) {
+        if (!verify(purpose, destination, otp)) {
+            return false;
+        }
+        consume(purpose, destination);
         return true;
     }
 

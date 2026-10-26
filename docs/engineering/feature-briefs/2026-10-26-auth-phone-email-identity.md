@@ -7,7 +7,7 @@
 
 把本文件从「# Feature brief」起到文末 **整份粘贴** 给 Minimax（上方面包屑硬约束一并保留）。不要摘要。
 
-本任务落地：**手机号或邮箱** 作为唯一登录身份；密码登录与验证码登录并存；换绑必须校验新值未被占用；短信走阿里云，邮件走自建 SMTP。
+本任务落地：**手机号或邮箱** 作为唯一登录身份；密码登录与验证码登录并存；换绑必须校验新值未被占用；短信走可插拔供应商（**默认短信宝**，阿里云为备选），邮件走自建 SMTP。
 
 > **与 WP3 关系**：保留 Sa-Token + BCrypt + Redis 会话 + 公共信封 + `pilipala-token` 头。废弃「仅 username + password」产品模型。实现前先读 [2026-10-24-wp3-auth-users.md](./2026-10-24-wp3-auth-users.md) 作代码基线，再按本 brief 改列与 API。
 
@@ -53,7 +53,7 @@ WP3 已落地 `users` + 注册/登录/登出/`me`，登录键为 `username`。�
 | 校验失败上限 | 同一 OTP 会话最多 5 次错误，超限作废并 `VALIDATION_ERROR` |
 | 手机规范化 | 中国大陆 `1[3-9]\d{9}`；入库存 **E.164**：`+86` + 11 位。入参可带或不带 `+86` / `86`，服务端归一 |
 | 邮箱规范化 | `trim` + **小写**；基本格式校验（含 `@`，本 WP 不做 MX 探测） |
-| 短信 | **阿里云短信** Dysmsapi；接口抽象 `SmsSender` |
+| 短信 | 接口抽象 `SmsSender`；`PILIPALA_SMS_PROVIDER` = `smsbao`（默认）\| `aliyun` \| `logging`（仅本地） |
 | 邮件 | **自建 SMTP**（JavaMailSender 或等价）；接口抽象 `EmailSender`；非第三方 ESP |
 | `username` 列 | 改为 **可空**；**不再用于登录**；新注册不再写入 username（或写入 null）。展示名另议，本 WP 不新增 `display_name` |
 | `role` | 保留；WP11 admin bootstrap：改为支持 `pilipala.admin.bootstrap-phones` / `pilipala.admin.bootstrap-emails`（CSV）；旧 `bootstrap-usernames` 可双读一期后删除（写进配置注释） |
@@ -77,7 +77,16 @@ pilipala:otp:rate:d:{dest}                   → count（TTL 到次日 0 点或 
 ### 短信 / 邮件配置（环境变量占位，禁止提交真值）
 
 ```bash
-# Aliyun SMS
+PILIPALA_SMS_PROVIDER=smsbao
+
+# 短信宝（生产默认）
+PILIPALA_SMS_SMSBAO_USERNAME=
+PILIPALA_SMS_SMSBAO_API_KEY=
+PILIPALA_SMS_SMSBAO_GOODS_ID=
+PILIPALA_SMS_SMSBAO_CONTENT_TEMPLATE=【pilipala】您的验证码是{code}，5分钟内有效。若非本人操作请忽略。
+PILIPALA_SMS_SMSBAO_BASE_URL=https://api.smsbao.com/sms
+
+# 阿里云 SMS（可选）
 PILIPALA_SMS_ALIYUN_ACCESS_KEY_ID=
 PILIPALA_SMS_ALIYUN_ACCESS_KEY_SECRET=
 PILIPALA_SMS_ALIYUN_SIGN_NAME=
@@ -96,7 +105,7 @@ PILIPALA_MAIL_FROM=
 PILIPALA_MAIL_STARTTLS=true
 ```
 
-模板变量至少含验证码；具体阿里云模板 Code 用占位，runbook 说明去控制台配置。
+短信宝正文须含签名括号（如 `【pilipala】`），`{code}` 占位；阿里云模板变量至少含验证码。runbook 说明配置，禁止提交真实 ApiKey。
 
 ## 本 WP 不拍板（禁止发明）
 
@@ -116,7 +125,7 @@ PILIPALA_MAIL_STARTTLS=true
 4. 登录用户可换绑 phone 或 email；**占用则失败**。
 5. 可改密、可 OTP 找回密码。
 6. `GET /me` 返回脱敏 phone/email（中间打码），不含登录用 username。
-7. 短信走阿里云适配器；邮件走自建 SMTP 适配器；本地可用「日志打印验证码」profile（`local` / `dev`）便于验收，**生产 profile 禁止落日志明文 OTP**。
+7. 短信走 `SmsSender` 多通道（默认短信宝）；邮件走自建 SMTP；本地短信设 `PILIPALA_SMS_PROVIDER=logging`，**生产禁止 logging 与明文 OTP 日志**。
 8. data-model / errors / feature-briefs 索引已更新；runbook 含 curl 验收。
 
 ## 范围
@@ -129,7 +138,7 @@ PILIPALA_MAIL_STARTTLS=true
 | `docs/engineering/feature-briefs/README.md` | 索引加 WP17 行 |
 | `docs/engineering/data-model/README.md` | `users` 列改为本 brief |
 | `docs/engineering/data-model/errors.md` | 登记 `OTP_RATE_LIMITED` |
-| `docs/engineering/runbooks/local-dev.md` | OTP / SMTP / 阿里云占位与 curl |
+| `docs/engineering/runbooks/local-dev.md` | OTP / 短信宝·阿里云·logging / SMTP 占位与 curl |
 | Flyway 新脚本（下一序号，如 `V10__users_phone_email.sql`） | 改 `users`：加 phone/email、放宽 username、CHECK、索引；数据迁移见下 |
 | `api/.../auth/**` | 控制器、用例、OTP 服务、SmsSender/EmailSender、仓储 |
 | `api` 配置 / 依赖 | 阿里云 SMS SDK 或官方 HTTP 客户端；`spring-boot-starter-mail` |
@@ -145,7 +154,7 @@ art.pilipala.api.auth
   web/           AuthController, 全局异常信封
   application/   Register / LoginPassword / LoginOtp / SendOtp / RebindPhone / RebindEmail / ChangePassword / ResetPassword / Me / Logout
   domain/        User, IdentityNormalizer
-  infra/         UserMapper, OtpRedisStore, AliyunSmsSender, SmtpEmailSender, LoggingOtpSender(profile=local), PasswordHasher, SaTokenConfig
+  infra/         UserMapper, OtpRedisStore, SmsSenderConfiguration, SmsBaoSmsSender, AliyunSmsSender, LoggingSmsSender, SmtpEmailSender, PasswordHasher, SaTokenConfig
 ```
 
 ## 非范围
@@ -288,7 +297,7 @@ OTP：`send → (cooldown) → verify once → consume`；失败计数超限 →
 - [ ] OTP 冷却与小时/日限触发 `OTP_RATE_LIMITED`
 - [ ] OTP 错误 5 次后作废
 - [ ] 改密、重置密码成功；重置返回 token
-- [ ] 生产路径短信走阿里云接口（可用 mock 测），邮件走 SMTP；local profile 可日志 OTP 且测试注明
+- [ ] 生产路径短信走短信宝（或 aliyun 配置），邮件走 SMTP；`logging` 仅本地且测试注明
 - [ ] 前端去掉 username 登录/注册；可完成注册登录换绑主路径
 - [ ] 无真实密钥入库；未做 OAuth/Job/钱包顺手改
 - [ ] PR 引用本 brief；分支 `feat/wp17-auth-phone-email`；**不要自行 merge**
@@ -305,7 +314,7 @@ OTP：`send → (cooldown) → verify once → consume`；失败计数超限 →
 - Controller 不写 SQL；Application 不依赖 HTTP 类型；禁止上帝类。
 - 中文注释 / brief；代码标识英文；JSON snake_case。
 - 禁止静默加额外限流/密码规则；要加先改 brief。
-- 阿里云与 SMTP 必须接口可替换；单测可用 fake sender。
+- 短信与 SMTP 必须接口可替换（`SmsSender` + `EmailSender`）；单测可用 fake sender。
 - 做完用中文列：改了哪些模块、迁移步骤、curl、故意没做的。
 
 ## 分支 / Commit / PR

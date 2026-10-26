@@ -28,14 +28,15 @@ public class RebindPhone {
         if (newPhone == null) {
             throw AuthException.validation();
         }
-        if (!otpService.verifyAndConsume(OtpPurpose.REBIND_PHONE, newPhone, otp)) {
-            throw AuthException.validation();
-        }
         User current = currentUser();
         if (users.findByPhone(newPhone).filter(other -> !other.id().equals(current.id())).isPresent()) {
             throw AuthException.identityOccupied();
         }
+        if (!otpService.verify(OtpPurpose.REBIND_PHONE, newPhone, otp)) {
+            throw AuthException.validation();
+        }
         users.updatePhone(current.id(), newPhone);
+        otpService.consume(OtpPurpose.REBIND_PHONE, newPhone);
     }
 
     private User currentUser() {

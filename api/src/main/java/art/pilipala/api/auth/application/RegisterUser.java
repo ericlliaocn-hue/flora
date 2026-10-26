@@ -57,14 +57,14 @@ public class RegisterUser {
         if (locale != null && !LOCALES.contains(locale)) {
             throw AuthException.validation();
         }
-        String otpDest = phone != null ? phone : email;
-        if (!otpService.verifyAndConsume(OtpPurpose.REGISTER, otpDest, command.otp())) {
-            throw AuthException.validation();
-        }
         if (phone != null && users.existsByPhone(phone)) {
             throw AuthException.validation();
         }
         if (email != null && users.existsByEmail(email)) {
+            throw AuthException.validation();
+        }
+        String otpDest = phone != null ? phone : email;
+        if (!otpService.verifyAndConsume(OtpPurpose.REGISTER, otpDest, command.otp())) {
             throw AuthException.validation();
         }
 

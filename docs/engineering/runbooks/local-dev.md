@@ -221,19 +221,36 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"}
 
 ### 4. curl 验收（WP17 手机 / 邮箱认证）
 
-**失败时 HTTP 状态码恒为 200**：失败信号看 `ok` 与 `error_code`。本地 profile（`spring.profiles.active=local`）下验证码会打在 api 日志里（`[WP17 OTP local]`），生产禁止明文 OTP 日志。
+**失败时 HTTP 状态码恒为 200**：失败信号看 `ok` 与 `error_code`。
+
+短信多通道（`PILIPALA_SMS_PROVIDER`）：
+
+| 值 | 用途 |
+| --- | --- |
+| `smsbao` | 生产默认：短信宝 HTTP API |
+| `aliyun` | 阿里云 Dysmsapi |
+| `logging` | 本地开发：验证码打在 api 日志（`[WP17 OTP logging]`），**禁止生产** |
+
+本地联调建议：`export PILIPALA_SMS_PROVIDER=logging`；邮件 OTP 仍可用 `spring.profiles.active=local` 打日志。
 
 环境变量占位（勿提交真值）：
 
 ```bash
-# 阿里云短信（生产）
+export PILIPALA_SMS_PROVIDER=smsbao
+
+# 短信宝（生产默认示例）
+export PILIPALA_SMS_SMSBAO_USERNAME=
+export PILIPALA_SMS_SMSBAO_API_KEY=
+export PILIPALA_SMS_SMSBAO_GOODS_ID=
+export PILIPALA_SMS_SMSBAO_CONTENT_TEMPLATE='【pilipala】您的验证码是{code}，5分钟内有效。若非本人操作请忽略。'
+export PILIPALA_SMS_SMSBAO_BASE_URL=https://api.smsbao.com/sms
+
+# 阿里云（可选第二通道）
 export PILIPALA_SMS_ALIYUN_ACCESS_KEY_ID=
 export PILIPALA_SMS_ALIYUN_ACCESS_KEY_SECRET=
-export PILIPALA_SMS_ALIYUN_SIGN_NAME=
-export PILIPALA_SMS_ALIYUN_TEMPLATE_REGISTER=
-# …见 docs/engineering/feature-briefs/2026-10-26-auth-phone-email-identity.md
+# …其余见 feature brief
 
-# 自建 SMTP（生产邮件 OTP）
+# 自建 SMTP（邮件 OTP）
 export PILIPALA_MAIL_HOST=
 export PILIPALA_MAIL_PORT=587
 export PILIPALA_MAIL_USERNAME=

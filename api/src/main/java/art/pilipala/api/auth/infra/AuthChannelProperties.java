@@ -3,12 +3,13 @@ package art.pilipala.api.auth.infra;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 阿里云短信与自建 SMTP 配置（密钥只走环境变量）。
+ * OTP 通道配置：多短信供应商 + 自建 SMTP（密钥只走环境变量）。
  */
 @ConfigurationProperties(prefix = "pilipala.auth")
-public record AuthChannelProperties(
-        SmsAliyun sms,
-        MailSmtp mail) {
+public record AuthChannelProperties(SmsConfig sms, MailSmtp mail) {
+
+    public record SmsConfig(String provider, SmsAliyun aliyun, SmsSmsbao smsbao) {
+    }
 
     public record SmsAliyun(
             String accessKeyId,
@@ -19,6 +20,14 @@ public record AuthChannelProperties(
             String templateRebind,
             String templateReset,
             String endpoint) {
+    }
+
+    public record SmsSmsbao(
+            String username,
+            String apiKey,
+            String goodsId,
+            String contentTemplate,
+            String baseUrl) {
     }
 
     public record MailSmtp(
