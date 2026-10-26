@@ -5,8 +5,8 @@ import { i18n } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   icons: {
-    icon: '/logo.svg',
-    apple: '/logo.svg',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 };
 
