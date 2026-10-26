@@ -85,7 +85,16 @@ public final class I18nDefaultCatalog {
                     "en", "Email registration is not available yet.")),
             Map.entry(AuthException.MESSAGE_KEY_EMAIL_LOGIN_DISABLED, Map.of(
                     "zh", "暂不支持邮箱登录。",
-                    "en", "Email sign-in is not available yet.")));
+                    "en", "Email sign-in is not available yet.")),
+            Map.entry(AuthException.MESSAGE_KEY_OTP_INVALID, Map.of(
+                    "zh", "验证码错误或已过期。",
+                    "en", "Invalid or expired verification code.")),
+            Map.entry(AuthException.MESSAGE_KEY_ACCOUNT_NOT_FOUND, Map.of(
+                    "zh", "该账号尚未注册，请先注册。",
+                    "en", "This account is not registered yet. Please sign up first.")),
+            Map.entry(AuthException.MESSAGE_KEY_ALREADY_REGISTERED, Map.of(
+                    "zh", "该手机号或邮箱已注册，请直接登录。",
+                    "en", "This phone number or email is already registered. Please log in.")));
 
     private I18nDefaultCatalog() {
     }

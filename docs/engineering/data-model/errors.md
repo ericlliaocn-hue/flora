@@ -26,7 +26,7 @@ C 端默认响应 **只** 含 `error_code` + `message`。原文只在 M4 / WP11 
 | `IDEMPOTENCY_CONFLICT` | 同一 key 不同 body | 不静默复用旧 `job_id` |
 | `UNAUTHORIZED` | 无会话 | 未登录调用 C 端接口 |
 | `FORBIDDEN` | 已登录但不是管理员 | 访问 `/api/v1/admin/**` 被拒（WP11）；普通用户看到的稳定码 |
-| `VALIDATION_ERROR` | 请求字段不合法 | 参数缺失 / 类型错 / 取值越界 |
+| `VALIDATION_ERROR` | 请求字段不合法 | 参数缺失 / 类型错 / 取值越界。认证业务态仍用此码，用 `i18n_message` key 区分：`AUTH_OTP_INVALID`、`AUTH_ACCOUNT_NOT_FOUND`、`AUTH_IDENTITY_ALREADY_REGISTERED`、`AUTH_IDENTITY_OCCUPIED` |
 | `PROJECT_NOT_FOUND` | 云端项目不存在或非本人 | 查别人的项目也返回此码，不泄露存在性（WP10） |
 | `ASSET_NOT_FOUND` | 云端素材不存在或非本人 | 同上（WP10） |
 | `GATEWAY_TIMEOUT` | 网关轮询超时 | 上游异步任务在轮询上限内没进终态（WP12 视频）；**可重试** |

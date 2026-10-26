@@ -50,12 +50,12 @@ public class LoginUser {
         Optional<User> found = lookup.byLoginIdentity(rawPhone, rawEmail);
         if (hasOtp) {
             if (found.isEmpty()) {
-                throw AuthException.validation();
+                throw AuthException.accountNotFound();
             }
             User user = found.get();
             String dest = user.phone() != null ? user.phone() : user.email();
             if (!otpService.verifyAndConsume(OtpPurpose.LOGIN, dest, command.otp())) {
-                throw AuthException.validation();
+                throw AuthException.otpInvalid();
             }
             return sessions.start(adminBootstrap.ensureRole(user));
         }

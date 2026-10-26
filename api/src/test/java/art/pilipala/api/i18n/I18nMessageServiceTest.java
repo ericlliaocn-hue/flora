@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import art.pilipala.api.auth.infra.AuthException;
 import art.pilipala.api.common.ErrorCodes;
 import art.pilipala.api.i18n.application.I18nDefaultCatalog;
 import art.pilipala.api.i18n.application.I18nMessageService;
@@ -41,7 +42,10 @@ class I18nMessageServiceTest {
                 ErrorCodes.IDEMPOTENCY_CONFLICT,
                 ErrorCodes.JOB_FAILED,
                 ErrorCodes.PROVIDER_UNAVAILABLE,
-                ErrorCodes.WALLET_INSUFFICIENT}) {
+                ErrorCodes.WALLET_INSUFFICIENT,
+                AuthException.MESSAGE_KEY_OTP_INVALID,
+                AuthException.MESSAGE_KEY_ACCOUNT_NOT_FOUND,
+                AuthException.MESSAGE_KEY_ALREADY_REGISTERED}) {
             assertThat(service.resolve(code, "zh")).isNotEqualTo(code);
             assertThat(service.resolve(code, "en")).isNotEqualTo(code);
         }

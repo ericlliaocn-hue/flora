@@ -33,7 +33,7 @@ public class RebindPhone {
             throw AuthException.identityOccupied();
         }
         if (!otpService.verify(OtpPurpose.REBIND_PHONE, newPhone, otp)) {
-            throw AuthException.validation();
+            throw AuthException.otpInvalid();
         }
         users.updatePhone(current.id(), newPhone);
         otpService.consume(OtpPurpose.REBIND_PHONE, newPhone);
