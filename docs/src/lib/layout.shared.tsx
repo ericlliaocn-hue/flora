@@ -51,7 +51,7 @@ export function baseOptions(locale: string): BaseLayoutProps {
     nav: {
       title: (
         <span className="inline-flex items-center gap-2 font-semibold">
-          <img src="/logo-mark.svg" alt={appName} className="h-7 w-10" />
+          <img src="/logo-mark.png" alt={appName} className="h-7 w-10 object-contain" />
           <span>{appName}</span>
         </span>
       ),
