@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import { AccountMenuPopover, WalletBalancePopover, shouldShowCreditsPill, walletAvailableDisplay } from "@/components/layout/auth-session-menus";
+import { useStudioFeatures } from "@/components/layout/studio/use-studio-features";
+import { shouldShowMembershipBadge } from "@/services/api/studio-features";
 import { formatAuthIdentity, useAuthStore } from "@/stores/use-auth-store";
 
 type StudioUtilityBarProps = {
@@ -15,6 +17,7 @@ type StudioUtilityBarProps = {
 
 export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentPanelOpen }: StudioUtilityBarProps) {
     const { t } = useTranslation();
+    const features = useStudioFeatures();
     const user = useAuthStore((state) => state.user);
     const wallet = useAuthStore((state) => state.wallet);
     const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
@@ -47,17 +50,21 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 ) : (
                     <QuietLink icon={Coins} label={t("studio.utilities.points")} onClick={() => setAuthModalOpen(true, "login")} />
                 )}
-                <button
-                    type="button"
-                    className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
-                    onClick={onRecharge}
-                >
-                    <Star className="size-3.5" strokeWidth={1.6} />
-                    <span className="hidden sm:inline">{t("studio.utilities.recharge")}</span>
-                    <span className="rounded-full bg-[#1a8a84] px-1.5 text-[9px] font-semibold leading-4 text-white sm:ml-0.5">
-                        {t("studio.utilities.rechargeBadge")}
-                    </span>
-                </button>
+                {features.membership_enabled ? (
+                    <button
+                        type="button"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
+                        onClick={onRecharge}
+                    >
+                        <Star className="size-3.5" strokeWidth={1.6} />
+                        <span>{t("studio.utilities.membership")}</span>
+                        {shouldShowMembershipBadge(features.membership_badge) ? (
+                            <span className="rounded-sm bg-[#1a8a84] px-1 text-[9px] font-semibold leading-4 text-white">
+                                {features.membership_badge}
+                            </span>
+                        ) : null}
+                    </button>
+                ) : null}
                 {shouldShowCreditsPill(user) ? (
                     <WalletBalancePopover>
                         <button
@@ -111,11 +118,11 @@ function QuietLink({ icon: Icon, label, onClick }: { icon: typeof Building2; lab
     return (
         <button
             type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2 text-[12px] text-neutral-500 transition hover:bg-white/[0.04] hover:text-neutral-200"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.12] px-2.5 text-[12px] text-neutral-300 transition hover:border-white/[0.18] hover:bg-white/[0.04] hover:text-neutral-100"
             onClick={onClick}
         >
             <Icon className="size-3.5" strokeWidth={1.6} />
-            <span className="hidden sm:inline">{label}</span>
+            <span>{label}</span>
         </button>
     );
 }

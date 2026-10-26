@@ -34,6 +34,7 @@ Brief 是 pilipala 的需求源。Minimax 与人实现都从这里粘贴，不�
 | [2026-10-25-wp16-recharge-zpay-alipay.md](./2026-10-25-wp16-recharge-zpay-alipay.md) | WP16 | C 端 z-pay 支付宝充值（mapi qrcode）+ 入账/补单/Admin 退款 | 已确认 / 实现中 |
 | [2026-10-26-auth-phone-email-identity.md](./2026-10-26-auth-phone-email-identity.md) | WP17 | 手机 / 邮箱身份（OTP + 阿里云短信 + 自建 SMTP + 换绑占用校验） | 已确认 / 实现中 |
 | [2026-10-26-auth-ui-ribbon-email-flags.md](./2026-10-26-auth-ui-ribbon-email-flags.md) | WP18 | Concept B 认证弹层 + 邮箱通道库表开关 + SMTP 假成功修复 | 已确认 / 实现中 |
+| [2026-10-27-studio-topbar-promo-libtv.md](./2026-10-27-studio-topbar-promo-libtv.md) | Studio chrome | 顶栏企业采购/积分超市/开通会员 + 活动条数字格倒计时，配置表控制 | 已确认 / 实现中 |
 
 > **编号**：**WP14** = MyBatis-Plus **代码**迁移；**WP15** = 数据分析文档基线；**WP16** = 预付费充值渠道。勿混用编号。
 

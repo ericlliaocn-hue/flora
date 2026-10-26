@@ -19,7 +19,7 @@
 | `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
 | `provider_task` | 网关痕迹 | WP5 已落地 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
 | `i18n_message` | 文案 | WP9 已落地 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
-| `app_runtime_setting` | 运营 | WP18 已落地（`V11`） | [下方字段](#app_runtime_settingwp18-已落地) | 运行时布尔开关（如邮箱登录/注册） |
+| `app_runtime_setting` | 运营 | WP18 已落地（`V11`）；Studio chrome seed `V13` | [下方字段](#app_runtime_settingwp18-已落地) | 运行时开关与运营文案（邮箱通道、Studio 顶栏/活动条） |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
 | 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
@@ -146,10 +146,12 @@ WP18 已实现：见 [WP18 brief](../feature-briefs/2026-10-26-auth-ui-ribbon-em
 | 字段 | 类型 | 空 | 约束 | 说明 |
 | --- | --- | --- | --- | --- |
 | `key` | TEXT | NO | PK | 点分命名，如 `auth.email_login_enabled` |
-| `value` | TEXT | NO | | 布尔存 `true` / `false` 小写字符串 |
+| `value` | TEXT | NO | | 布尔存 `true` / `false` 小写字符串；Studio 文案/截止时刻存原文字符串 |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 
 Seed：`auth.email_login_enabled=false`、`auth.email_register_enabled=false`。
+
+Studio chrome（`V13`）：`studio.promo.enabled=true`、`studio.promo.end_at=2026-11-15T15:59:59.000Z`、`studio.promo.title=预付费加赠限时开启`、`studio.promo.copy=充值加赠最高 20%，任务成功才扣费`、`studio.promo.cta=限时抢购`、`studio.membership.badge=限时 4.6 折`、`studio.membership.enabled=true`。缺 key 时公开接口仍回退到上述默认。
 
 ## 字段级怎么改
 

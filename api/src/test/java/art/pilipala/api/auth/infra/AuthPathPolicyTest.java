@@ -33,6 +33,7 @@ class AuthPathPolicyTest {
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.OTP_SEND_PATH)).isFalse();
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.PASSWORD_RESET_PATH)).isFalse();
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.AUTH_FEATURES_PATH)).isFalse();
+        assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.STUDIO_FEATURES_PATH)).isFalse();
         assertThat(AuthPathPolicy.requiresLogin(AuthPathPolicy.ZPAY_RECHARGE_WEBHOOK_PATH)).isFalse();
     }
 

@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 
-import { STUDIO_PROMO_END_MS } from "@/constant/studio-promo";
+import { useStudioFeatures } from "@/components/layout/studio/use-studio-features";
 import { formatCountdownUnit, usePromoCountdown } from "@/hooks/use-promo-countdown";
+import { parsePromoEndMs, shouldShowStudioPromo } from "@/services/api/studio-features";
 
 const STORAGE_KEY = "pilipala:studio-promo-dismissed:v1";
-
-const PROMO_STRIP_ENABLED = import.meta.env.VITE_STUDIO_PROMO_STRIP === "true";
 
 type StudioPromoStripProps = {
     onRecharge?: () => void;
@@ -15,7 +14,8 @@ type StudioPromoStripProps = {
 
 export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
     const { t } = useTranslation();
-    const countdown = usePromoCountdown(STUDIO_PROMO_END_MS);
+    const features = useStudioFeatures();
+    const countdown = usePromoCountdown(parsePromoEndMs(features.promo_end_at));
     const [visible, setVisible] = useState(() => {
         try {
             return localStorage.getItem(STORAGE_KEY) !== "1";
@@ -24,16 +24,26 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
         }
     });
 
-    if (!PROMO_STRIP_ENABLED || !visible || countdown.expired) return null;
+    if (
+        !shouldShowStudioPromo({
+            promoEnabled: features.promo_enabled,
+            endAtMs: parsePromoEndMs(features.promo_end_at),
+            nowMs: Date.now(),
+            dismissed: !visible,
+        }) ||
+        countdown.expired
+    ) {
+        return null;
+    }
 
     return (
         <div
-            className="relative z-50 flex h-10 shrink-0 items-center justify-center gap-3 border-b border-[#1a6b6b]/40 bg-gradient-to-r from-[#0a2f2f] via-[#0d3d3d] to-[#0a2830] px-10 text-xs text-[#b8e8e4]"
+            className="relative z-50 flex h-10 shrink-0 items-center justify-center gap-3 bg-[#0e7a78] px-10 text-xs text-white"
             role="region"
             aria-label={t("studio.promo.label")}
         >
             <div
-                className="inline-flex items-center gap-1 rounded-full border border-[#3d9a94]/35 bg-[#062424]/80 px-2.5 py-1 font-semibold tabular-nums tracking-wide text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                className="inline-flex items-center gap-1"
                 aria-live="polite"
                 aria-label={t("studio.promo.countdownLabel", {
                     days: countdown.days,
@@ -42,28 +52,28 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
                     seconds: countdown.seconds,
                 })}
             >
-                <TimerBox value={formatCountdownUnit(countdown.days)} />
-                <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value={formatCountdownUnit(countdown.hours)} />
-                <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value={formatCountdownUnit(countdown.minutes)} />
-                <span className="text-[#5ec9c0]/80">:</span>
-                <TimerBox value={formatCountdownUnit(countdown.seconds)} />
+                <TimerUnit value={formatCountdownUnit(countdown.days)} />
+                <Colon />
+                <TimerUnit value={formatCountdownUnit(countdown.hours)} />
+                <Colon />
+                <TimerUnit value={formatCountdownUnit(countdown.minutes)} />
+                <Colon />
+                <TimerUnit value={formatCountdownUnit(countdown.seconds)} />
             </div>
             <p className="hidden text-[12.5px] sm:block">
-                <strong className="font-semibold text-white">{t("studio.promo.title")}</strong>
-                <span className="text-[#9fd9d4]"> · {t("studio.promo.copy")}</span>
+                <strong className="font-semibold text-white">{features.promo_title}</strong>
+                <span className="text-white/85"> · {features.promo_copy}</span>
             </p>
             <button
                 type="button"
-                className="studio-solid-on-white h-7 shrink-0 rounded-full bg-white px-3.5 text-xs font-semibold transition hover:bg-[#e8fffc]"
+                className="studio-solid-on-white h-7 shrink-0 rounded-md bg-white px-3.5 text-xs font-semibold transition hover:bg-[#e8fffc]"
                 onClick={onRecharge}
             >
-                {t("studio.promo.cta")}
+                {features.promo_cta}
             </button>
             <button
                 type="button"
-                className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-[#7ec9c3] transition hover:bg-white/10 hover:text-white"
+                className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
                 aria-label={t("studio.promo.dismiss")}
                 onClick={() => {
                     setVisible(false);
@@ -80,6 +90,23 @@ export function StudioPromoStrip({ onRecharge }: StudioPromoStripProps) {
     );
 }
 
-function TimerBox({ value }: { value: string }) {
-    return <span className="min-w-[1.1rem] text-center text-[12px]">{value}</span>;
+function TimerUnit({ value }: { value: string }) {
+    return (
+        <span className="inline-flex items-center gap-0.5">
+            <DigitBox digit={value[0] ?? "0"} />
+            <DigitBox digit={value[1] ?? "0"} />
+        </span>
+    );
+}
+
+function DigitBox({ digit }: { digit: string }) {
+    return (
+        <span className="inline-flex h-[22px] min-w-[18px] items-center justify-center rounded-[4px] bg-white px-1 text-[12px] font-semibold tabular-nums text-black">
+            {digit}
+        </span>
+    );
+}
+
+function Colon() {
+    return <span className="px-0.5 text-[12px] font-semibold text-white/70">:</span>;
 }

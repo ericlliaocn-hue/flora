@@ -26,6 +26,17 @@ public class RuntimeSettingService {
         return "true".equalsIgnoreCase(row.value().trim());
     }
 
+    /**
+     * 读字符串配置。缺行或 value 为 null 时回退默认值；空字符串是合法存值（例如隐藏角标）。
+     */
+    public String getString(String key, String defaultValue) {
+        AppRuntimeSettingRow row = mapper.findByKey(key);
+        if (row == null || row.value() == null) {
+            return defaultValue;
+        }
+        return row.value();
+    }
+
     public Map<String, String> listAll() {
         List<AppRuntimeSettingRow> rows = mapper.findAll();
         Map<String, String> out = new LinkedHashMap<>();
