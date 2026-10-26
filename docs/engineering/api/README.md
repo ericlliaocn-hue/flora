@@ -15,6 +15,7 @@ pilipala C 端与 api 之间的任务合同在 [gateway-contract.md](./gateway-c
 | 表面 | 进程 | 何时 |
 | --- | --- | --- |
 | 认证（登录/登出/当前用户） | api | WP3 |
+| Studio 顶栏 / 活动条公开配置 `GET /api/v1/studio/features` | api | Studio chrome |
 | 任务 submit / query / result / cancel | api | WP4–WP7 |
 | 钱包余额（只读） | api | WP6 |
 | 对象读地址 | api | WP8 |
