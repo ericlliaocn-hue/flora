@@ -53,13 +53,13 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                 {features.membership_enabled ? (
                     <button
                         type="button"
-                        className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
                         onClick={onRecharge}
                     >
                         <Star className="size-3.5" strokeWidth={1.6} />
                         <span>{t("studio.utilities.membership")}</span>
                         {shouldShowMembershipBadge(features.membership_badge) ? (
-                            <span className="absolute -right-1 -top-2 rounded-sm bg-[#1a8a84] px-1 text-[9px] font-semibold leading-4 text-white">
+                            <span className="rounded-sm bg-[#1a8a84] px-1 text-[9px] font-semibold leading-4 text-white">
                                 {features.membership_badge}
                             </span>
                         ) : null}
