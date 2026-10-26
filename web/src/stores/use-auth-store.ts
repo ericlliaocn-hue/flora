@@ -106,13 +106,19 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     },
 
     logout: async (fetchImpl) => {
-        try {
-            await logoutUser(fetchImpl);
-        } catch {
-            // 登出失败也要清本地登录态。
+        const token = get().token || getStoredPilipalaToken();
+        if (!token) {
+            setStoredPilipalaToken(null);
+            set({ token: null, user: null, wallet: null });
+            return;
         }
         setStoredPilipalaToken(null);
         set({ token: null, user: null, wallet: null });
+        try {
+            await logoutUser(fetchImpl, token);
+        } catch {
+            // 登出失败也要清本地登录态。
+        }
     },
 
     setAuthModalOpen: (open, tab) => set((state) => ({ authModalOpen: open, authModalTab: tab ?? state.authModalTab })),

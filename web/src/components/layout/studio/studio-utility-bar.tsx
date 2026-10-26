@@ -3,6 +3,7 @@ import { Bot, Building2, Coins, Menu, Star, Zap } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AccountMenuPopover, WalletBalancePopover, shouldShowCreditsPill, walletAvailableDisplay } from "@/components/layout/auth-session-menus";
 import { formatAuthIdentity, useAuthStore } from "@/stores/use-auth-store";
 
 type StudioUtilityBarProps = {
@@ -16,9 +17,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
     const { t } = useTranslation();
     const user = useAuthStore((state) => state.user);
     const wallet = useAuthStore((state) => state.wallet);
-    const refreshWallet = useAuthStore((state) => state.refreshWallet);
     const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
-    const logout = useAuthStore((state) => state.logout);
     const initialize = useAuthStore((state) => state.initialize);
     const startedRef = useRef(false);
 
@@ -27,8 +26,6 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
         startedRef.current = true;
         void initialize();
     }, [initialize]);
-
-    const balance = wallet?.available ?? (user ? "—" : "100");
 
     return (
         <header className="sticky top-0 z-30 flex h-[48px] shrink-0 items-center justify-end gap-2 border-b border-white/[0.06] bg-[#0b0b0b] px-3 md:px-4">
@@ -43,14 +40,13 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
 
             <div className="flex items-center gap-1.5 md:gap-2">
                 <QuietLink icon={Building2} label={t("studio.utilities.enterprise")} onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")} />
-                <QuietLink
-                    icon={Coins}
-                    label={t("studio.utilities.points")}
-                    onClick={() => {
-                        if (user) void refreshWallet();
-                        else setAuthModalOpen(true, "login");
-                    }}
-                />
+                {user ? (
+                    <WalletBalancePopover>
+                        <QuietLink icon={Coins} label={t("studio.utilities.points")} />
+                    </WalletBalancePopover>
+                ) : (
+                    <QuietLink icon={Coins} label={t("studio.utilities.points")} onClick={() => setAuthModalOpen(true, "login")} />
+                )}
                 <button
                     type="button"
                     className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
@@ -62,27 +58,30 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
                         {t("studio.utilities.rechargeBadge")}
                     </span>
                 </button>
-                <button
-                    type="button"
-                    className="inline-flex h-8 min-w-[52px] items-center justify-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 text-[12px] font-medium tabular-nums text-neutral-200 transition hover:border-white/[0.14] hover:bg-white/[0.04]"
-                    onClick={() => (user ? void refreshWallet() : setAuthModalOpen(true, "login"))}
-                    title={t("wallet.title")}
-                >
-                    <Zap className="size-3.5 text-[#6eb8b2]" aria-hidden="true" />
-                    {balance}
-                </button>
+                {shouldShowCreditsPill(user) ? (
+                    <WalletBalancePopover>
+                        <button
+                            type="button"
+                            className="inline-flex h-8 min-w-[52px] items-center justify-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 text-[12px] font-medium tabular-nums text-neutral-200 transition hover:border-white/[0.14] hover:bg-white/[0.04]"
+                            title={t("wallet.title")}
+                        >
+                            <Zap className="size-3.5 text-[#6eb8b2]" aria-hidden="true" />
+                            {walletAvailableDisplay(wallet)}
+                        </button>
+                    </WalletBalancePopover>
+                ) : null}
 
                 {user ? (
-                    <Tooltip title={t("auth.signedInAs", { identity: formatAuthIdentity(user) })}>
+                    <AccountMenuPopover>
                         <button
                             type="button"
                             className="relative size-8 overflow-hidden rounded-full border border-white/[0.12] bg-gradient-to-br from-[#2a3340] to-[#1a1e26] transition hover:border-white/20"
-                            onClick={() => void logout()}
-                            aria-label={t("auth.logout")}
+                            aria-label={t("auth.accountMenu")}
                         >
                             <span className="absolute inset-1 rounded-full bg-[radial-gradient(circle_at_40%_35%,#6a7a8c,#2a3038_70%)]" />
+                            <span className="sr-only">{formatAuthIdentity(user)}</span>
                         </button>
-                    </Tooltip>
+                    </AccountMenuPopover>
                 ) : (
                     <button
                         type="button"
@@ -108,7 +107,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
     );
 }
 
-function QuietLink({ icon: Icon, label, onClick }: { icon: typeof Building2; label: string; onClick: () => void }) {
+function QuietLink({ icon: Icon, label, onClick }: { icon: typeof Building2; label: string; onClick?: () => void }) {
     return (
         <button
             type="button"

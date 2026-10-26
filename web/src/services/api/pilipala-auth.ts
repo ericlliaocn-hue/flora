@@ -82,8 +82,8 @@ export function loginUser(
     });
 }
 
-export function logoutUser(fetchImpl?: typeof fetch) {
-    return pilipalaRequest<Record<string, never>>("/api/v1/auth/logout", { method: "POST", fetchImpl });
+export function logoutUser(fetchImpl?: typeof fetch, token?: string | null) {
+    return pilipalaRequest<Record<string, never>>("/api/v1/auth/logout", { method: "POST", fetchImpl, token: token ?? undefined });
 }
 
 export function fetchCurrentUser(fetchImpl?: typeof fetch) {

@@ -58,6 +58,7 @@ export default {
         forgotPassword: "Forgot password",
         logout: "Sign out",
         signedInAs: "Signed in as {{identity}}",
+        accountMenu: "Account menu",
         needLogin: "Sign in / Register",
         loginFailed: "Sign in failed",
         registerFailed: "Sign up failed",
@@ -67,6 +68,8 @@ export default {
         available: "Available",
         frozen: "Frozen",
         credits: "credits",
+        availableCredits: "Available credits",
+        frozenCredits: "Frozen credits",
         refresh: "Refresh balance",
     },
     settingsPanels: {
