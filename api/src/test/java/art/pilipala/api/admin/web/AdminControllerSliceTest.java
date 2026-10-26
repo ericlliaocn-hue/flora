@@ -300,6 +300,6 @@ class AdminControllerSliceTest {
     private void loginAs(String role) {
         when(sessions.currentUserId()).thenReturn(USER.toString());
         Instant now = Instant.now();
-        when(users.findById(USER)).thenReturn(Optional.of(new User(USER, "demo", "hash", "zh", now, now, role)));
+        when(users.findById(USER)).thenReturn(Optional.of(new User(USER, "demo", null, null, "hash", "zh", now, now, role)));
     }
 }

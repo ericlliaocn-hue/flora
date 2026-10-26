@@ -51,11 +51,11 @@ public class ResetPassword {
         if (hasPhone && phone == null || hasEmail && email == null) {
             throw AuthException.validation();
         }
+        User user = lookup.byLoginIdentity(rawPhone, rawEmail).orElseThrow(AuthException::accountNotFound);
         String dest = phone != null ? phone : email;
         if (!otpService.verifyAndConsume(OtpPurpose.RESET_PASSWORD, dest, otp)) {
-            throw AuthException.validation();
+            throw AuthException.otpInvalid();
         }
-        User user = lookup.byLoginIdentity(rawPhone, rawEmail).orElseThrow(AuthException::validation);
         users.updatePasswordHash(user.id(), hasher.hash(newPassword));
         User refreshed = users.findById(user.id()).orElseThrow(AuthException::validation);
         return sessions.start(adminBootstrap.ensureRole(refreshed));

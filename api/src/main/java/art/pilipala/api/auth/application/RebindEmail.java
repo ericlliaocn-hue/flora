@@ -33,7 +33,7 @@ public class RebindEmail {
             throw AuthException.identityOccupied();
         }
         if (!otpService.verify(OtpPurpose.REBIND_EMAIL, newEmail, otp)) {
-            throw AuthException.validation();
+            throw AuthException.otpInvalid();
         }
         users.updateEmail(current.id(), newEmail);
         otpService.consume(OtpPurpose.REBIND_EMAIL, newEmail);

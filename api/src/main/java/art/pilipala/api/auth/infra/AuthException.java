@@ -10,6 +10,9 @@ public class AuthException extends RuntimeException {
     public static final String MESSAGE_KEY_IDENTITY_OCCUPIED = "AUTH_IDENTITY_OCCUPIED";
     public static final String MESSAGE_KEY_EMAIL_REGISTER_DISABLED = "AUTH_EMAIL_REGISTER_DISABLED";
     public static final String MESSAGE_KEY_EMAIL_LOGIN_DISABLED = "AUTH_EMAIL_LOGIN_DISABLED";
+    public static final String MESSAGE_KEY_OTP_INVALID = "AUTH_OTP_INVALID";
+    public static final String MESSAGE_KEY_ACCOUNT_NOT_FOUND = "AUTH_ACCOUNT_NOT_FOUND";
+    public static final String MESSAGE_KEY_ALREADY_REGISTERED = "AUTH_IDENTITY_ALREADY_REGISTERED";
 
     private final String errorCode;
     private final String messageKey;
@@ -51,6 +54,18 @@ public class AuthException extends RuntimeException {
 
     public static AuthException emailLoginDisabled() {
         return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_EMAIL_LOGIN_DISABLED);
+    }
+
+    public static AuthException otpInvalid() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_OTP_INVALID);
+    }
+
+    public static AuthException accountNotFound() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_ACCOUNT_NOT_FOUND);
+    }
+
+    public static AuthException alreadyRegistered() {
+        return new AuthException(ErrorCodes.VALIDATION_ERROR, MESSAGE_KEY_ALREADY_REGISTERED);
     }
 
     public String errorCode() {

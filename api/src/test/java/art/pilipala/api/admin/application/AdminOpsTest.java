@@ -265,7 +265,7 @@ class AdminOpsTest {
 
     private static User user(UUID id, String username) {
         Instant now = Instant.now();
-        return new User(id, username, "hash", "zh", now, now, "user");
+        return new User(id, username, null, null, "hash", "zh", now, now, "user");
     }
 
     /** 造一个 dead 任务：created → queued → claim → dead。 */

@@ -63,14 +63,14 @@ public class RegisterUser {
             throw AuthException.validation();
         }
         if (phone != null && users.existsByPhone(phone)) {
-            throw AuthException.validation();
+            throw AuthException.alreadyRegistered();
         }
         if (email != null && users.existsByEmail(email)) {
-            throw AuthException.validation();
+            throw AuthException.alreadyRegistered();
         }
         String otpDest = phone != null ? phone : email;
         if (!otpService.verifyAndConsume(OtpPurpose.REGISTER, otpDest, command.otp())) {
-            throw AuthException.validation();
+            throw AuthException.otpInvalid();
         }
 
         User user = users.insert(phone, email, hasher.hash(password), locale);

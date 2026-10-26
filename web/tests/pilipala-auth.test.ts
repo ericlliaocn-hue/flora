@@ -17,6 +17,7 @@ afterAll(() => {
 
 const { authIdentityPayload, authOtpDestination, normalizeEmailForApi, normalizePhoneForApi } = await import("../src/lib/auth-identity");
 const { loginUser, registerUser, resetPassword, sendAuthOtp } = await import("../src/services/api/pilipala-auth");
+const { PilipalaApiError } = await import("../src/services/api/pilipala-client");
 
 type RecordedCall = { url: string; method: string; body: string };
 
@@ -82,6 +83,41 @@ test("OTP send uses the same E.164 destination as login", async () => {
         destination: "+8617277889776",
         purpose: "login",
     });
+});
+
+test("login keeps the backend friendly message for an unregistered account", async () => {
+    const impl = (async () =>
+        json({
+            ok: false,
+            data: null,
+            error_code: "VALIDATION_ERROR",
+            message: "该账号尚未注册，请先注册。",
+        })) as typeof fetch;
+    try {
+        await loginUser({ phone: "+8617277889776", otp: "132442" }, impl);
+        throw new Error("expected login to fail");
+    } catch (error) {
+        expect(error).toBeInstanceOf(PilipalaApiError);
+        expect((error as { errorCode: string; message: string }).errorCode).toBe("VALIDATION_ERROR");
+        expect((error as { message: string }).message).toBe("该账号尚未注册，请先注册。");
+    }
+});
+
+test("register keeps the backend friendly message for an already registered identity", async () => {
+    const impl = (async () =>
+        json({
+            ok: false,
+            data: null,
+            error_code: "VALIDATION_ERROR",
+            message: "该手机号或邮箱已注册，请直接登录。",
+        })) as typeof fetch;
+    try {
+        await registerUser({ phone: "+8617277889776", password: "secret123", otp: "132442", locale: "zh" }, impl);
+        throw new Error("expected register to fail");
+    } catch (error) {
+        expect((error as { errorCode: string; message: string }).errorCode).toBe("VALIDATION_ERROR");
+        expect((error as { message: string }).message).toBe("该手机号或邮箱已注册，请直接登录。");
+    }
 });
 
 test("password reset posts phone + otp + new_password", async () => {
