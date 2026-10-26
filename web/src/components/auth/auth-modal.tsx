@@ -132,28 +132,28 @@ export function AuthModal() {
             footer={null}
             closable={false}
             centered
-            width={400}
+            width="min(520px, calc(100vw - 2rem))"
             destroyOnHidden
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.88)" },
-                content: { background: "transparent", boxShadow: "none", padding: 0 },
+                content: { background: "transparent", boxShadow: "none", padding: 0, maxWidth: "calc(100vw - 2rem)" },
                 body: { padding: 0 },
             }}
         >
-            <div className="relative mx-auto flex min-h-[32rem] w-full max-w-[22rem] items-center justify-center py-6">
+            <div className="relative mx-auto flex min-h-[34rem] w-full max-w-[32rem] items-center justify-center px-1 py-8 sm:px-0">
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-visible" aria-hidden>
                     <img
                         src="/logo-mark-3x.png"
                         alt=""
-                        className="h-[28rem] w-[28rem] max-w-none object-contain opacity-35 blur-[2px]"
+                        className="h-[min(42rem,120vw)] w-[min(44rem,125vw)] max-w-none object-contain opacity-40"
                         style={{
-                            filter: "blur(3px) drop-shadow(0 0 80px rgba(232,134,122,0.45)) drop-shadow(0 0 120px rgba(255,255,255,0.12))",
+                            filter: "blur(4px) drop-shadow(0 0 100px rgba(232,134,122,0.55)) drop-shadow(0 0 160px rgba(255,255,255,0.18))",
                         }}
                     />
                 </div>
 
                 <div
-                    className="relative z-10 w-full rounded-2xl border border-white/10 px-6 pb-5 pt-6 backdrop-blur-xl"
+                    className="relative z-10 w-full rounded-2xl border border-white/10 px-7 pb-7 pt-8 backdrop-blur-xl sm:px-9 sm:pb-8 sm:pt-9"
                     style={{ backgroundColor: "rgba(18,18,20,0.72)" }}
                 >
                     <button
@@ -165,10 +165,10 @@ export function AuthModal() {
                         <X className="h-4 w-4" strokeWidth={1.5} />
                     </button>
 
-                    <div className="mb-6 flex flex-col items-center gap-2 text-center">
-                        <PilipalaLogo variant="lockup" className="h-[72px] w-[100px]" />
-                        <h2 className="text-lg font-medium text-white">{title}</h2>
-                        <p className="text-xs text-white/55">{subtitle}</p>
+                    <div className="mb-8 flex flex-col items-center gap-2.5 text-center">
+                        <PilipalaLogo variant="lockup" className="h-[5.5rem] w-[7.75rem] sm:h-[6rem] sm:w-[8.5rem]" />
+                        <h2 className="text-xl font-medium tracking-tight text-white sm:text-2xl">{title}</h2>
+                        <p className="text-sm text-white/55">{subtitle}</p>
                     </div>
 
                     <AuthFormBody
@@ -191,7 +191,7 @@ export function AuthModal() {
                         }}
                     />
 
-                    <div className="mt-4 flex justify-end text-xs">
+                    <div className="mt-6 flex justify-end text-sm">
                         {panel === "login" ? (
                             <button
                                 type="button"
@@ -270,19 +270,25 @@ function AuthFormBody({
     const { t } = useTranslation();
 
     const fieldClass =
-        "rounded-lg border border-white/15 bg-black/25 text-white placeholder:text-white/35 [&_input]:text-white";
+        "h-12 rounded-lg border border-white/15 bg-black/25 text-base text-white placeholder:text-white/35 [&_input]:text-base [&_input]:text-white";
 
     return (
-        <Form form={form} layout="vertical" requiredMark={false} onFinish={onSubmit} className="auth-modal-form">
+        <Form
+            form={form}
+            layout="vertical"
+            requiredMark={false}
+            onFinish={onSubmit}
+            className="auth-modal-form [&_.ant-form-item]:mb-5 [&_.ant-form-item-label]:pb-1.5"
+        >
             {showEmailOption ? (
-                <div className="mb-3 flex gap-2">
+                <div className="mb-4 flex flex-wrap gap-2.5">
                     <Chip active={identityKind === "phone"} onClick={() => onIdentityKindChange("phone")}>{t("auth.phone")}</Chip>
                     <Chip active={identityKind === "email"} onClick={() => onIdentityKindChange("email")}>{t("auth.email")}</Chip>
                 </div>
             ) : null}
 
             {panel === "login" ? (
-                <div className="mb-3 flex gap-2">
+                <div className="mb-4 flex flex-wrap gap-2.5">
                     <Chip active={loginMode === "password"} onClick={() => onLoginModeChange("password")}>{t("auth.passwordLogin")}</Chip>
                     <Chip active={loginMode === "otp"} onClick={() => onLoginModeChange("otp")}>{t("auth.otpLogin")}</Chip>
                 </div>
@@ -290,31 +296,33 @@ function AuthFormBody({
 
             <Form.Item
                 name="identity"
-                label={<span className="text-xs text-white/70">{identityKind === "phone" ? t("auth.phone") : t("auth.email")}</span>}
+                label={<span className="text-sm text-white/70">{identityKind === "phone" ? t("auth.phone") : t("auth.email")}</span>}
                 rules={[{ required: true, message: t("auth.phonePlaceholder") }]}
             >
                 {identityKind === "phone" ? (
                     <Input
+                        size="large"
                         className={fieldClass}
                         placeholder={t("auth.phonePlaceholder")}
                         autoComplete="tel"
-                        addonBefore={<span className="text-white/80">+86</span>}
+                        addonBefore={<span className="text-base text-white/80">+86</span>}
                     />
                 ) : (
-                    <Input className={fieldClass} placeholder={t("auth.emailPlaceholder")} autoComplete="email" />
+                    <Input size="large" className={fieldClass} placeholder={t("auth.emailPlaceholder")} autoComplete="email" />
                 )}
             </Form.Item>
 
             {(panel === "register" || panel === "forgot" || (panel === "login" && loginMode === "password")) && (
                 <Form.Item
                     name="password"
-                    label={<span className="text-xs text-white/70">{t("auth.password")}</span>}
+                    label={<span className="text-sm text-white/70">{t("auth.password")}</span>}
                     rules={[
                         { required: true, message: t("auth.passwordPlaceholder") },
                         { min: MIN_PASSWORD_LENGTH, message: t("auth.passwordPlaceholder") },
                     ]}
                 >
                     <Input
+                        size="large"
                         type={passwordVisible ? "text" : "password"}
                         className={fieldClass}
                         placeholder={t("auth.passwordPlaceholder")}
@@ -344,16 +352,17 @@ function AuthFormBody({
             {(panel === "register" || panel === "forgot" || (panel === "login" && loginMode === "otp")) && (
                 <Form.Item
                     name="otp"
-                    label={<span className="text-xs text-white/70">{t("auth.otp")}</span>}
+                    label={<span className="text-sm text-white/70">{t("auth.otp")}</span>}
                     rules={[{ required: true, message: t("auth.otpPlaceholder") }]}
                 >
                     <div className="flex gap-2">
-                        <Input className={`${fieldClass} flex-1`} placeholder={t("auth.otpPlaceholder")} />
+                        <Input size="large" className={`${fieldClass} flex-1`} placeholder={t("auth.otpPlaceholder")} />
                         <Button
                             type="primary"
+                            size="large"
                             disabled={otpCooldown > 0}
                             onClick={onSendOtp}
-                            className="shrink-0 border-0 font-medium text-white"
+                            className="shrink-0 border-0 px-4 font-medium text-white"
                             style={{ backgroundColor: CORAL }}
                         >
                             {otpCooldown > 0 ? t("auth.otpResend", { seconds: otpCooldown }) : t("auth.getOtp")}
@@ -366,8 +375,9 @@ function AuthFormBody({
                 type="primary"
                 htmlType="submit"
                 block
+                size="large"
                 loading={loading}
-                className="mt-1 h-10 border-0 font-medium text-white"
+                className="mt-2 !h-12 border-0 text-base font-medium text-white"
                 style={{ backgroundColor: CORAL }}
             >
                 {panel === "login" ? t("auth.login") : panel === "register" ? t("auth.startCreate") : t("auth.login")}
@@ -381,8 +391,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
         <button
             type="button"
             onClick={onClick}
-            className={`rounded-full px-3 py-1 text-xs transition ${
-                active ? "bg-white text-black" : "bg-white/10 text-white/80 hover:bg-white/15"
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                active ? "studio-solid-on-white bg-white" : "bg-white/10 text-white/80 hover:bg-white/15"
             }`}
         >
             {children}
