@@ -79,8 +79,8 @@ pilipala:otp:rate:d:{dest}                   → count（TTL 到次日 0 点或 
 ```bash
 PILIPALA_SMS_PROVIDER=smsbao
 
-# 短信宝（生产默认）
-PILIPALA_SMS_SMSBAO_USERNAME=
+# 短信宝（生产默认；USERNAME 示例 ericlliao，真实 ApiKey 仅环境变量）
+PILIPALA_SMS_SMSBAO_USERNAME=ericlliao
 PILIPALA_SMS_SMSBAO_API_KEY=
 PILIPALA_SMS_SMSBAO_GOODS_ID=
 PILIPALA_SMS_SMSBAO_CONTENT_TEMPLATE=【pilipala】您的验证码是{code}，5分钟内有效。若非本人操作请忽略。

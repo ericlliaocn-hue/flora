@@ -238,8 +238,8 @@ curl -s http://127.0.0.1:8081/actuator/health   # {"status":"UP"}
 ```bash
 export PILIPALA_SMS_PROVIDER=smsbao
 
-# 短信宝（生产默认示例）
-export PILIPALA_SMS_SMSBAO_USERNAME=
+# 短信宝（生产默认；USERNAME 仅为文档示例名，ApiKey 勿写入仓库）
+export PILIPALA_SMS_SMSBAO_USERNAME=ericlliao
 export PILIPALA_SMS_SMSBAO_API_KEY=
 export PILIPALA_SMS_SMSBAO_GOODS_ID=
 export PILIPALA_SMS_SMSBAO_CONTENT_TEMPLATE='【pilipala】您的验证码是{code}，5分钟内有效。若非本人操作请忽略。'
