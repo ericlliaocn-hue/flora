@@ -38,6 +38,11 @@ public class AuthException extends RuntimeException {
         return new AuthException(ErrorCodes.FORBIDDEN, null);
     }
 
+    /** 短信 / 邮件等 OTP 通道上游不可用或发送失败（详情仅服务端日志）。 */
+    public static AuthException providerUnavailable() {
+        return new AuthException(ErrorCodes.PROVIDER_UNAVAILABLE, null);
+    }
+
     public String errorCode() {
         return errorCode;
     }

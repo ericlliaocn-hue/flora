@@ -25,13 +25,13 @@ public class SmsBaoSmsSender implements SmsSender {
     @Override
     public void sendOtp(String phoneE164, String purpose, String code) {
         if (config == null || isBlank(config.username()) || isBlank(config.apiKey())) {
-            log.warn("短信宝未配置用户名或 ApiKey，跳过发送 purpose={} phone={}", purpose, maskPhone(phoneE164));
-            return;
+            log.error("短信宝未配置用户名或 ApiKey purpose={} phone={}", purpose, maskPhone(phoneE164));
+            throw AuthException.providerUnavailable();
         }
         String mobile = toSmsBaoMobile(phoneE164);
         if (mobile == null) {
-            log.warn("短信宝手机号无法解析 purpose={} phone={}", purpose, maskPhone(phoneE164));
-            return;
+            log.error("短信宝手机号无法解析 purpose={} phone={}", purpose, maskPhone(phoneE164));
+            throw AuthException.providerUnavailable();
         }
         String template = isBlank(config.contentTemplate()) ? DEFAULT_TEMPLATE : config.contentTemplate();
         String content = template.replace("{code}", code);
@@ -49,13 +49,21 @@ public class SmsBaoSmsSender implements SmsSender {
             var client = java.net.http.HttpClient.newHttpClient();
             var request = java.net.http.HttpRequest.newBuilder(URI.create(url.toString())).GET().build();
             var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() >= 400) {
+                log.error("短信宝 HTTP {} purpose={} phone={}", response.statusCode(), purpose, maskPhone(phoneE164));
+                throw AuthException.providerUnavailable();
+            }
             String body = response.body() == null ? "" : response.body().trim();
             if (!"0".equals(body)) {
                 log.error("短信宝发送失败 code={} message={} phone={} purpose={}",
                         body, smsBaoErrorMessage(body), maskPhone(phoneE164), purpose);
+                throw AuthException.providerUnavailable();
             }
+        } catch (AuthException e) {
+            throw e;
         } catch (Exception e) {
             log.error("短信宝请求异常 phone={} purpose={}", maskPhone(phoneE164), purpose, e);
+            throw AuthException.providerUnavailable();
         }
     }
 

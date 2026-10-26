@@ -35,14 +35,15 @@ public class OtpService {
             throw AuthException.otpRateLimited();
         }
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
-        store.saveCode(purpose.redisValue(), destination, code);
-        store.markCooldown(purpose.redisValue(), destination);
-        store.recordSend(destination);
+        // 先走通道发送，成功后再写入 Redis，避免上游失败却返回「已发送」。
         if ("sms".equals(channel)) {
             smsSender.sendOtp(destination, purpose.redisValue(), code);
         } else {
             emailSender.sendOtp(destination, purpose.redisValue(), code);
         }
+        store.saveCode(purpose.redisValue(), destination, code);
+        store.markCooldown(purpose.redisValue(), destination);
+        store.recordSend(destination);
         return new SendOtpResult(300, 60);
     }
 

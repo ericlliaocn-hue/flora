@@ -14,6 +14,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * 阿里云 Dysmsapi HTTP 调用（{@code PILIPALA_SMS_PROVIDER=aliyun}）。
  */
@@ -30,13 +31,13 @@ public class AliyunSmsSender implements SmsSender {
     @Override
     public void sendOtp(String phoneE164, String purpose, String code) {
         if (this.sms == null || isBlank(sms.accessKeyId()) || isBlank(sms.accessKeySecret())) {
-            log.warn("Aliyun SMS 未配置，跳过发送 purpose={} phone={}", purpose, maskPhone(phoneE164));
-            return;
+            log.error("Aliyun SMS 未配置 purpose={} phone={}", purpose, maskPhone(phoneE164));
+            throw AuthException.providerUnavailable();
         }
         String template = templateFor(purpose, sms);
         if (isBlank(template)) {
-            log.warn("Aliyun SMS 模板未配置 purpose={}", purpose);
-            return;
+            log.error("Aliyun SMS 模板未配置 purpose={}", purpose);
+            throw AuthException.providerUnavailable();
         }
         String mobile = phoneE164.startsWith("+86") ? phoneE164.substring(3) : phoneE164;
         try {
@@ -65,12 +66,21 @@ public class AliyunSmsSender implements SmsSender {
 
             var client = java.net.http.HttpClient.newHttpClient();
             var request = java.net.http.HttpRequest.newBuilder(URI.create(url)).GET().build();
-            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            String body = response.body() == null ? "" : response.body();
             if (response.statusCode() >= 400) {
-                log.error("Aliyun SMS HTTP {} body={}", response.statusCode(), response.body());
+                log.error("Aliyun SMS HTTP {} body={} phone={}", response.statusCode(), body, maskPhone(phoneE164));
+                throw AuthException.providerUnavailable();
             }
+            if (!body.contains("\"Code\":\"OK\"")) {
+                log.error("Aliyun SMS API 未成功 body={} phone={} purpose={}", body, maskPhone(phoneE164), purpose);
+                throw AuthException.providerUnavailable();
+            }
+        } catch (AuthException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Aliyun SMS 发送失败 phone={}", maskPhone(phoneE164), e);
+            log.error("Aliyun SMS 发送失败 phone={} purpose={}", maskPhone(phoneE164), purpose, e);
+            throw AuthException.providerUnavailable();
         }
     }
 
