@@ -4,11 +4,11 @@ import { Eye, EyeOff, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PilipalaLogo } from "@/components/brand/pilipala-logo";
+import { authIdentityPayload, authOtpDestination } from "@/lib/auth-identity";
 import { PilipalaApiError } from "@/services/api/pilipala-client";
 import { fetchAuthFeatures, sendAuthOtp, type AuthFeatures } from "@/services/api/pilipala-auth";
 import { useAuthStore } from "@/stores/use-auth-store";
 
-const CORAL = "#E8867A";
 const MIN_PASSWORD_LENGTH = 8;
 
 type AuthFormValues = {
@@ -61,9 +61,6 @@ export function AuthModal() {
               ? features?.email_login_enabled
               : false;
 
-    const identityPayload = (identity: string) =>
-        identityKind === "phone" ? { phone: identity } : { email: identity };
-
     const otpPurpose = () => {
         if (panel === "register") return "register" as const;
         if (panel === "forgot") return "reset_password" as const;
@@ -79,7 +76,7 @@ export function AuthModal() {
         try {
             const result = await sendAuthOtp({
                 channel: identityKind === "phone" ? "sms" : "email",
-                destination: identity,
+                destination: authOtpDestination(identityKind, identity),
                 purpose: otpPurpose(),
             });
             setOtpCooldown(result.cooldown);
@@ -90,24 +87,26 @@ export function AuthModal() {
     };
 
     const submit = async (values: AuthFormValues) => {
+        const identity = authIdentityPayload(identityKind, values.identity);
+        const otp = values.otp?.trim();
         try {
             if (panel === "login") {
                 if (loginMode === "password") {
-                    await login({ ...identityPayload(values.identity), password: values.password });
+                    await login({ ...identity, password: values.password });
                 } else {
-                    await login({ ...identityPayload(values.identity), otp: values.otp });
+                    await login({ ...identity, otp });
                 }
             } else if (panel === "register") {
                 await register({
-                    ...identityPayload(values.identity),
+                    ...identity,
                     password: values.password,
-                    otp: values.otp,
+                    otp,
                     locale: i18n.resolvedLanguage === "en-US" ? "en" : "zh",
                 });
             } else {
                 await resetPassword({
-                    ...identityPayload(values.identity),
-                    otp: values.otp,
+                    ...identity,
+                    otp,
                     new_password: values.password,
                 });
             }
@@ -355,19 +354,7 @@ function AuthFormBody({
                     label={<span className="text-sm text-white/70">{t("auth.otp")}</span>}
                     rules={[{ required: true, message: t("auth.otpPlaceholder") }]}
                 >
-                    <div className="flex gap-2">
-                        <Input size="large" className={`${fieldClass} flex-1`} placeholder={t("auth.otpPlaceholder")} />
-                        <Button
-                            type="primary"
-                            size="large"
-                            disabled={otpCooldown > 0}
-                            onClick={onSendOtp}
-                            className="shrink-0 border-0 px-4 font-medium text-white"
-                            style={{ backgroundColor: CORAL }}
-                        >
-                            {otpCooldown > 0 ? t("auth.otpResend", { seconds: otpCooldown }) : t("auth.getOtp")}
-                        </Button>
-                    </div>
+                    <OtpCodeField fieldClass={fieldClass} otpCooldown={otpCooldown} onSendOtp={onSendOtp} />
                 </Form.Item>
             )}
 
@@ -377,12 +364,51 @@ function AuthFormBody({
                 block
                 size="large"
                 loading={loading}
-                className="mt-2 !h-12 border-0 text-base font-medium text-white"
-                style={{ backgroundColor: CORAL }}
+                className="auth-coral-cta mt-2 !h-12 border-0 text-base font-medium"
             >
                 {panel === "login" ? t("auth.login") : panel === "register" ? t("auth.startCreate") : t("auth.login")}
             </Button>
         </Form>
+    );
+}
+
+function OtpCodeField({
+    value,
+    onChange,
+    fieldClass,
+    otpCooldown,
+    onSendOtp,
+}: {
+    value?: string;
+    onChange?: (value: string) => void;
+    fieldClass: string;
+    otpCooldown: number;
+    onSendOtp: () => void;
+}) {
+    const { t } = useTranslation();
+    return (
+        <div className="flex gap-2">
+            <div className="min-w-0 flex-1">
+                <Input
+                    size="large"
+                    className={`${fieldClass} w-full`}
+                    placeholder={t("auth.otpPlaceholder")}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={value}
+                    onChange={(event) => onChange?.(event.target.value)}
+                />
+            </div>
+            <button
+                type="button"
+                disabled={otpCooldown > 0}
+                onClick={onSendOtp}
+                className={`auth-coral-cta h-12 shrink-0 rounded-lg px-4 text-sm font-medium ${otpCooldown > 0 ? "auth-otp-wait" : ""}`}
+            >
+                {otpCooldown > 0 ? t("auth.otpResend", { seconds: otpCooldown }) : t("auth.getOtp")}
+            </button>
+        </div>
     );
 }
 

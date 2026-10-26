@@ -613,3 +613,35 @@ button.studio-solid-on-white,
 button.studio-solid-on-white:hover {
     color: #171717;
 }
+
+/*
+ * Concept B auth buttons: antd dark primary tokens + disabled opacity wash coral (#E8867A)
+ * into pale text. These unlayered rules pin contrast for enabled / countdown / loading.
+ */
+button.auth-coral-cta,
+button.auth-coral-cta:hover,
+button.auth-coral-cta:focus,
+button.auth-coral-cta:disabled,
+.ant-btn.auth-coral-cta,
+.ant-btn.auth-coral-cta:hover,
+.ant-btn.auth-coral-cta:focus,
+.ant-btn.auth-coral-cta:disabled,
+.ant-btn-variant-solid.auth-coral-cta:disabled {
+    color: #171717 !important;
+    background: #e8867a !important;
+    border-color: transparent !important;
+    opacity: 1 !important;
+}
+
+button.auth-otp-wait,
+button.auth-otp-wait:hover,
+button.auth-otp-wait:disabled,
+.ant-btn.auth-otp-wait,
+.ant-btn.auth-otp-wait:hover,
+.ant-btn.auth-otp-wait:disabled {
+    color: rgba(255, 255, 255, 0.82) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    opacity: 1 !important;
+    cursor: not-allowed;
+}
