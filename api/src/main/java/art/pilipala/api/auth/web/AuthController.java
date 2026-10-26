@@ -15,6 +15,7 @@ import art.pilipala.api.auth.application.RebindPhone;
 import art.pilipala.api.auth.application.RegisterCommand;
 import art.pilipala.api.auth.application.RegisterUser;
 import art.pilipala.api.auth.application.ResetPassword;
+import art.pilipala.api.auth.application.EmailAuthPolicy;
 import art.pilipala.api.auth.application.SendOtp;
 import art.pilipala.api.common.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,10 +37,11 @@ public class AuthController {
     private final ResetPassword resetPassword;
     private final RebindPhone rebindPhone;
     private final RebindEmail rebindEmail;
+    private final EmailAuthPolicy emailAuthPolicy;
 
     public AuthController(RegisterUser registerUser, LoginUser loginUser, LogoutUser logoutUser, GetCurrentUser getCurrentUser,
             SendOtp sendOtp, ChangePassword changePassword, ResetPassword resetPassword, RebindPhone rebindPhone,
-            RebindEmail rebindEmail) {
+            RebindEmail rebindEmail, EmailAuthPolicy emailAuthPolicy) {
         this.registerUser = registerUser;
         this.loginUser = loginUser;
         this.logoutUser = logoutUser;
@@ -49,6 +51,13 @@ public class AuthController {
         this.resetPassword = resetPassword;
         this.rebindPhone = rebindPhone;
         this.rebindEmail = rebindEmail;
+        this.emailAuthPolicy = emailAuthPolicy;
+    }
+
+    @GetMapping("/features")
+    public ApiResponse<AuthFeaturesResponse> features() {
+        EmailAuthPolicy.AuthFeaturesView view = emailAuthPolicy.features();
+        return ApiResponse.ok(new AuthFeaturesResponse(view.emailLoginEnabled(), view.emailRegisterEnabled()));
     }
 
     @PostMapping("/otp/send")
@@ -102,6 +111,9 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<CurrentUser> me() {
         return ApiResponse.ok(getCurrentUser.current());
+    }
+
+    public record AuthFeaturesResponse(boolean emailLoginEnabled, boolean emailRegisterEnabled) {
     }
 
     public record OtpSendRequest(String channel, String destination, String purpose) {

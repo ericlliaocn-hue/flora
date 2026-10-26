@@ -21,15 +21,17 @@ public class ResetPassword {
     private final AdminBootstrap adminBootstrap;
     private final OtpService otpService;
     private final UserLookup lookup;
+    private final EmailAuthPolicy emailAuthPolicy;
 
     public ResetPassword(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, AdminBootstrap adminBootstrap,
-            OtpService otpService, UserLookup lookup) {
+            OtpService otpService, UserLookup lookup, EmailAuthPolicy emailAuthPolicy) {
         this.users = users;
         this.hasher = hasher;
         this.sessions = sessions;
         this.adminBootstrap = adminBootstrap;
         this.otpService = otpService;
         this.lookup = lookup;
+        this.emailAuthPolicy = emailAuthPolicy;
     }
 
     public AuthSession reset(String rawPhone, String rawEmail, String otp, String newPassword) {
@@ -40,6 +42,9 @@ public class ResetPassword {
         boolean hasEmail = rawEmail != null && !rawEmail.isBlank();
         if (hasPhone == hasEmail) {
             throw AuthException.validation();
+        }
+        if (hasEmail) {
+            emailAuthPolicy.assertLoginWithEmail();
         }
         String phone = hasPhone ? IdentityNormalizer.normalizePhone(rawPhone) : null;
         String email = hasEmail ? IdentityNormalizer.normalizeEmail(rawEmail) : null;

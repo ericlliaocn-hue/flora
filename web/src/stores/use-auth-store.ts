@@ -6,6 +6,7 @@ import {
     loginUser,
     logoutUser,
     registerUser,
+    resetPassword as resetPasswordApi,
     type PilipalaUser,
     type PilipalaWallet,
 } from "@/services/api/pilipala-auth";
@@ -26,6 +27,7 @@ type AuthStore = {
         input: { phone?: string; email?: string; password: string; otp: string; locale?: "zh" | "en" },
         fetchImpl?: typeof fetch,
     ) => Promise<void>;
+    resetPassword: (input: { phone?: string; email?: string; otp: string; new_password: string }, fetchImpl?: typeof fetch) => Promise<void>;
     logout: (fetchImpl?: typeof fetch) => Promise<void>;
     setAuthModalOpen: (open: boolean, tab?: "login" | "register") => void;
 };
@@ -83,6 +85,18 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         set({ loading: true });
         try {
             const session = await registerUser(input, fetchImpl);
+            setStoredPilipalaToken(session.token);
+            set({ token: session.token, user: session, authModalOpen: false });
+            await get().refreshWallet(fetchImpl);
+        } finally {
+            set({ loading: false });
+        }
+    },
+
+    resetPassword: async (input, fetchImpl) => {
+        set({ loading: true });
+        try {
+            const session = await resetPasswordApi(input, fetchImpl);
             setStoredPilipalaToken(session.token);
             set({ token: session.token, user: session, authModalOpen: false });
             await get().refreshWallet(fetchImpl);

@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { App, Button, Form, Input, Modal, Radio, Tabs } from "antd";
+import { useEffect, useState, type ReactNode } from "react";
+import { App, Button, Form, Input, Modal } from "antd";
+import { Eye, EyeOff, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PilipalaLogo } from "@/components/brand/pilipala-logo";
 import { PilipalaApiError } from "@/services/api/pilipala-client";
-import { sendAuthOtp } from "@/services/api/pilipala-auth";
+import { fetchAuthFeatures, sendAuthOtp, type AuthFeatures } from "@/services/api/pilipala-auth";
 import { useAuthStore } from "@/stores/use-auth-store";
 
+const CORAL = "#E8867A";
 const MIN_PASSWORD_LENGTH = 8;
 
 type AuthFormValues = {
@@ -14,6 +16,8 @@ type AuthFormValues = {
     password: string;
     otp: string;
 };
+
+type PanelMode = "login" | "register" | "forgot";
 
 export function AuthModal() {
     const { t, i18n } = useTranslation();
@@ -25,16 +29,24 @@ export function AuthModal() {
     const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
     const login = useAuthStore((state) => state.login);
     const register = useAuthStore((state) => state.register);
+    const resetPassword = useAuthStore((state) => state.resetPassword);
+
+    const [panel, setPanel] = useState<PanelMode>("login");
     const [identityKind, setIdentityKind] = useState<"phone" | "email">("phone");
     const [loginMode, setLoginMode] = useState<"password" | "otp">("password");
     const [otpCooldown, setOtpCooldown] = useState(0);
+    const [features, setFeatures] = useState<AuthFeatures | null>(null);
+    const [passwordVisible, setPasswordVisible] = useState(false);
 
     useEffect(() => {
-        if (open) {
-            form.resetFields();
-            setOtpCooldown(0);
-        }
-    }, [open, form]);
+        if (!open) return;
+        setPanel(tab);
+        form.resetFields();
+        setOtpCooldown(0);
+        setIdentityKind("phone");
+        setLoginMode("password");
+        void fetchAuthFeatures().then(setFeatures).catch(() => setFeatures({ email_login_enabled: false, email_register_enabled: false }));
+    }, [open, tab, form]);
 
     useEffect(() => {
         if (otpCooldown <= 0) return;
@@ -42,21 +54,33 @@ export function AuthModal() {
         return () => window.clearTimeout(timer);
     }, [otpCooldown]);
 
+    const showEmailOption =
+        panel === "register"
+            ? features?.email_register_enabled
+            : panel === "login" || panel === "forgot"
+              ? features?.email_login_enabled
+              : false;
+
     const identityPayload = (identity: string) =>
         identityKind === "phone" ? { phone: identity } : { email: identity };
+
+    const otpPurpose = () => {
+        if (panel === "register") return "register" as const;
+        if (panel === "forgot") return "reset_password" as const;
+        return "login" as const;
+    };
 
     const sendOtp = async () => {
         const identity = form.getFieldValue("identity")?.trim();
         if (!identity) {
-            message.warning(t("auth.identityPlaceholder"));
+            message.warning(t("auth.phonePlaceholder"));
             return;
         }
         try {
-            const purpose = tab === "register" ? "register" : "login";
             const result = await sendAuthOtp({
                 channel: identityKind === "phone" ? "sms" : "email",
                 destination: identity,
-                purpose,
+                purpose: otpPurpose(),
             });
             setOtpCooldown(result.cooldown);
             message.success(t("auth.otpSent"));
@@ -67,163 +91,301 @@ export function AuthModal() {
 
     const submit = async (values: AuthFormValues) => {
         try {
-            if (tab === "login") {
+            if (panel === "login") {
                 if (loginMode === "password") {
                     await login({ ...identityPayload(values.identity), password: values.password });
                 } else {
                     await login({ ...identityPayload(values.identity), otp: values.otp });
                 }
-            } else {
+            } else if (panel === "register") {
                 await register({
                     ...identityPayload(values.identity),
                     password: values.password,
                     otp: values.otp,
                     locale: i18n.resolvedLanguage === "en-US" ? "en" : "zh",
                 });
+            } else {
+                await resetPassword({
+                    ...identityPayload(values.identity),
+                    otp: values.otp,
+                    new_password: values.password,
+                });
             }
         } catch (error) {
-            message.error(error instanceof PilipalaApiError ? error.message : t(tab === "login" ? "auth.loginFailed" : "auth.registerFailed"));
+            const failKey = panel === "login" ? "auth.loginFailed" : panel === "register" ? "auth.registerFailed" : "auth.loginFailed";
+            message.error(error instanceof PilipalaApiError ? error.message : t(failKey));
         }
     };
+
+    const title = panel === "login" ? t("auth.loginTitle") : panel === "register" ? t("auth.registerTitle") : t("auth.forgotPassword");
+    const subtitle =
+        panel === "login"
+            ? t("auth.loginSubtitle")
+            : panel === "register"
+              ? t("auth.registerSubtitle")
+              : t("auth.loginSubtitle");
 
     return (
         <Modal
             open={open}
             onCancel={() => setAuthModalOpen(false)}
             footer={null}
-            title={
-                <span className="flex flex-col items-center gap-3 pt-1">
-                    <PilipalaLogo variant="lockup" className="h-[72px] w-[100px] text-stone-900 dark:text-stone-100" />
-                    <span>{t("auth.title")}</span>
-                </span>
-            }
-            destroyOnHidden
+            closable={false}
             centered
+            width={400}
+            destroyOnHidden
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.88)" },
+                content: { background: "transparent", boxShadow: "none", padding: 0 },
+                body: { padding: 0 },
+            }}
         >
-            <Tabs
-                activeKey={tab}
-                onChange={(key) => setAuthModalOpen(true, key as "login" | "register")}
-                items={[
-                    {
-                        key: "login",
-                        label: t("auth.login"),
-                        children: (
-                            <AuthForm
-                                tab="login"
-                                form={form}
-                                loading={loading}
-                                identityKind={identityKind}
-                                loginMode={loginMode}
-                                otpCooldown={otpCooldown}
-                                onIdentityKindChange={setIdentityKind}
-                                onLoginModeChange={setLoginMode}
-                                onSendOtp={sendOtp}
-                                onSubmit={submit}
-                            />
-                        ),
-                    },
-                    {
-                        key: "register",
-                        label: t("auth.register"),
-                        children: (
-                            <AuthForm
-                                tab="register"
-                                form={form}
-                                loading={loading}
-                                identityKind={identityKind}
-                                loginMode="password"
-                                otpCooldown={otpCooldown}
-                                onIdentityKindChange={setIdentityKind}
-                                onLoginModeChange={setLoginMode}
-                                onSendOtp={sendOtp}
-                                onSubmit={submit}
-                            />
-                        ),
-                    },
-                ]}
-            />
+            <div className="relative mx-auto flex min-h-[32rem] w-full max-w-[22rem] items-center justify-center py-6">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-visible" aria-hidden>
+                    <img
+                        src="/logo-mark-3x.png"
+                        alt=""
+                        className="h-[28rem] w-[28rem] max-w-none object-contain opacity-35 blur-[2px]"
+                        style={{
+                            filter: "blur(3px) drop-shadow(0 0 80px rgba(232,134,122,0.45)) drop-shadow(0 0 120px rgba(255,255,255,0.12))",
+                        }}
+                    />
+                </div>
+
+                <div
+                    className="relative z-10 w-full rounded-2xl border border-white/10 px-6 pb-5 pt-6 backdrop-blur-xl"
+                    style={{ backgroundColor: "rgba(18,18,20,0.72)" }}
+                >
+                    <button
+                        type="button"
+                        className="absolute right-4 top-4 rounded p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+                        onClick={() => setAuthModalOpen(false)}
+                        aria-label={t("common.cancel")}
+                    >
+                        <X className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+
+                    <div className="mb-6 flex flex-col items-center gap-2 text-center">
+                        <PilipalaLogo variant="lockup" className="h-[72px] w-[100px]" />
+                        <h2 className="text-lg font-medium text-white">{title}</h2>
+                        <p className="text-xs text-white/55">{subtitle}</p>
+                    </div>
+
+                    <AuthFormBody
+                        panel={panel}
+                        form={form}
+                        loading={loading}
+                        identityKind={identityKind}
+                        loginMode={loginMode}
+                        otpCooldown={otpCooldown}
+                        passwordVisible={passwordVisible}
+                        showEmailOption={!!showEmailOption}
+                        onIdentityKindChange={setIdentityKind}
+                        onLoginModeChange={setLoginMode}
+                        onPasswordVisibleChange={setPasswordVisible}
+                        onSendOtp={sendOtp}
+                        onSubmit={submit}
+                        onForgot={() => {
+                            setPanel("forgot");
+                            form.resetFields();
+                        }}
+                    />
+
+                    <div className="mt-4 flex justify-end text-xs">
+                        {panel === "login" ? (
+                            <button
+                                type="button"
+                                className="text-white/55 underline-offset-2 hover:text-white hover:underline"
+                                onClick={() => {
+                                    setPanel("register");
+                                    setAuthModalOpen(true, "register");
+                                    form.resetFields();
+                                }}
+                            >
+                                {t("auth.gotoRegister")}
+                            </button>
+                        ) : panel === "register" ? (
+                            <button
+                                type="button"
+                                className="text-white/55 underline-offset-2 hover:text-white hover:underline"
+                                onClick={() => {
+                                    setPanel("login");
+                                    setAuthModalOpen(true, "login");
+                                    form.resetFields();
+                                }}
+                            >
+                                {t("auth.gotoLogin")}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                className="text-white/55 underline-offset-2 hover:text-white hover:underline"
+                                onClick={() => {
+                                    setPanel("login");
+                                    setAuthModalOpen(true, "login");
+                                    form.resetFields();
+                                }}
+                            >
+                                {t("auth.gotoLogin")}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
         </Modal>
     );
 }
 
-function AuthForm({
-    tab,
+function AuthFormBody({
+    panel,
     form,
     loading,
     identityKind,
     loginMode,
     otpCooldown,
+    passwordVisible,
+    showEmailOption,
     onIdentityKindChange,
     onLoginModeChange,
+    onPasswordVisibleChange,
     onSendOtp,
     onSubmit,
+    onForgot,
 }: {
-    tab: "login" | "register";
+    panel: PanelMode;
     form: ReturnType<typeof Form.useForm<AuthFormValues>>[0];
     loading: boolean;
     identityKind: "phone" | "email";
     loginMode: "password" | "otp";
     otpCooldown: number;
+    passwordVisible: boolean;
+    showEmailOption: boolean;
     onIdentityKindChange: (k: "phone" | "email") => void;
     onLoginModeChange: (m: "password" | "otp") => void;
+    onPasswordVisibleChange: (v: boolean) => void;
     onSendOtp: () => void;
     onSubmit: (values: AuthFormValues) => void;
+    onForgot: () => void;
 }) {
     const { t } = useTranslation();
+
+    const fieldClass =
+        "rounded-lg border border-white/15 bg-black/25 text-white placeholder:text-white/35 [&_input]:text-white";
+
     return (
-        <Form form={form} layout="vertical" requiredMark={false} onFinish={onSubmit}>
-            <p className="mb-4 text-xs text-stone-500 dark:text-stone-400">{tab === "login" ? t("auth.loginDescription") : t("auth.registerDescription")}</p>
-            <Form.Item label={t("auth.identityKind")}>
-                <Radio.Group value={identityKind} onChange={(e) => onIdentityKindChange(e.target.value)}>
-                    <Radio value="phone">{t("auth.phone")}</Radio>
-                    <Radio value="email">{t("auth.email")}</Radio>
-                </Radio.Group>
-            </Form.Item>
-            {tab === "login" ? (
-                <Form.Item label={t("auth.loginMethod")}>
-                    <Radio.Group value={loginMode} onChange={(e) => onLoginModeChange(e.target.value)}>
-                        <Radio value="password">{t("auth.passwordLogin")}</Radio>
-                        <Radio value="otp">{t("auth.otpLogin")}</Radio>
-                    </Radio.Group>
-                </Form.Item>
+        <Form form={form} layout="vertical" requiredMark={false} onFinish={onSubmit} className="auth-modal-form">
+            {showEmailOption ? (
+                <div className="mb-3 flex gap-2">
+                    <Chip active={identityKind === "phone"} onClick={() => onIdentityKindChange("phone")}>{t("auth.phone")}</Chip>
+                    <Chip active={identityKind === "email"} onClick={() => onIdentityKindChange("email")}>{t("auth.email")}</Chip>
+                </div>
             ) : null}
+
+            {panel === "login" ? (
+                <div className="mb-3 flex gap-2">
+                    <Chip active={loginMode === "password"} onClick={() => onLoginModeChange("password")}>{t("auth.passwordLogin")}</Chip>
+                    <Chip active={loginMode === "otp"} onClick={() => onLoginModeChange("otp")}>{t("auth.otpLogin")}</Chip>
+                </div>
+            ) : null}
+
             <Form.Item
                 name="identity"
-                label={identityKind === "phone" ? t("auth.phone") : t("auth.email")}
-                rules={[{ required: true, message: t("auth.identityPlaceholder") }]}
+                label={<span className="text-xs text-white/70">{identityKind === "phone" ? t("auth.phone") : t("auth.email")}</span>}
+                rules={[{ required: true, message: t("auth.phonePlaceholder") }]}
             >
-                <Input
-                    placeholder={identityKind === "phone" ? t("auth.phonePlaceholder") : t("auth.emailPlaceholder")}
-                    autoComplete={identityKind === "phone" ? "tel" : "email"}
-                />
+                {identityKind === "phone" ? (
+                    <Input
+                        className={fieldClass}
+                        placeholder={t("auth.phonePlaceholder")}
+                        autoComplete="tel"
+                        addonBefore={<span className="text-white/80">+86</span>}
+                    />
+                ) : (
+                    <Input className={fieldClass} placeholder={t("auth.emailPlaceholder")} autoComplete="email" />
+                )}
             </Form.Item>
-            {(tab === "register" || loginMode === "password") && (
+
+            {(panel === "register" || panel === "forgot" || (panel === "login" && loginMode === "password")) && (
                 <Form.Item
                     name="password"
-                    label={t("auth.password")}
+                    label={<span className="text-xs text-white/70">{t("auth.password")}</span>}
                     rules={[
                         { required: true, message: t("auth.passwordPlaceholder") },
-                        ...(tab === "register" || loginMode === "password" ? [{ min: MIN_PASSWORD_LENGTH, message: t("auth.passwordPlaceholder") }] : []),
+                        { min: MIN_PASSWORD_LENGTH, message: t("auth.passwordPlaceholder") },
                     ]}
                 >
-                    <Input.Password placeholder={t("auth.passwordPlaceholder")} autoComplete={tab === "login" ? "current-password" : "new-password"} />
-                </Form.Item>
-            )}
-            {(tab === "register" || loginMode === "otp") && (
-                <Form.Item name="otp" label={t("auth.otp")} rules={[{ required: true, message: t("auth.otpPlaceholder") }]}>
                     <Input
-                        placeholder={t("auth.otpPlaceholder")}
-                        addonAfter={
-                            <Button type="link" size="small" disabled={otpCooldown > 0} onClick={onSendOtp}>
-                                {otpCooldown > 0 ? t("auth.otpResend", { seconds: otpCooldown }) : t("auth.sendOtp")}
-                            </Button>
+                        type={passwordVisible ? "text" : "password"}
+                        className={fieldClass}
+                        placeholder={t("auth.passwordPlaceholder")}
+                        autoComplete={panel === "login" ? "current-password" : "new-password"}
+                        suffix={
+                            <button
+                                type="button"
+                                className="text-white/60 hover:text-white"
+                                onClick={() => onPasswordVisibleChange(!passwordVisible)}
+                                tabIndex={-1}
+                            >
+                                {passwordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
                         }
                     />
                 </Form.Item>
             )}
-            <Button type="primary" htmlType="submit" block loading={loading}>
-                {tab === "login" ? t("auth.submitLogin") : t("auth.submitRegister")}
+
+            {panel === "login" && loginMode === "password" ? (
+                <div className="-mt-1 mb-2 flex justify-end">
+                    <button type="button" className="text-xs text-white/50 hover:text-white/80" onClick={onForgot}>
+                        {t("auth.forgotPassword")}
+                    </button>
+                </div>
+            ) : null}
+
+            {(panel === "register" || panel === "forgot" || (panel === "login" && loginMode === "otp")) && (
+                <Form.Item
+                    name="otp"
+                    label={<span className="text-xs text-white/70">{t("auth.otp")}</span>}
+                    rules={[{ required: true, message: t("auth.otpPlaceholder") }]}
+                >
+                    <div className="flex gap-2">
+                        <Input className={`${fieldClass} flex-1`} placeholder={t("auth.otpPlaceholder")} />
+                        <Button
+                            type="primary"
+                            disabled={otpCooldown > 0}
+                            onClick={onSendOtp}
+                            className="shrink-0 border-0 font-medium text-white"
+                            style={{ backgroundColor: CORAL }}
+                        >
+                            {otpCooldown > 0 ? t("auth.otpResend", { seconds: otpCooldown }) : t("auth.getOtp")}
+                        </Button>
+                    </div>
+                </Form.Item>
+            )}
+
+            <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={loading}
+                className="mt-1 h-10 border-0 font-medium text-white"
+                style={{ backgroundColor: CORAL }}
+            >
+                {panel === "login" ? t("auth.login") : panel === "register" ? t("auth.startCreate") : t("auth.login")}
             </Button>
         </Form>
+    );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`rounded-full px-3 py-1 text-xs transition ${
+                active ? "bg-white text-black" : "bg-white/10 text-white/80 hover:bg-white/15"
+            }`}
+        >
+            {children}
+        </button>
     );
 }

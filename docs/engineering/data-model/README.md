@@ -19,6 +19,7 @@
 | `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
 | `provider_task` | 网关痕迹 | WP5 已落地 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
 | `i18n_message` | 文案 | WP9 已落地 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
+| `app_runtime_setting` | 运营 | WP18 已落地（`V11`） | [下方字段](#app_runtime_settingwp18-已落地) | 运行时布尔开关（如邮箱登录/注册） |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
 | 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
@@ -137,6 +138,18 @@ WP11 已实现：见 [WP11 brief](../feature-briefs/2026-10-24-wp11-admin-ops.md
 - 金额、状态机相关写入必须在用例事务内保证合法 `user_id` / `job_id` / `hold_id`；禁止依赖 `ON DELETE CASCADE` 级联删流水。
 - **存量**：已落地迁移中的物理 FK（如 `job.hold_id → wallet_hold`、`job_step.provider_task_id → provider_task`）**保留**；本 WP **不**批量 DROP。是否在未来迁移中弱化，另开 brief。
 - 文档列上的 `FK → …` 表示逻辑关联与索引要求，不强制「下一步迁移必须加物理 CONSTRAINT」。
+
+## `app_runtime_setting`（WP18 已落地）
+
+WP18 已实现：见 [WP18 brief](../feature-briefs/2026-10-26-auth-ui-ribbon-email-flags.md)。表由 `V11__app_runtime_setting.sql` 建。
+
+| 字段 | 类型 | 空 | 约束 | 说明 |
+| --- | --- | --- | --- | --- |
+| `key` | TEXT | NO | PK | 点分命名，如 `auth.email_login_enabled` |
+| `value` | TEXT | NO | | 布尔存 `true` / `false` 小写字符串 |
+| `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
+
+Seed：`auth.email_login_enabled=false`、`auth.email_register_enabled=false`。
 
 ## 字段级怎么改
 
