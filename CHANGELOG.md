@@ -2,6 +2,8 @@
 
 ## Unreleased
 
++ [修复] 画布/渠道文本生成：Luna Pro 等 pro 号池模型请求时附带 `reasoning.mode=pro`，避免上游分组正确仍无法调用。
+
 + [修复] 概念 **D** logo：改用用户锁定稿 PNG（`logo-mark.png` / `logo-lockup.png`），`PilipalaLogo` 与 favicon/文档站同源引用；移除手绘 SVG 路径。
 + [调整] 全站产品标识替换为概念 **D** logo：新增 `logo-mark.svg` / `logo-lockup.svg` 与共享 `PilipalaLogo` 组件，覆盖 Studio 侧栏、登录弹窗、favicon、文档站导航与 README；移除临时侧栏「p」字标与旧三角 `logo.svg`。
 + [修复] Studio 顶栏未登录「登录/注册」白底胶囊、能力精选卡片「做同款」白底按钮，以及活动条 CTA：antd reset 的未分层 `button { color: inherit }` 使 Tailwind 深色文字类在 `<button>` 上失效，改为 `studio-solid-on-white` 未分层文字色恢复对比度。

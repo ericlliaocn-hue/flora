@@ -870,9 +870,13 @@ async function generateText({
     model: model,
     input: messages,
   };
-  if (reasoningEffort && reasoningEffort !== "auto") {
+  const name = String(model || "").toLowerCase();
+  const lunaPro = name.includes("luna-pro") || name.includes("luna_pro") || /luna[^a-z0-9]*pro/.test(name);
+  const effort = reasoningEffort && reasoningEffort !== "auto" ? reasoningEffort : lunaPro ? "medium" : null;
+  if (lunaPro || effort) {
     body.reasoning = {
-      effort: reasoningEffort,
+      ...(lunaPro ? { mode: "pro" } : {}),
+      ...(effort ? { effort } : {}),
     };
   }
   const data = await request({

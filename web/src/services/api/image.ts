@@ -5,6 +5,7 @@ import { buildApiUrl, decodeChannelModel, resolveModelRequestConfig, resolveMode
 import { normalizePluginImages, runModelPlugin } from "./model-plugin";
 import { nanoid } from "nanoid";
 import { dataUrlToFile } from "@/lib/image-utils";
+import { buildOpenAiReasoning } from "@/lib/openai-reasoning";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
 import { runPilipalaImageJob } from "./pilipala-jobs";
 import { imageToDataUrl } from "@/services/image-storage";
@@ -861,10 +862,11 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
             if (answer === apiText("noContent")) onDelta(answer);
             return answer;
         }
+        const reasoning = buildOpenAiReasoning(requestConfig.model, requestConfig.reasoningEffort);
         const answer = (await requestStreamingResponse(requestConfig, {
             model: requestConfig.model,
             input: toResponseInput(withSystemMessage(requestConfig, messages)),
-            ...(requestConfig.reasoningEffort === "auto" ? {} : { reasoning: { effort: requestConfig.reasoningEffort } }),
+            ...(reasoning ? { reasoning } : {}),
         }, onDelta, options)).content || apiText("noContent");
         if (answer === apiText("noContent")) onDelta(answer);
         return answer;
