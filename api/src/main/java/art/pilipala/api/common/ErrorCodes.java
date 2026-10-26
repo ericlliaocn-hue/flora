@@ -40,6 +40,8 @@ public final class ErrorCodes {
     public static final String RECHARGE_PROVIDER_ERROR = "RECHARGE_PROVIDER_ERROR";
     /** WP16：订单不可退款或余额不足以扣回。 */
     public static final String RECHARGE_NOT_REFUNDABLE = "RECHARGE_NOT_REFUNDABLE";
+    /** WP17：验证码发送冷却或小时/日发送上限。 */
+    public static final String OTP_RATE_LIMITED = "OTP_RATE_LIMITED";
 
     private ErrorCodes() {
     }

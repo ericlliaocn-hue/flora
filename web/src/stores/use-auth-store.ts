@@ -1,6 +1,14 @@
 import { create } from "zustand";
 
-import { fetchCurrentUser, fetchWallet, loginUser, logoutUser, registerUser, type PilipalaUser, type PilipalaWallet } from "@/services/api/pilipala-auth";
+import {
+    fetchCurrentUser,
+    fetchWallet,
+    loginUser,
+    logoutUser,
+    registerUser,
+    type PilipalaUser,
+    type PilipalaWallet,
+} from "@/services/api/pilipala-auth";
 import { PilipalaApiError, getStoredPilipalaToken, setStoredPilipalaToken } from "@/services/api/pilipala-client";
 
 type AuthStore = {
@@ -13,8 +21,11 @@ type AuthStore = {
     authModalTab: "login" | "register";
     initialize: (fetchImpl?: typeof fetch) => Promise<void>;
     refreshWallet: (fetchImpl?: typeof fetch) => Promise<void>;
-    login: (input: { username: string; password: string }, fetchImpl?: typeof fetch) => Promise<void>;
-    register: (input: { username: string; password: string; locale?: "zh" | "en" }, fetchImpl?: typeof fetch) => Promise<void>;
+    login: (input: { phone?: string; email?: string; password?: string; otp?: string }, fetchImpl?: typeof fetch) => Promise<void>;
+    register: (
+        input: { phone?: string; email?: string; password: string; otp: string; locale?: "zh" | "en" },
+        fetchImpl?: typeof fetch,
+    ) => Promise<void>;
     logout: (fetchImpl?: typeof fetch) => Promise<void>;
     setAuthModalOpen: (open: boolean, tab?: "login" | "register") => void;
 };
@@ -40,7 +51,6 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             set({ token, user, initialized: true });
             await get().refreshWallet(fetchImpl);
         } catch (error) {
-            // 令牌失效（UNAUTHORIZED）就清掉本地令牌，按未登录处理。
             if (error instanceof PilipalaApiError && error.errorCode === "UNAUTHORIZED") setStoredPilipalaToken(null);
             set({ token: null, user: null, wallet: null, initialized: true });
         } finally {
@@ -93,3 +103,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
     setAuthModalOpen: (open, tab) => set((state) => ({ authModalOpen: open, authModalTab: tab ?? state.authModalTab })),
 }));
+
+/** 顶栏展示用：优先手机，其次邮箱。 */
+export function formatAuthIdentity(user: PilipalaUser | null): string {
+    if (!user) return "";
+    return user.phone ?? user.email ?? user.user_id;
+}

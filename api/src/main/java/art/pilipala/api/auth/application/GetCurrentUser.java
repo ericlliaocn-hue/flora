@@ -2,15 +2,13 @@ package art.pilipala.api.auth.application;
 
 import java.util.UUID;
 
+import art.pilipala.api.auth.domain.IdentityMasker;
 import art.pilipala.api.auth.domain.User;
 import art.pilipala.api.auth.infra.AuthException;
 import art.pilipala.api.auth.infra.AuthSessionService;
 import art.pilipala.api.auth.infra.UserRepository;
 import org.springframework.stereotype.Service;
 
-/**
- * 读取当前登录用户。会话有效但用户行已不存在时同样按未登录处理。
- */
 @Service
 public class GetCurrentUser {
 
@@ -31,6 +29,11 @@ public class GetCurrentUser {
             throw AuthException.unauthorized();
         }
         User user = users.findById(userId).orElseThrow(AuthException::unauthorized);
-        return new CurrentUser(user.id(), user.username(), user.locale(), user.role());
+        return new CurrentUser(
+                user.id(),
+                IdentityMasker.maskPhone(user.phone()),
+                IdentityMasker.maskEmail(user.email()),
+                user.locale(),
+                user.role());
     }
 }

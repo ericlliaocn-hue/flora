@@ -1,9 +1,10 @@
 package art.pilipala.api.auth.application;
 
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import art.pilipala.api.admin.infra.AdminBootstrap;
+import art.pilipala.api.auth.domain.IdentityNormalizer;
+import art.pilipala.api.auth.domain.OtpPurpose;
 import art.pilipala.api.auth.domain.User;
 import art.pilipala.api.auth.infra.AuthException;
 import art.pilipala.api.auth.infra.AuthSessionService;
@@ -12,19 +13,9 @@ import art.pilipala.api.auth.infra.UserRepository;
 import art.pilipala.api.billing.application.TopUpWallet;
 import org.springframework.stereotype.Service;
 
-/**
- * 注册用例：校验入参 → 写 users 行（BCrypt 哈希）→ 初始化钱包 → 开启会话。
- *
- * <p>规则来自 WP3 brief：用户名 3–32 位 {@code [a-zA-Z0-9_]+}、密码至少 8 位、
- * locale 只能是 zh / en。用户名已存在同样回 VALIDATION_ERROR。
- *
- * <p>WP6 起注册后确保钱包行存在；配置了 {@code pilipala.billing.initial-credits}
- * 时经充值路径记一笔 topup 流水，不允许只改余额不写流水。
- */
 @Service
 public class RegisterUser {
 
-    private static final Pattern USERNAME = Pattern.compile("^[a-zA-Z0-9_]{3,32}$");
     private static final int MIN_PASSWORD_LENGTH = 8;
     private static final Set<String> LOCALES = Set.of("zh", "en");
 
@@ -33,37 +24,52 @@ public class RegisterUser {
     private final AuthSessionService sessions;
     private final TopUpWallet topUpWallet;
     private final AdminBootstrap adminBootstrap;
+    private final OtpService otpService;
 
     public RegisterUser(UserRepository users, PasswordHasher hasher, AuthSessionService sessions, TopUpWallet topUpWallet,
-            AdminBootstrap adminBootstrap) {
+            AdminBootstrap adminBootstrap, OtpService otpService) {
         this.users = users;
         this.hasher = hasher;
         this.sessions = sessions;
         this.topUpWallet = topUpWallet;
         this.adminBootstrap = adminBootstrap;
+        this.otpService = otpService;
     }
 
     public AuthSession register(RegisterCommand command) {
-        String username = command.username() == null ? "" : command.username().trim();
-        String password = command.password() == null ? "" : command.password();
-        String locale = command.locale() == null || command.locale().isBlank() ? null : command.locale().trim();
-
-        if (!USERNAME.matcher(username).matches()) {
+        String rawPhone = command.phone();
+        String rawEmail = command.email();
+        boolean hasPhone = rawPhone != null && !rawPhone.isBlank();
+        boolean hasEmail = rawEmail != null && !rawEmail.isBlank();
+        if (hasPhone == hasEmail) {
             throw AuthException.validation();
         }
+        String phone = hasPhone ? IdentityNormalizer.normalizePhone(rawPhone) : null;
+        String email = hasEmail ? IdentityNormalizer.normalizeEmail(rawEmail) : null;
+        if (hasPhone && phone == null || hasEmail && email == null) {
+            throw AuthException.validation();
+        }
+        String password = command.password() == null ? "" : command.password();
         if (password.length() < MIN_PASSWORD_LENGTH) {
             throw AuthException.validation();
         }
+        String locale = command.locale() == null || command.locale().isBlank() ? null : command.locale().trim();
         if (locale != null && !LOCALES.contains(locale)) {
             throw AuthException.validation();
         }
-        if (users.existsByUsername(username)) {
+        String otpDest = phone != null ? phone : email;
+        if (!otpService.verifyAndConsume(OtpPurpose.REGISTER, otpDest, command.otp())) {
+            throw AuthException.validation();
+        }
+        if (phone != null && users.existsByPhone(phone)) {
+            throw AuthException.validation();
+        }
+        if (email != null && users.existsByEmail(email)) {
             throw AuthException.validation();
         }
 
-        User user = users.insert(username, hasher.hash(password), locale);
+        User user = users.insert(phone, email, hasher.hash(password), locale);
         topUpWallet.ensureInitialWallet(user.id());
-        // 引导名单里的用户名直接就是管理员，联调不必手写 SQL 改库。
         return sessions.start(adminBootstrap.ensureRole(user));
     }
 }

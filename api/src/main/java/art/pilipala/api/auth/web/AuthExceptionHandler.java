@@ -54,7 +54,9 @@ public class AuthExceptionHandler extends FriendlyErrorHandler {
 
     @ExceptionHandler(AuthException.class)
     public ApiResponse<Void> handleAuth(AuthException e, HttpServletRequest request) {
-        return failure(e.errorCode(), request);
+        String locale = locale(request);
+        String messageKey = e.messageKey() != null ? e.messageKey() : e.errorCode();
+        return ApiResponse.error(e.errorCode(), message(messageKey, locale));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentNotValidException.class})

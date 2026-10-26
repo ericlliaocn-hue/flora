@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import art.pilipala.api.auth.infra.AuthException;
 import art.pilipala.api.common.ErrorCodes;
 
 /**
@@ -72,7 +73,13 @@ public final class I18nDefaultCatalog {
                     "en", "The video generation failed. Please adjust the prompt and try again.")),
             Map.entry(KEY_JOB_FAILED_RETRY, Map.of(
                     "zh", "生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。",
-                    "en", "Generation issue, retrying ({attempt}/{max_attempts}).")));
+                    "en", "Generation issue, retrying ({attempt}/{max_attempts}).")),
+            Map.entry(ErrorCodes.OTP_RATE_LIMITED, Map.of(
+                    "zh", "验证码发送过于频繁，请稍后再试。",
+                    "en", "Too many verification code requests. Please try again later.")),
+            Map.entry(AuthException.MESSAGE_KEY_IDENTITY_OCCUPIED, Map.of(
+                    "zh", "该手机号或邮箱已被其他账号绑定。",
+                    "en", "This phone number or email is already bound to another account.")));
 
     private I18nDefaultCatalog() {
     }

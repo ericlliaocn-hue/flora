@@ -40,23 +40,25 @@
 - TOS：字节，不把对象当行存储。
 - MQ：不是存储。丢了靠 outbox + DB 状态恢复。
 
-## `users`（WP3 已落地）
+## `users`（WP17 已落地）
 
-WP3 已实现：见 [WP3 brief](../feature-briefs/2026-10-24-wp3-auth-users.md)。表由 `api/src/main/resources/db/migration/V1__create_users.sql` 建。
-
-列定义 **不** 在本页改：仍以本页为准，WP3 照抄实现。**不** 设计社交登录、角色矩阵。
+WP17 已实现：见 [WP17 brief](../feature-briefs/2026-10-26-auth-phone-email-identity.md)。基表 `V1`，`role` 在 `V7`，`phone` / `email` 在 `V10`。
 
 > `users` 只表示登录身份与资料（含 `password_hash`）。**禁止**在用户表存 `available` / `frozen` / 余额类字段；资金只在 [billing.md](./billing.md) 的 `wallet*`。
 
 | 字段 | 类型 | 空 | 约束 / 索引 | 说明 |
 | --- | --- | --- | --- | --- |
 | `id` | UUID | NO | PK | 默认 `gen_random_uuid()`；也是 Sa-Token 的 `loginId` |
-| `username` | TEXT | NO | UNIQUE | 登录名 |
+| `username` | TEXT | YES | UNIQUE | **不再用于登录**；新注册为 null；存量可保留 |
+| `phone` | TEXT | YES | UNIQUE（非空值） | E.164，如 `+8613800138000` |
+| `email` | TEXT | YES | UNIQUE（非空值） | 小写规范化 |
 | `password_hash` | TEXT | NO | | BCrypt 哈希（strength 10） |
 | `locale` | TEXT | YES | | `zh` / `en` 偏好；空则回退 Accept-Language / zh |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `updated_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
-| `role` | TEXT | NO | DEFAULT `'user'`，CHECK ∈ `user` \| `admin` | 角色；**WP11 `V7` 新增**。命中 `pilipala.admin.bootstrap-usernames` 的用户名在注册或登录时自动升为 `admin` |
+| `role` | TEXT | NO | DEFAULT `'user'`，CHECK ∈ `user` \| `admin` | 命中 `pilipala.admin.bootstrap-phones` / `bootstrap-emails`（或过渡期 `bootstrap-usernames`）在注册或登录时自动升为 `admin` |
+
+**表级 CHECK**（无仅 username 存量行时由 `V10` 落地）：`phone IS NOT NULL OR email IS NOT NULL`。
 
 ## Job 四表（WP4 已落地）
 
