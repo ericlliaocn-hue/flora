@@ -33,12 +33,18 @@ public class OtpRedisStore {
         redis.opsForValue().set(attemptsKey(purpose, destination), "0", OTP_TTL);
     }
 
-    public boolean onCooldown(String purpose, String destination) {
-        return Boolean.TRUE.equals(redis.hasKey(cooldownKey(purpose, destination)));
+    public boolean onCooldown(String destination) {
+        return Boolean.TRUE.equals(redis.hasKey(cooldownKey(destination)));
     }
 
-    public void markCooldown(String purpose, String destination) {
-        redis.opsForValue().set(cooldownKey(purpose, destination), "1", COOLDOWN_TTL);
+    public void markCooldown(String destination) {
+        redis.opsForValue().set(cooldownKey(destination), "1", COOLDOWN_TTL);
+    }
+
+    /** 只比对，不累加失败次数、不消费。 */
+    public boolean matches(String purpose, String destination, String otp) {
+        String stored = redis.opsForValue().get(otpKey(purpose, destination));
+        return stored != null && otp != null && stored.equals(otp.trim());
     }
 
     public boolean isOverHourlyLimit(String destination) {
@@ -111,8 +117,8 @@ public class OtpRedisStore {
         return "pilipala:otp:" + purpose + ":" + destination;
     }
 
-    private static String cooldownKey(String purpose, String destination) {
-        return "pilipala:otp:cooldown:" + purpose + ":" + destination;
+    static String cooldownKey(String destination) {
+        return "pilipala:otp:cooldown:" + destination;
     }
 
     private static String attemptsKey(String purpose, String destination) {

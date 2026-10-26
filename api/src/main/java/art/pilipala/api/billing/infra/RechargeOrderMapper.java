@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -19,7 +18,7 @@ public interface RechargeOrderMapper {
             + "status, client_ip, device, pay_url, qrcode_url, product_name, ledger_id, paid_at, refunded_at, "
             + "fail_reason, created_at, updated_at";
 
-    @Insert("INSERT INTO recharge_order (user_id, out_trade_no, provider, package_id, money_fen, credits, status, "
+    @Select("INSERT INTO recharge_order (user_id, out_trade_no, provider, package_id, money_fen, credits, status, "
             + "client_ip, device, product_name) VALUES (#{userId}, #{outTradeNo}, 'zpay', #{packageId}, "
             + "#{moneyFen}, #{credits}, #{status}, #{clientIp}, #{device}, #{productName}) RETURNING " + COLS)
     RechargeOrder insertCreated(@Param("userId") UUID userId,

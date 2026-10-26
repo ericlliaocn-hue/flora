@@ -7,12 +7,9 @@ import { StudioMobileDrawer } from "@/components/layout/studio/studio-mobile-dra
 import { StudioPromoStrip } from "@/components/layout/studio/studio-promo-strip";
 import { StudioSidebar } from "@/components/layout/studio/studio-sidebar";
 import { StudioUtilityBar } from "@/components/layout/studio/studio-utility-bar";
-import { App } from "antd";
-import { useTranslation } from "react-i18next";
 
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
-import { createRechargeOrder, fetchRechargePackages } from "@/services/api/pilipala-recharge";
-import { useAuthStore } from "@/stores/use-auth-store";
+import { useRecharge } from "@/hooks/use-recharge";
 import { useAgentStore } from "@/stores/use-agent-store";
 
 type StudioShellProps = {
@@ -20,12 +17,9 @@ type StudioShellProps = {
 };
 
 export function StudioShell({ children }: StudioShellProps) {
-    const { t } = useTranslation();
-    const { message } = App.useApp();
     const { pathname } = useLocation();
     const hideChrome = /^\/canvas\/[^/]+/.test(pathname);
-    const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
-    const user = useAuthStore((state) => state.user);
+    const handleRecharge = useRecharge();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [pluginsOpen, setPluginsOpen] = useState(false);
     const autoConnectRef = useRef(false);
@@ -42,28 +36,6 @@ export function StudioShell({ children }: StudioShellProps) {
         autoConnectRef.current = true;
         connectAgent({ silent: true });
     }, [agentConnected, agentEnabled, agentToken, connectAgent]);
-
-    const handleRecharge = async () => {
-        if (!user) {
-            setAuthModalOpen(true, "login");
-            return;
-        }
-        try {
-            const packages = await fetchRechargePackages();
-            if (!packages.length) {
-                message.info(t("studio.recharge.unavailable"));
-                return;
-            }
-            const order = await createRechargeOrder(packages[0].id);
-            if (order.pay_url) {
-                window.open(order.pay_url, "_blank", "noopener,noreferrer");
-            } else {
-                message.info(t("studio.recharge.unavailable"));
-            }
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("studio.recharge.failed"));
-        }
-    };
 
     if (hideChrome) {
         return (

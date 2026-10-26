@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Form, Input, Modal } from "antd";
 import { Eye, EyeOff, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { shouldResetAuthModal } from "@/components/auth/auth-modal-lifecycle";
 import { PilipalaLogo } from "@/components/brand/pilipala-logo";
 import { authIdentityPayload, authOtpDestination } from "@/lib/auth-identity";
 import { PilipalaApiError } from "@/services/api/pilipala-client";
@@ -37,10 +38,19 @@ export function AuthModal() {
     const [otpCooldown, setOtpCooldown] = useState(0);
     const [features, setFeatures] = useState<AuthFeatures | null>(null);
     const [passwordVisible, setPasswordVisible] = useState(false);
+    const wasOpenRef = useRef(false);
 
     useEffect(() => {
-        if (!open) return;
+        if (!open) {
+            wasOpenRef.current = false;
+            return;
+        }
+        const justOpened = shouldResetAuthModal(open, wasOpenRef.current);
+        wasOpenRef.current = true;
         setPanel(tab);
+        if (!justOpened) {
+            return;
+        }
         form.resetFields();
         setOtpCooldown(0);
         setIdentityKind("phone");
@@ -186,7 +196,6 @@ export function AuthModal() {
                         onSubmit={submit}
                         onForgot={() => {
                             setPanel("forgot");
-                            form.resetFields();
                         }}
                     />
 
@@ -198,7 +207,6 @@ export function AuthModal() {
                                 onClick={() => {
                                     setPanel("register");
                                     setAuthModalOpen(true, "register");
-                                    form.resetFields();
                                 }}
                             >
                                 {t("auth.gotoRegister")}
@@ -210,7 +218,6 @@ export function AuthModal() {
                                 onClick={() => {
                                     setPanel("login");
                                     setAuthModalOpen(true, "login");
-                                    form.resetFields();
                                 }}
                             >
                                 {t("auth.gotoLogin")}
@@ -222,7 +229,6 @@ export function AuthModal() {
                                 onClick={() => {
                                     setPanel("login");
                                     setAuthModalOpen(true, "login");
-                                    form.resetFields();
                                 }}
                             >
                                 {t("auth.gotoLogin")}
