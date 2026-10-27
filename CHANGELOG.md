@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] 会员弹层与积分超市弹层：计费周期/分类 Tab 白底选中态与「立即开通」按钮在 antd `button { color: inherit }` 下恢复可读对比度（`studio-solid-on-white`；开通 CTA 统一珊瑚底白字）。
 + [新增] WP20 开通会员 Phase B：Flyway V15 会员档/周期价/用户订阅、z-pay 开通回调激活订阅并发放 subscription grant、订阅周期重置 job、C 端会员弹层与 Admin 会员套餐上下架；顶栏「开通会员」进入会员弹层。
 + [调整] Studio 顶栏默认隐藏「企业采购」（`studio.enterprise.enabled` 缺省 false）；积分超市改为深色玻璃弹层、游客可浏览、购买需登录；`min_plan_code` 结合当前会员档做 soft-gate 提示。
 + [新增] WP19 积分超市 Phase A：Flyway V14 库表驱动 SKU 与 `credit_grant` 到期批次、充值入账写 grant、消耗按最早到期扣减、过期 job、Admin 积分商品上下架、C 端积分超市弹层与自定义充值滑块；商品目录以 DB 为主并保留 yml 回退。
