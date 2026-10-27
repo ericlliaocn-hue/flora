@@ -39,11 +39,17 @@ public class WalletService {
     private final WalletRepository wallets;
     private final WalletHoldRepository holds;
     private final WalletLedgerRepository ledger;
+    private final CreditGrantService grantService;
 
-    public WalletService(WalletRepository wallets, WalletHoldRepository holds, WalletLedgerRepository ledger) {
+    public WalletService(
+            WalletRepository wallets,
+            WalletHoldRepository holds,
+            WalletLedgerRepository ledger,
+            CreditGrantService grantService) {
         this.wallets = wallets;
         this.holds = holds;
         this.ledger = ledger;
+        this.grantService = grantService;
     }
 
     /** 确保用户有钱包行；没有就惰性建一个 0 余额的。 */
@@ -177,6 +183,7 @@ public class WalletService {
                 .orElseThrow(() -> new IllegalStateException("冻结单对应的钱包不存在"));
         if (target == WalletHoldStatus.CONFIRMED) {
             wallets.consumeFrozen(wallet.id(), hold.amount());
+            grantService.consumeFromGrants(wallet.id(), hold.userId(), hold.amount());
         } else {
             wallets.releaseFrozen(wallet.id(), hold.amount());
         }

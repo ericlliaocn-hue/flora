@@ -20,10 +20,12 @@ public class TopUpWallet {
 
     private final WalletService wallets;
     private final BillingProperties properties;
+    private final CreditGrantService grantService;
 
-    public TopUpWallet(WalletService wallets, BillingProperties properties) {
+    public TopUpWallet(WalletService wallets, BillingProperties properties, CreditGrantService grantService) {
         this.wallets = wallets;
         this.properties = properties;
+        this.grantService = grantService;
     }
 
     /**
@@ -34,7 +36,10 @@ public class TopUpWallet {
      */
     @Transactional
     public Wallet topUp(UUID userId, long amount) {
-        return wallets.credit(userId, amount);
+        Wallet wallet = wallets.ensureWallet(userId);
+        grantService.grantForAdmin(userId, wallet.id(), amount);
+        wallets.credit(userId, amount);
+        return wallets.ensureWallet(userId);
     }
 
     @Transactional

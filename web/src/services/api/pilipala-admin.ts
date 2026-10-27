@@ -155,3 +155,31 @@ export function adminUpdateModel(model: string, input: { display_name: string; c
 export function fetchEnabledModels(fetchImpl?: typeof fetch) {
     return pilipalaRequest<PilipalaModelDisplayConfig[]>("/api/v1/models", { fetchImpl });
 }
+
+export type PilipalaAdminCreditProduct = {
+    id: number;
+    code: string;
+    tab: string;
+    name_zh: string;
+    name_en: string;
+    price_fen: number;
+    credits: number;
+    bonus_credits: number;
+    enabled: boolean;
+    sort_order: number;
+    validity_days?: number | null;
+    badge_zh?: string | null;
+    meta_json?: string | null;
+};
+
+export function fetchAdminCreditProducts(fetchImpl?: typeof fetch) {
+    return pilipalaRequest<PilipalaAdminCreditProduct[]>("/api/v1/admin/credit-products", { fetchImpl });
+}
+
+export function adminSetCreditProductEnabled(id: number, enabled: boolean, fetchImpl?: typeof fetch) {
+    const action = enabled ? "enable" : "disable";
+    return pilipalaRequest<PilipalaAdminCreditProduct>(`/api/v1/admin/credit-products/${id}/${action}`, {
+        method: "POST",
+        fetchImpl,
+    });
+}

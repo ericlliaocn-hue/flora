@@ -15,6 +15,8 @@ public final class AuthPathPolicy {
     public static final String STUDIO_FEATURES_PATH = "/api/v1/studio/features";
     /** WP16：z-pay 异步通知（验签入账，非登录）。 */
     public static final String ZPAY_RECHARGE_WEBHOOK_PATH = "/api/v1/billing/recharge/webhook/zpay";
+    /** WP19：积分超市 SKU 列表（只读，免登录）。 */
+    public static final String CREDIT_PRODUCTS_PATH = "/api/v1/billing/credit-products";
 
     private AuthPathPolicy() {
     }
@@ -35,6 +37,7 @@ public final class AuthPathPolicy {
                 && !PASSWORD_RESET_PATH.equals(normalized)
                 && !AUTH_FEATURES_PATH.equals(normalized)
                 && !STUDIO_FEATURES_PATH.equals(normalized)
-                && !ZPAY_RECHARGE_WEBHOOK_PATH.equals(normalized);
+                && !ZPAY_RECHARGE_WEBHOOK_PATH.equals(normalized)
+                && !CREDIT_PRODUCTS_PATH.equals(normalized);
     }
 }

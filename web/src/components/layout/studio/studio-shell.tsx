@@ -9,6 +9,7 @@ import { StudioSidebar } from "@/components/layout/studio/studio-sidebar";
 import { StudioUtilityBar } from "@/components/layout/studio/studio-utility-bar";
 
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
+import { CreditSupermarketModal, useCreditSupermarket } from "@/components/layout/studio/credit-supermarket-modal";
 import { useRecharge } from "@/hooks/use-recharge";
 import { useAgentStore } from "@/stores/use-agent-store";
 
@@ -20,6 +21,7 @@ export function StudioShell({ children }: StudioShellProps) {
     const { pathname } = useLocation();
     const hideChrome = /^\/canvas\/[^/]+/.test(pathname);
     const handleRecharge = useRecharge();
+    const creditStore = useCreditSupermarket();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [pluginsOpen, setPluginsOpen] = useState(false);
     const autoConnectRef = useRef(false);
@@ -58,6 +60,7 @@ export function StudioShell({ children }: StudioShellProps) {
                             onOpenMenu={() => setMobileNavOpen(true)}
                             onToggleAgent={togglePanel}
                             onRecharge={() => void handleRecharge()}
+                            onOpenCreditStore={creditStore.openStore}
                             agentPanelOpen={panelOpen}
                         />
                         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -74,6 +77,7 @@ export function StudioShell({ children }: StudioShellProps) {
                 }}
             />
             <AppConfigModal />
+            <CreditSupermarketModal open={creditStore.open} onClose={creditStore.closeStore} />
             <CanvasPluginManagerModal open={pluginsOpen} onClose={() => setPluginsOpen(false)} />
         </>
     );

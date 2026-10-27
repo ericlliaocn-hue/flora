@@ -9,6 +9,7 @@ import java.util.UUID;
 import art.pilipala.api.billing.domain.WalletHold;
 import art.pilipala.api.billing.domain.WalletHoldStatus;
 import art.pilipala.api.billing.infra.BillingProperties;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
 import art.pilipala.api.billing.support.InMemoryWalletStore;
 import art.pilipala.api.billing.support.LedgerAssertions;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,8 @@ class WalletHoldSettlementTickTest {
 
     private final Map<UUID, String> jobStates = new HashMap<>();
     private final InMemoryWalletStore store = new InMemoryWalletStore(jobStates::get);
-    private final WalletService wallets = new WalletService(store, store, store);
+    private final CreditGrantService grantService = new CreditGrantService(new InMemoryCreditGrantStore(), store, store);
+    private final WalletService wallets = new WalletService(store, store, store, grantService);
     private final WalletHoldSettlementTick tick =
             new WalletHoldSettlementTick(store, wallets, new BillingProperties(10, 0, 200, 50));
 

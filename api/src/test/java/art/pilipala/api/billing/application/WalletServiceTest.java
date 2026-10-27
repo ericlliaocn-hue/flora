@@ -12,6 +12,7 @@ import art.pilipala.api.billing.domain.WalletHold;
 import art.pilipala.api.billing.domain.WalletHoldStatus;
 import art.pilipala.api.billing.domain.WalletLedgerEntry;
 import art.pilipala.api.billing.domain.WalletLedgerType;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
 import art.pilipala.api.billing.support.InMemoryWalletStore;
 import art.pilipala.api.billing.support.LedgerAssertions;
 import art.pilipala.api.job.infra.JobException;
@@ -26,7 +27,9 @@ class WalletServiceTest {
     private static final long COST = 10;
 
     private final InMemoryWalletStore store = new InMemoryWalletStore();
-    private final WalletService wallets = new WalletService(store, store, store);
+    private final InMemoryCreditGrantStore grantStore = new InMemoryCreditGrantStore();
+    private final CreditGrantService grantService = new CreditGrantService(grantStore, store, store);
+    private final WalletService wallets = new WalletService(store, store, store, grantService);
 
     @Test
     void topUpCreditsTheWalletAndWritesATopupEntry() {

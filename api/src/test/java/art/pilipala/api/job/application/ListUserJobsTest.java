@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import art.pilipala.api.billing.application.CreditGrantService;
 import art.pilipala.api.billing.application.JobCostPolicy;
 import art.pilipala.api.billing.application.WalletService;
 import art.pilipala.api.billing.infra.BillingProperties;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
 import art.pilipala.api.billing.support.InMemoryWalletStore;
 import art.pilipala.api.i18n.InMemoryI18nMessageRepository;
 import art.pilipala.api.i18n.application.I18nMessageService;
@@ -29,7 +31,7 @@ class ListUserJobsTest {
     private final ListUserJobs service = new ListUserJobs(
             jobs,
             mapper,
-            new HoldSettlement(new WalletService(wallets, wallets, wallets)),
+            new HoldSettlement(walletService(wallets)),
             new JobCostPolicy(new BillingProperties(10, 0, 200, 50)),
             new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080", "cn-beijing", "pilipala-dev",
                     "pilipala-local-ak", "pilipala-local-sk", 900, 15000, "/tmp/pilipala-tos")),
@@ -92,6 +94,11 @@ class ListUserJobsTest {
 
         assertThat(service.list(owner, 0, "zh")).hasSize(1);
         assertThat(service.list(owner, 5000, "zh")).hasSize(1);
+    }
+
+    private static WalletService walletService(InMemoryWalletStore wallets) {
+        CreditGrantService grants = new CreditGrantService(new InMemoryCreditGrantStore(), wallets, wallets);
+        return new WalletService(wallets, wallets, wallets, grants);
     }
 
     private void succeeded(UUID userId, String idempotencyKey, String paramsJson, String objectKey) {

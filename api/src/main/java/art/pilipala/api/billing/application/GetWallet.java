@@ -3,6 +3,7 @@ package art.pilipala.api.billing.application;
 import java.util.UUID;
 
 import art.pilipala.api.billing.domain.Wallet;
+import art.pilipala.api.billing.infra.CreditGrantRepository;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,15 +17,19 @@ public class GetWallet {
 
     private final WalletService wallets;
     private final WalletHoldSettlementTick settlement;
+    private final CreditGrantRepository grants;
 
-    public GetWallet(WalletService wallets, WalletHoldSettlementTick settlement) {
+    public GetWallet(WalletService wallets, WalletHoldSettlementTick settlement, CreditGrantRepository grants) {
         this.wallets = wallets;
         this.settlement = settlement;
+        this.grants = grants;
     }
 
     public WalletView get(UUID userId) {
         settlement.settleForUser(userId);
         Wallet wallet = wallets.ensureWallet(userId);
-        return new WalletView(wallet.userId().toString(), wallet.available(), wallet.frozen(), wallet.updatedAt());
+        var summaries = grants.listActiveSummary(userId, 20).stream().map(WalletGrantSummaryView::of).toList();
+        return new WalletView(
+                wallet.userId().toString(), wallet.available(), wallet.frozen(), wallet.updatedAt(), summaries);
     }
 }

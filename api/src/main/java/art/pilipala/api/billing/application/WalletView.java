@@ -10,5 +10,14 @@ import java.time.Instant;
  * @param frozen    已冻未确认 credit
  * @param updatedAt 最后一次余额变动时间
  */
-public record WalletView(String userId, long available, long frozen, Instant updatedAt) {
+public record WalletView(
+        String userId,
+        long available,
+        long frozen,
+        Instant updatedAt,
+        java.util.List<WalletGrantSummaryView> grants) {
+
+    public WalletView(String userId, long available, long frozen, Instant updatedAt) {
+        this(userId, available, frozen, updatedAt, java.util.List.of());
+    }
 }

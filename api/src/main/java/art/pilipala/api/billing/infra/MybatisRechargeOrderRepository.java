@@ -30,7 +30,10 @@ public class MybatisRechargeOrderRepository implements RechargeOrderRepository {
                 draft.status().value(),
                 draft.clientIp(),
                 draft.device(),
-                draft.productName());
+                draft.productName(),
+                draft.productId(),
+                draft.productCode(),
+                draft.bonusCredits());
     }
 
     @Override
@@ -81,5 +84,15 @@ public class MybatisRechargeOrderRepository implements RechargeOrderRepository {
     @Override
     public List<RechargeOrder> findAdmin(UUID userId, String status, String outTradeNo, int limit) {
         return mapper.findAdmin(userId, status, outTradeNo, limit);
+    }
+
+    @Override
+    public int countPaidByUserAndProductCodeExcluding(UUID userId, String productCode, UUID excludeOrderId) {
+        return mapper.countPaidByUserAndProductCodeExcluding(userId, productCode, excludeOrderId);
+    }
+
+    @Override
+    public boolean updateBonusCredits(String outTradeNo, long bonusCredits) {
+        return mapper.updateBonusCredits(outTradeNo, bonusCredits) > 0;
     }
 }

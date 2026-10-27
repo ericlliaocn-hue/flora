@@ -1,0 +1,88 @@
+package art.pilipala.api.billing.support;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+
+import art.pilipala.api.billing.domain.CreditGrant;
+import art.pilipala.api.billing.infra.CreditGrantRepository;
+
+public class InMemoryCreditGrantStore implements CreditGrantRepository {
+
+    private final AtomicLong ids = new AtomicLong(1);
+    private final List<CreditGrant> grants = new ArrayList<>();
+
+    @Override
+    public CreditGrant insert(CreditGrant draft) {
+        CreditGrant saved = new CreditGrant(
+                ids.getAndIncrement(),
+                draft.userId(),
+                draft.walletId(),
+                draft.sourceType(),
+                draft.sourceId(),
+                draft.grantType(),
+                draft.creditsTotal(),
+                draft.creditsRemaining(),
+                draft.expiresAt(),
+                draft.productId(),
+                Instant.now());
+        grants.add(saved);
+        return saved;
+    }
+
+    @Override
+    public List<CreditGrant> listConsumableForUpdate(UUID walletId) {
+        return grants.stream()
+                .filter(g -> g.walletId().equals(walletId) && g.creditsRemaining() > 0)
+                .sorted(Comparator.comparing(CreditGrant::expiresAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(CreditGrant::createdAt))
+                .toList();
+    }
+
+    @Override
+    public void updateRemaining(long id, long remaining) {
+        for (int i = 0; i < grants.size(); i++) {
+            CreditGrant g = grants.get(i);
+            if (g.id() == id) {
+                grants.set(i, new CreditGrant(
+                        g.id(),
+                        g.userId(),
+                        g.walletId(),
+                        g.sourceType(),
+                        g.sourceId(),
+                        g.grantType(),
+                        g.creditsTotal(),
+                        remaining,
+                        g.expiresAt(),
+                        g.productId(),
+                        g.createdAt()));
+                return;
+            }
+        }
+    }
+
+    @Override
+    public List<CreditGrant> listByUser(UUID userId, int limit) {
+        return grants.stream().filter(g -> g.userId().equals(userId)).limit(limit).toList();
+    }
+
+    @Override
+    public List<CreditGrant> findExpiredForUpdate(Instant before, int limit) {
+        return grants.stream()
+                .filter(g -> g.creditsRemaining() > 0 && g.expiresAt() != null && g.expiresAt().isBefore(before))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public List<CreditGrant> listActiveSummary(UUID userId, int limit) {
+        return listByUser(userId, limit);
+    }
+
+    public List<CreditGrant> all() {
+        return List.copyOf(grants);
+    }
+}

@@ -45,7 +45,8 @@ public class RechargeController {
 
     @PostMapping("/orders")
     public ApiResponse<RechargeOrderView> create(@RequestBody CreateRequest body, HttpServletRequest request) {
-        return ApiResponse.ok(create.create(userId(), body.packageId(), body.device(), request));
+        return ApiResponse.ok(create.create(
+                userId(), body.packageId(), body.productCode(), body.credits(), body.device(), request));
     }
 
     @GetMapping("/orders/{outTradeNo}")
@@ -57,6 +58,6 @@ public class RechargeController {
         return UUID.fromString(sessions.currentUserId());
     }
 
-    public record CreateRequest(String packageId, String device) {
+    public record CreateRequest(String packageId, String productCode, Long credits, String device) {
     }
 }

@@ -15,11 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class FinalizeRechargePayment {
 
     private final RechargeOrderRepository orders;
-    private final WalletService wallets;
+    private final SettleRechargePayment settle;
 
-    public FinalizeRechargePayment(RechargeOrderRepository orders, WalletService wallets) {
+    public FinalizeRechargePayment(RechargeOrderRepository orders, SettleRechargePayment settle) {
         this.orders = orders;
-        this.wallets = wallets;
+        this.settle = settle;
     }
 
     /**
@@ -45,7 +45,7 @@ public class FinalizeRechargePayment {
             throw JobException.validation();
         }
         RechargeOrder claimed = orders.findByOutTradeNo(outTradeNo).orElseThrow();
-        WalletLedgerEntry ledger = wallets.credit(claimed.userId(), claimed.credits(), claimed.id());
+        WalletLedgerEntry ledger = settle.creditOrder(claimed);
         orders.attachLedger(outTradeNo, ledger.id());
         return true;
     }

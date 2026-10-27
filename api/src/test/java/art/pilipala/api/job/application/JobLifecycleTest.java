@@ -9,8 +9,10 @@ import java.util.UUID;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import art.pilipala.api.billing.application.CreditGrantService;
 import art.pilipala.api.billing.application.JobCostPolicy;
 import art.pilipala.api.billing.application.WalletService;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
 import art.pilipala.api.billing.domain.WalletHold;
 import art.pilipala.api.billing.domain.WalletHoldStatus;
 import art.pilipala.api.billing.domain.WalletLedgerEntry;
@@ -55,7 +57,8 @@ class JobLifecycleTest {
     private final ObjectMapper mapper = new ObjectMapper();
     private final BillingProperties billing = new BillingProperties(COST, 0, 200, 50);
 
-    private final WalletService walletService = new WalletService(wallets, wallets, wallets);
+    private final CreditGrantService grantService = new CreditGrantService(new InMemoryCreditGrantStore(), wallets, wallets);
+    private final WalletService walletService = new WalletService(wallets, wallets, wallets, grantService);
     private final HoldSettlement holdSettlement = new HoldSettlement(walletService);
 
     private final InMemoryI18nMessageRepository i18nRepository = new InMemoryI18nMessageRepository();

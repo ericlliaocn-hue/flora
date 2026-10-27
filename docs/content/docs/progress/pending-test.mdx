@@ -7,6 +7,8 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- WP19 credit supermarket: top bar **积分超市** opens the points-store modal (general / surprise / custom tabs, coral CTA). Custom slider 600 credits should charge ¥40; out-of-range amounts should fail. After z-pay success, wallet increases with grants and expiry; repeat purchase of the same SKU should not apply first-purchase bonus again. Admin **积分商品** tab can disable a SKU and it disappears from the C-end list. Expired grants should be cleared by the background job.
+
 - Brand logo (concept D): Studio sidebar mark, auth modal lockup, docs nav mark, and lockup PNGs should use **transparent** tight crops (no baked dark rectangle); sidebar mark should look sharp on light/dark shells (`srcSet` 3x). Favicon/README may still use SVG; geometry remains closed dual-p ribbon + coral joint—not owl/M or old triangle.
 
 - Studio / canvas chrome: logged-out home must **not** show a fake `⚡ 100` credits pill. After sign-in, the credits pill appears even while the wallet is still loading (`—`), and clicking **积分** / `⚡` opens a popover with available + frozen credits plus refresh / recharge. Clicking the avatar (or the signed-in identity on the canvas header) opens a menu with identity, credits, and **退出登录** — it must not log out immediately. Rapid avatar-menu logouts must not fire a second `/api/v1/auth/logout` after the token is gone. Clicking **充值** must create a z-pay order instead of `BindingException` from `RechargeOrderMapper.insertCreated`.
