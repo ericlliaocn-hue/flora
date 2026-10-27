@@ -200,10 +200,10 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                                             {t("membership.perMonth", { amount: perMonth })}
                                         </p>
                                         <div
-                                            className="mt-4 flex min-h-[7.25rem] flex-col rounded-lg border border-white/10 bg-black/30 px-2 py-2"
+                                            className="mt-4 flex h-[7.25rem] flex-col rounded-lg border border-white/10 bg-black/30 px-2 py-2"
                                         >
-                                            <div className="flex min-h-[1.75rem] items-center px-1">
-                                                {multiVariant ? (
+                                            {multiVariant ? (
+                                                <div className="flex min-h-[1.75rem] shrink-0 items-center px-1">
                                                     <div className="flex w-full gap-0.5 rounded-full bg-black/50 p-0.5">
                                                         {prices.map((v) => {
                                                             const selected = v.variant_code === price!.variant_code;
@@ -229,11 +229,9 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                                                             );
                                                         })}
                                                     </div>
-                                                ) : (
-                                                    <span className="block h-[1.75rem] w-full" aria-hidden />
-                                                )}
-                                            </div>
-                                            <div className="flex flex-1 flex-col items-center justify-center px-1 pt-1 text-center">
+                                                </div>
+                                            ) : null}
+                                            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 text-center">
                                                 <p className="text-lg font-bold tabular-nums text-white">
                                                     {price!.credits_per_month.toLocaleString()}
                                                 </p>
