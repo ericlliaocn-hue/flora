@@ -30,4 +30,8 @@ public interface RechargeOrderRepository {
     List<RechargeOrder> findPendingPayBefore(Instant before, int limit);
 
     List<RechargeOrder> findAdmin(UUID userId, String status, String outTradeNo, int limit);
+
+    int countPaidByUserAndProductCodeExcluding(UUID userId, String productCode, UUID excludeOrderId);
+
+    boolean updateBonusCredits(String outTradeNo, long bonusCredits);
 }

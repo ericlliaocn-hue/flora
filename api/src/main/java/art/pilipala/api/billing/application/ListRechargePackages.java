@@ -2,22 +2,24 @@ package art.pilipala.api.billing.application;
 
 import java.util.List;
 
-import art.pilipala.api.billing.infra.RechargeProperties;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ListRechargePackages {
 
-    private final RechargeProperties properties;
+    private final ListCreditProducts products;
 
-    public ListRechargePackages(RechargeProperties properties) {
-        this.properties = properties;
+    public ListRechargePackages(ListCreditProducts products) {
+        this.products = products;
     }
 
     public List<RechargePackageView> list() {
-        if (properties.packages() == null) {
-            return List.of();
-        }
-        return properties.packages().stream().map(RechargePackageView::of).toList();
+        return products.listEnabled(null).stream()
+                .map(p -> new RechargePackageView(
+                        p.code() != null ? p.code() : String.valueOf(p.id()),
+                        p.priceFen(),
+                        p.credits(),
+                        p.nameZh()))
+                .toList();
     }
 }

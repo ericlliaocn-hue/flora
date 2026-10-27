@@ -21,7 +21,7 @@ export function useRecharge() {
                 message.info(t("studio.recharge.unavailable"));
                 return;
             }
-            const order = await createRechargeOrder(packages[0].id);
+            const order = await createRechargeOrder({ productCode: packages[0].id });
             if (order.pay_url) {
                 window.open(order.pay_url, "_blank", "noopener,noreferrer");
             } else {

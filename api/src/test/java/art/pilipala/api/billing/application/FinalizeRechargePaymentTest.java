@@ -10,6 +10,8 @@ import art.pilipala.api.billing.domain.RechargeOrder;
 import art.pilipala.api.billing.domain.RechargeOrderStatus;
 import art.pilipala.api.billing.domain.WalletLedgerType;
 import art.pilipala.api.billing.infra.RechargeOrderRepository;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
+import art.pilipala.api.billing.support.InMemoryCreditProductStore;
 import art.pilipala.api.billing.support.InMemoryWalletStore;
 import org.junit.jupiter.api.Test;
 
@@ -21,9 +23,9 @@ class FinalizeRechargePaymentTest {
     @Test
     void idempotentPaidDoesNotDoubleTopup() {
         InMemoryWalletStore store = new InMemoryWalletStore();
-        WalletService wallets = new WalletService(store, store, store);
         StubOrders orders = new StubOrders(paidOrder());
-        FinalizeRechargePayment finalize = new FinalizeRechargePayment(orders, wallets);
+        SettleRechargePayment settle = settle(store, orders);
+        FinalizeRechargePayment finalize = new FinalizeRechargePayment(orders, settle);
 
         assertThat(finalize.applyPaid("flr_1", "t1", 1000)).isFalse();
         assertThat(store.findLedgerByUserId(USER)).isEmpty();
@@ -32,9 +34,9 @@ class FinalizeRechargePaymentTest {
     @Test
     void creditsOnceForPendingPay() {
         InMemoryWalletStore store = new InMemoryWalletStore();
-        WalletService wallets = new WalletService(store, store, store);
         StubOrders orders = new StubOrders(pendingOrder());
-        FinalizeRechargePayment finalize = new FinalizeRechargePayment(orders, wallets);
+        SettleRechargePayment settle = settle(store, orders);
+        FinalizeRechargePayment finalize = new FinalizeRechargePayment(orders, settle);
 
         assertThat(finalize.applyPaid("flr_1", "t1", 1000)).isTrue();
         assertThat(store.walletOf(USER).available()).isEqualTo(100);
@@ -44,16 +46,25 @@ class FinalizeRechargePaymentTest {
         assertThat(store.walletOf(USER).available()).isEqualTo(100);
     }
 
+    private static SettleRechargePayment settle(InMemoryWalletStore store, StubOrders orderRepo) {
+        InMemoryCreditGrantStore grantStore = new InMemoryCreditGrantStore();
+        CreditGrantService grantService = new CreditGrantService(grantStore, store, store);
+        WalletService wallets = new WalletService(store, store, store, grantService);
+        return new SettleRechargePayment(
+                orderRepo, new InMemoryCreditProductStore(), wallets, grantService, new FirstPurchaseBonusPolicy(orderRepo));
+    }
+
     private static RechargeOrder pendingOrder() {
         return new RechargeOrder(
                 ORDER_ID, USER, "flr_1", "zpay", null, "p10", 1000, 100, RechargeOrderStatus.PENDING_PAY,
-                "127.0.0.1", null, null, null, "n", null, null, null, null, Instant.now(), Instant.now());
+                "127.0.0.1", null, null, null, "n", null, null, 0L, null, null, null, null, Instant.now(),
+                Instant.now());
     }
 
     private static RechargeOrder paidOrder() {
         return new RechargeOrder(
                 ORDER_ID, USER, "flr_1", "zpay", "t1", "p10", 1000, 100, RechargeOrderStatus.PAID,
-                "127.0.0.1", null, null, null, "n", UUID.randomUUID(), Instant.now(), null, null,
+                "127.0.0.1", null, null, null, "n", null, null, 0L, UUID.randomUUID(), Instant.now(), null, null,
                 Instant.now(), Instant.now());
     }
 
@@ -94,22 +105,46 @@ class FinalizeRechargePaymentTest {
             if (order.status() == RechargeOrderStatus.PAID) {
                 return false;
             }
-            order = new RechargeOrder(order.id(), order.userId(), order.outTradeNo(), order.provider(),
-                    providerTradeNo, order.packageId(), order.moneyFen(), order.credits(), RechargeOrderStatus.PAID,
-                    order.clientIp(), order.device(), order.payUrl(), order.qrcodeUrl(), order.productName(),
-                    order.ledgerId(), Instant.now(), order.refundedAt(), order.failReason(), order.createdAt(),
-                    Instant.now());
+            order = copy(order, RechargeOrderStatus.PAID, providerTradeNo, order.ledgerId(), Instant.now());
             return true;
         }
 
         @Override
         public boolean attachLedger(String outTradeNo, UUID ledgerId) {
-            order = new RechargeOrder(order.id(), order.userId(), order.outTradeNo(), order.provider(),
-                    order.providerTradeNo(), order.packageId(), order.moneyFen(), order.credits(), order.status(),
-                    order.clientIp(), order.device(), order.payUrl(), order.qrcodeUrl(), order.productName(),
-                    ledgerId, order.paidAt(), order.refundedAt(), order.failReason(), order.createdAt(),
-                    Instant.now());
+            order = copy(order, order.status(), order.providerTradeNo(), ledgerId, order.paidAt());
             return true;
+        }
+
+        private static RechargeOrder copy(
+                RechargeOrder order,
+                RechargeOrderStatus status,
+                String providerTradeNo,
+                UUID ledgerId,
+                Instant paidAt) {
+            return new RechargeOrder(
+                    order.id(),
+                    order.userId(),
+                    order.outTradeNo(),
+                    order.provider(),
+                    providerTradeNo,
+                    order.packageId(),
+                    order.moneyFen(),
+                    order.credits(),
+                    status,
+                    order.clientIp(),
+                    order.device(),
+                    order.payUrl(),
+                    order.qrcodeUrl(),
+                    order.productName(),
+                    order.productId(),
+                    order.productCode(),
+                    order.bonusCredits(),
+                    ledgerId,
+                    paidAt,
+                    order.refundedAt(),
+                    order.failReason(),
+                    order.createdAt(),
+                    Instant.now());
         }
 
         @Override
@@ -130,6 +165,17 @@ class FinalizeRechargePaymentTest {
         @Override
         public java.util.List<RechargeOrder> findAdmin(UUID userId, String status, String outTradeNo, int limit) {
             return java.util.List.of();
+        }
+
+        @Override
+        public int countPaidByUserAndProductCodeExcluding(UUID userId, String productCode, UUID excludeOrderId) {
+            return 0;
+        }
+
+        @Override
+        public boolean updateBonusCredits(String outTradeNo, long bonusCredits) {
+            order = copy(order, order.status(), order.providerTradeNo(), order.ledgerId(), order.paidAt());
+            return true;
         }
     }
 }

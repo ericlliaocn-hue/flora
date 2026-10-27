@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] WP19 积分超市 Phase A：Flyway V14 库表驱动 SKU 与 `credit_grant` 到期批次、充值入账写 grant、消耗按最早到期扣减、过期 job、Admin 积分商品上下架、C 端积分超市弹层与自定义充值滑块；商品目录以 DB 为主并保留 yml 回退。
 + [调整] Studio 顶栏改为企业采购 / 积分超市 / 开通会员（可配置限时折扣角标），活动条默认开启并改为白底数字格倒计时，开关与文案由 `app_runtime_setting` 与 `GET /api/v1/studio/features` 控制。
 + [修复] 未登录不再显示假的「⚡ 100」积分；已登录点积分/闪电或头像会弹出余额与退出菜单，避免头像直接登出、连点重复打 logout。
 + [修复] 充值下单 `INSERT ... RETURNING` 改用 MyBatis `@Select`，避免生产点「充值」抛 `BindingException`。

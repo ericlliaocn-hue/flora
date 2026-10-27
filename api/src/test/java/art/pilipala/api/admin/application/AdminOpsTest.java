@@ -15,8 +15,10 @@ import art.pilipala.api.admin.domain.AdminJob;
 import art.pilipala.api.admin.support.InMemoryAdminStore;
 import art.pilipala.api.auth.domain.User;
 import art.pilipala.api.auth.infra.UserRepository;
+import art.pilipala.api.billing.application.CreditGrantService;
 import art.pilipala.api.billing.application.TopUpWallet;
 import art.pilipala.api.billing.application.WalletService;
+import art.pilipala.api.billing.support.InMemoryCreditGrantStore;
 import art.pilipala.api.billing.domain.WalletHold;
 import art.pilipala.api.billing.domain.WalletHoldStatus;
 import art.pilipala.api.billing.domain.WalletLedgerType;
@@ -256,7 +258,11 @@ class AdminOpsTest {
     // ----- 测试辅助 -----
 
     private static TopUpWallet topUpWallet(InMemoryWalletStore wallets) {
-        return new TopUpWallet(new WalletService(wallets, wallets, wallets), new BillingProperties(10, 0, 200, 50));
+        CreditGrantService grants = new CreditGrantService(new InMemoryCreditGrantStore(), wallets, wallets);
+        return new TopUpWallet(
+                new WalletService(wallets, wallets, wallets, grants),
+                new BillingProperties(10, 0, 200, 50),
+                grants);
     }
 
     private static AdminJobViewAssembler assembler(InMemoryJobStore jobs, InMemoryAdminStore admin) {

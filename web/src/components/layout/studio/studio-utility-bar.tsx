@@ -12,10 +12,11 @@ type StudioUtilityBarProps = {
     onOpenMenu: () => void;
     onToggleAgent: () => void;
     onRecharge: () => void;
+    onOpenCreditStore: () => void;
     agentPanelOpen: boolean;
 };
 
-export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentPanelOpen }: StudioUtilityBarProps) {
+export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, onOpenCreditStore, agentPanelOpen }: StudioUtilityBarProps) {
     const { t } = useTranslation();
     const features = useStudioFeatures();
     const user = useAuthStore((state) => state.user);
@@ -43,13 +44,11 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, agentP
 
             <div className="flex items-center gap-1.5 md:gap-2">
                 <QuietLink icon={Building2} label={t("studio.utilities.enterprise")} onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")} />
-                {user ? (
-                    <WalletBalancePopover>
-                        <QuietLink icon={Coins} label={t("studio.utilities.points")} />
-                    </WalletBalancePopover>
-                ) : (
-                    <QuietLink icon={Coins} label={t("studio.utilities.points")} onClick={() => setAuthModalOpen(true, "login")} />
-                )}
+                <QuietLink
+                    icon={Coins}
+                    label={t("studio.utilities.points")}
+                    onClick={onOpenCreditStore}
+                />
                 {features.membership_enabled ? (
                     <button
                         type="button"

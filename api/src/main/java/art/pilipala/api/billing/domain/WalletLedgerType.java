@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /**
  * 流水类型。取值与 {@code wallet_ledger.type} 的 CHECK 约束逐字一致：
- * {@code topup|freeze|confirm|release|refund}。
+ * {@code topup|freeze|confirm|release|refund|expire}。
  *
  * <p>方向约定（见 data-model/billing.md）：
  * topup 可用 +amount；freeze 可用 -amount、已冻 +amount；
@@ -16,7 +16,8 @@ public enum WalletLedgerType {
     FREEZE,
     CONFIRM,
     RELEASE,
-    REFUND;
+    REFUND,
+    EXPIRE;
 
     /** 小写形式，写 DB 用它。 */
     public String value() {

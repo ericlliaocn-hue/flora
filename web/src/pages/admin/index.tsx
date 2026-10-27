@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useAuthStore } from "@/stores/use-auth-store";
 import { I18nPanel } from "./components/i18n-panel";
 import { JobsPanel } from "./components/jobs-panel";
+import { CreditProductsPanel } from "./components/credit-products-panel";
 import { ModelsPanel } from "./components/models-panel";
 import { UsersPanel } from "./components/users-panel";
 
@@ -73,6 +74,11 @@ export default function AdminPage() {
                         { key: "jobs", label: t("admin.tabs.jobs"), children: <JobsPanel onForbidden={() => setForbidden(true)} /> },
                         { key: "i18n", label: t("admin.tabs.i18n"), children: <I18nPanel onForbidden={() => setForbidden(true)} /> },
                         { key: "models", label: t("admin.tabs.models"), children: <ModelsPanel onForbidden={() => setForbidden(true)} /> },
+                        {
+                            key: "creditProducts",
+                            label: t("admin.tabs.creditProducts"),
+                            children: <CreditProductsPanel onForbidden={() => setForbidden(true)} />,
+                        },
                     ]}
                 />
             </div>

@@ -15,12 +15,14 @@ import art.pilipala.api.billing.domain.RechargeOrder;
 public interface RechargeOrderMapper {
 
     String COLS = "id, user_id, out_trade_no, provider, provider_trade_no, package_id, money_fen, credits, "
-            + "status, client_ip, device, pay_url, qrcode_url, product_name, ledger_id, paid_at, refunded_at, "
-            + "fail_reason, created_at, updated_at";
+            + "status, client_ip, device, pay_url, qrcode_url, product_name, product_id, product_code, bonus_credits, "
+            + "ledger_id, paid_at, refunded_at, fail_reason, created_at, updated_at";
 
     @Select("INSERT INTO recharge_order (user_id, out_trade_no, provider, package_id, money_fen, credits, status, "
-            + "client_ip, device, product_name) VALUES (#{userId}, #{outTradeNo}, 'zpay', #{packageId}, "
-            + "#{moneyFen}, #{credits}, #{status}, #{clientIp}, #{device}, #{productName}) RETURNING " + COLS)
+            + "client_ip, device, product_name, product_id, product_code, bonus_credits) "
+            + "VALUES (#{userId}, #{outTradeNo}, 'zpay', #{packageId}, #{moneyFen}, #{credits}, #{status}, "
+            + "#{clientIp}, #{device}, #{productName}, #{productId}, #{productCode}, #{bonusCredits}) RETURNING "
+            + COLS)
     RechargeOrder insertCreated(@Param("userId") UUID userId,
             @Param("outTradeNo") String outTradeNo,
             @Param("packageId") String packageId,
@@ -29,7 +31,20 @@ public interface RechargeOrderMapper {
             @Param("status") String status,
             @Param("clientIp") String clientIp,
             @Param("device") String device,
-            @Param("productName") String productName);
+            @Param("productName") String productName,
+            @Param("productId") Long productId,
+            @Param("productCode") String productCode,
+            @Param("bonusCredits") long bonusCredits);
+
+    @Select("SELECT COUNT(*) FROM recharge_order WHERE user_id = #{userId} AND status = 'paid' "
+            + "AND product_code = #{productCode} AND id <> #{excludeOrderId}")
+    int countPaidByUserAndProductCodeExcluding(@Param("userId") UUID userId,
+            @Param("productCode") String productCode,
+            @Param("excludeOrderId") UUID excludeOrderId);
+
+    @Update("UPDATE recharge_order SET bonus_credits = #{bonusCredits}, updated_at = now() "
+            + "WHERE out_trade_no = #{outTradeNo}")
+    int updateBonusCredits(@Param("outTradeNo") String outTradeNo, @Param("bonusCredits") long bonusCredits);
 
     @Select("SELECT " + COLS + " FROM recharge_order WHERE out_trade_no = #{outTradeNo}")
     RechargeOrder findByOutTradeNo(@Param("outTradeNo") String outTradeNo);
