@@ -238,20 +238,14 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                             })}
                         </div>
 
-                        <div className="hidden items-center gap-3 text-[12px] sm:flex">
-                            <button type="button" className="inline-flex items-center gap-0.5 text-neutral-400 hover:text-neutral-200">
-                                {t("membership.enterprise")}
-                                <ChevronRight className="size-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-0.5 text-[#6eb8b2] hover:text-[#8ed4ce]"
-                                onClick={onClose}
-                            >
-                                {t("membership.pointsMarket")}
-                                <ChevronRight className="size-3.5" />
-                            </button>
-                        </div>
+                        <button
+                            type="button"
+                            className="hidden items-center gap-0.5 text-[12px] text-[#6eb8b2] hover:text-[#8ed4ce] sm:inline-flex"
+                            onClick={onClose}
+                        >
+                            {t("membership.pointsMarket")}
+                            <ChevronRight className="size-3.5" />
+                        </button>
                     </div>
                 </div>
 

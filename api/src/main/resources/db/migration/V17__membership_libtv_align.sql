@@ -6,11 +6,11 @@ SET benefits_json = v.benefits_json::jsonb,
     concurrency = v.concurrency
 FROM (
     VALUES
-        ('standard', 3, 2, '[{"zh":"每日登录送积分","en":"Daily login credits"},{"zh":"基础生图与编辑","en":"Core image tools"},{"zh":"画布项目本地保存","en":"Local canvas projects"}]'::text),
-        ('plus', 10, 4, '[{"zh":"进阶生图队列优先","en":"Faster image queue"},{"zh":"更多并发任务","en":"Higher concurrency"},{"zh":"素材库容量提升","en":"More asset storage"}]'::text),
-        ('pro', 30, NULL::int, '[{"zh":"工作流批量生成","en":"Batch workflows"},{"zh":"视频生成额度提升","en":"More video quota"},{"zh":"专属客服通道","en":"Priority support"}]'::text),
-        ('deluxe', 100, NULL::int, '[{"zh":"专业级存储与并发","en":"Pro storage & concurrency"},{"zh":"高阶模型折扣权益","en":"Premium model discounts"},{"zh":"团队协作预备席位","en":"Team seats ready"}]'::text),
-        ('ultra', 200, NULL::int, '[{"zh":"顶配积分与存储","en":"Top credits & storage"},{"zh":"全站模型权益最大化","en":"Maximum model perks"},{"zh":"定制方案对接","en":"Custom plan contact"}]'::text)
+        ('standard', 60, 2, '[{"zh":"每日登录送积分","en":"Daily login credits"},{"zh":"基础生图与编辑","en":"Core image tools"},{"zh":"画布项目本地保存","en":"Local canvas projects"}]'::text),
+        ('plus', 100, 4, '[{"zh":"进阶生图队列优先","en":"Faster image queue"},{"zh":"更多并发任务","en":"Higher concurrency"},{"zh":"素材库容量提升","en":"More asset storage"}]'::text),
+        ('pro', 300, NULL::int, '[{"zh":"工作流批量生成","en":"Batch workflows"},{"zh":"视频生成额度提升","en":"More video quota"},{"zh":"专属客服通道","en":"Priority support"}]'::text),
+        ('deluxe', 600, NULL::int, '[{"zh":"专业级存储与并发","en":"Pro storage & concurrency"},{"zh":"高阶模型折扣权益","en":"Premium model discounts"},{"zh":"团队协作预备席位","en":"Team seats ready"}]'::text),
+        ('ultra', 1000, NULL::int, '[{"zh":"顶配积分与存储","en":"Top credits & storage"},{"zh":"全站模型权益最大化","en":"Maximum model perks"},{"zh":"定制方案对接","en":"Custom plan contact"}]'::text)
 ) AS v(code, storage_gb, concurrency, benefits_json)
 WHERE mp.code = v.code;
 
