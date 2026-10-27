@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import art.pilipala.api.billing.domain.CreditProduct;
 import art.pilipala.api.billing.domain.RechargeOrder;
+import art.pilipala.api.billing.domain.RechargeOrderKind;
 import art.pilipala.api.billing.domain.RechargeOrderStatus;
 import art.pilipala.api.billing.infra.ClientIpResolver;
 import art.pilipala.api.billing.infra.OutTradeNoGenerator;
@@ -77,6 +78,8 @@ public class CreateRechargeOrder {
                 null,
                 null,
                 null,
+                null,
+                RechargeOrderKind.RECHARGE,
                 null,
                 null,
                 null));

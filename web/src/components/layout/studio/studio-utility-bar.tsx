@@ -11,12 +11,12 @@ import { formatAuthIdentity, useAuthStore } from "@/stores/use-auth-store";
 type StudioUtilityBarProps = {
     onOpenMenu: () => void;
     onToggleAgent: () => void;
-    onRecharge: () => void;
+    onOpenMembership: () => void;
     onOpenCreditStore: () => void;
     agentPanelOpen: boolean;
 };
 
-export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, onOpenCreditStore, agentPanelOpen }: StudioUtilityBarProps) {
+export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onOpenMembership, onOpenCreditStore, agentPanelOpen }: StudioUtilityBarProps) {
     const { t } = useTranslation();
     const features = useStudioFeatures();
     const user = useAuthStore((state) => state.user);
@@ -43,7 +43,13 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, onOpen
             </button>
 
             <div className="flex items-center gap-1.5 md:gap-2">
-                <QuietLink icon={Building2} label={t("studio.utilities.enterprise")} onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")} />
+                {features.enterprise_enabled ? (
+                    <QuietLink
+                        icon={Building2}
+                        label={t("studio.utilities.enterprise")}
+                        onClick={() => window.open(`mailto:${t("studio.enterpriseEmail")}`, "_self")}
+                    />
+                ) : null}
                 <QuietLink
                     icon={Coins}
                     label={t("studio.utilities.points")}
@@ -53,7 +59,7 @@ export function StudioUtilityBar({ onOpenMenu, onToggleAgent, onRecharge, onOpen
                     <button
                         type="button"
                         className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/[0.1] px-3 text-[12px] text-neutral-300 transition hover:border-white/[0.16] hover:text-neutral-100"
-                        onClick={onRecharge}
+                        onClick={onOpenMembership}
                     >
                         <Star className="size-3.5" strokeWidth={1.6} />
                         <span>{t("studio.utilities.membership")}</span>

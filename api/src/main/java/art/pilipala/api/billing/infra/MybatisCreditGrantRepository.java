@@ -55,4 +55,9 @@ public class MybatisCreditGrantRepository implements CreditGrantRepository {
     public List<CreditGrant> listActiveSummary(UUID userId, int limit) {
         return mapper.listActiveSummary(userId, limit);
     }
+
+    @Override
+    public List<CreditGrant> listSubscriptionRemainingForUpdate(UUID userId) {
+        return mapper.listSubscriptionRemainingForUpdate(userId);
+    }
 }

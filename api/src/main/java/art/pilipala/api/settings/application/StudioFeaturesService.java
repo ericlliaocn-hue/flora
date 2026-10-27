@@ -23,7 +23,8 @@ public class StudioFeaturesService {
                 settings.getString(StudioRuntimeKeys.PROMO_COPY, StudioRuntimeKeys.DEFAULT_PROMO_COPY),
                 settings.getString(StudioRuntimeKeys.PROMO_CTA, StudioRuntimeKeys.DEFAULT_PROMO_CTA),
                 settings.getBoolean(StudioRuntimeKeys.MEMBERSHIP_ENABLED, true),
-                settings.getString(StudioRuntimeKeys.MEMBERSHIP_BADGE, StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE));
+                settings.getString(StudioRuntimeKeys.MEMBERSHIP_BADGE, StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE),
+                settings.getBoolean(StudioRuntimeKeys.ENTERPRISE_ENABLED, false));
     }
 
     public record StudioFeaturesView(
@@ -33,6 +34,7 @@ public class StudioFeaturesService {
             String promoCopy,
             String promoCta,
             boolean membershipEnabled,
-            String membershipBadge) {
+            String membershipBadge,
+            boolean enterpriseEnabled) {
     }
 }

@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/use-auth-store";
 import { I18nPanel } from "./components/i18n-panel";
 import { JobsPanel } from "./components/jobs-panel";
 import { CreditProductsPanel } from "./components/credit-products-panel";
+import { MembershipPlansPanel } from "./components/membership-plans-panel";
 import { ModelsPanel } from "./components/models-panel";
 import { UsersPanel } from "./components/users-panel";
 
@@ -78,6 +79,11 @@ export default function AdminPage() {
                             key: "creditProducts",
                             label: t("admin.tabs.creditProducts"),
                             children: <CreditProductsPanel onForbidden={() => setForbidden(true)} />,
+                        },
+                        {
+                            key: "membershipPlans",
+                            label: t("admin.tabs.membershipPlans"),
+                            children: <MembershipPlansPanel onForbidden={() => setForbidden(true)} />,
                         },
                     ]}
                 />

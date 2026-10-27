@@ -10,6 +10,7 @@ import { StudioUtilityBar } from "@/components/layout/studio/studio-utility-bar"
 
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
 import { CreditSupermarketModal, useCreditSupermarket } from "@/components/layout/studio/credit-supermarket-modal";
+import { MembershipModal, useMembershipModal } from "@/components/layout/studio/membership-modal";
 import { useRecharge } from "@/hooks/use-recharge";
 import { useAgentStore } from "@/stores/use-agent-store";
 
@@ -22,6 +23,7 @@ export function StudioShell({ children }: StudioShellProps) {
     const hideChrome = /^\/canvas\/[^/]+/.test(pathname);
     const handleRecharge = useRecharge();
     const creditStore = useCreditSupermarket();
+    const membership = useMembershipModal();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [pluginsOpen, setPluginsOpen] = useState(false);
     const autoConnectRef = useRef(false);
@@ -59,7 +61,7 @@ export function StudioShell({ children }: StudioShellProps) {
                         <StudioUtilityBar
                             onOpenMenu={() => setMobileNavOpen(true)}
                             onToggleAgent={togglePanel}
-                            onRecharge={() => void handleRecharge()}
+                            onOpenMembership={membership.openMembership}
                             onOpenCreditStore={creditStore.openStore}
                             agentPanelOpen={panelOpen}
                         />
@@ -78,6 +80,7 @@ export function StudioShell({ children }: StudioShellProps) {
             />
             <AppConfigModal />
             <CreditSupermarketModal open={creditStore.open} onClose={creditStore.closeStore} />
+            <MembershipModal open={membership.open} onClose={membership.closeMembership} />
             <CanvasPluginManagerModal open={pluginsOpen} onClose={() => setPluginsOpen(false)} />
         </>
     );

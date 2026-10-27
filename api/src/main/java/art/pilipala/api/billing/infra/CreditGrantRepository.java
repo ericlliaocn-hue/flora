@@ -19,4 +19,6 @@ public interface CreditGrantRepository {
     List<CreditGrant> findExpiredForUpdate(Instant before, int limit);
 
     List<CreditGrant> listActiveSummary(UUID userId, int limit);
+
+    List<CreditGrant> listSubscriptionRemainingForUpdate(UUID userId);
 }

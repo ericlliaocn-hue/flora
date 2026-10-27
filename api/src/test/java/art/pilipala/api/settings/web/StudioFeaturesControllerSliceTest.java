@@ -35,7 +35,8 @@ class StudioFeaturesControllerSliceTest {
                 StudioRuntimeKeys.DEFAULT_PROMO_COPY,
                 StudioRuntimeKeys.DEFAULT_PROMO_CTA,
                 true,
-                StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE));
+                StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE,
+                false));
 
         mockMvc.perform(get("/api/v1/studio/features"))
                 .andExpect(status().isOk())
@@ -47,6 +48,7 @@ class StudioFeaturesControllerSliceTest {
                 .andExpect(jsonPath("$.data.promo_copy").value(StudioRuntimeKeys.DEFAULT_PROMO_COPY))
                 .andExpect(jsonPath("$.data.promo_cta").value(StudioRuntimeKeys.DEFAULT_PROMO_CTA))
                 .andExpect(jsonPath("$.data.membership_enabled").value(true))
-                .andExpect(jsonPath("$.data.membership_badge").value(StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE));
+                .andExpect(jsonPath("$.data.membership_badge").value(StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE))
+                .andExpect(jsonPath("$.data.enterprise_enabled").value(false));
     }
 }

@@ -8,6 +8,7 @@ export type StudioFeatures = {
     promo_cta: string;
     membership_enabled: boolean;
     membership_badge: string;
+    enterprise_enabled: boolean;
 };
 
 export const STUDIO_FEATURE_DEFAULTS: StudioFeatures = {
@@ -18,6 +19,7 @@ export const STUDIO_FEATURE_DEFAULTS: StudioFeatures = {
     promo_cta: "限时抢购",
     membership_enabled: true,
     membership_badge: "限时 4.6 折",
+    enterprise_enabled: false,
 };
 
 function readVite(name: "VITE_STUDIO_PROMO_STRIP" | "VITE_STUDIO_PROMO_END_AT"): string {
@@ -50,6 +52,7 @@ export function parseStudioFeatures(data: unknown): StudioFeatures {
         promo_cta: readString(row.promo_cta, STUDIO_FEATURE_DEFAULTS.promo_cta),
         membership_enabled: readBoolean(row.membership_enabled, STUDIO_FEATURE_DEFAULTS.membership_enabled),
         membership_badge: readString(row.membership_badge, STUDIO_FEATURE_DEFAULTS.membership_badge),
+        enterprise_enabled: readBoolean(row.enterprise_enabled, STUDIO_FEATURE_DEFAULTS.enterprise_enabled),
     };
 }
 

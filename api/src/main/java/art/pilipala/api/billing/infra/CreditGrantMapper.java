@@ -51,4 +51,8 @@ public interface CreditGrantMapper {
     @Select("SELECT " + COLS + " FROM credit_grant WHERE user_id = #{userId} AND credits_remaining > 0 "
             + "AND (expires_at IS NULL OR expires_at > now()) ORDER BY expires_at NULLS LAST, created_at LIMIT #{limit}")
     List<CreditGrant> listActiveSummary(@Param("userId") UUID userId, @Param("limit") int limit);
+
+    @Select("SELECT " + COLS + " FROM credit_grant WHERE user_id = #{userId} AND grant_type = 'subscription' "
+            + "AND credits_remaining > 0 FOR UPDATE")
+    List<CreditGrant> listSubscriptionRemainingForUpdate(@Param("userId") UUID userId);
 }

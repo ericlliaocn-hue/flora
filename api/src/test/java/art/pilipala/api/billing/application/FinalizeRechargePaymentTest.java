@@ -51,21 +51,26 @@ class FinalizeRechargePaymentTest {
         CreditGrantService grantService = new CreditGrantService(grantStore, store, store);
         WalletService wallets = new WalletService(store, store, store, grantService);
         return new SettleRechargePayment(
-                orderRepo, new InMemoryCreditProductStore(), wallets, grantService, new FirstPurchaseBonusPolicy(orderRepo));
+                orderRepo,
+                new InMemoryCreditProductStore(),
+                wallets,
+                grantService,
+                new FirstPurchaseBonusPolicy(orderRepo),
+                null);
     }
 
     private static RechargeOrder pendingOrder() {
         return new RechargeOrder(
                 ORDER_ID, USER, "flr_1", "zpay", null, "p10", 1000, 100, RechargeOrderStatus.PENDING_PAY,
-                "127.0.0.1", null, null, null, "n", null, null, 0L, null, null, null, null, Instant.now(),
-                Instant.now());
+                "127.0.0.1", null, null, null, "n", null, null, 0L, null, null, null, null,
+                art.pilipala.api.billing.domain.RechargeOrderKind.RECHARGE, null, Instant.now(), Instant.now());
     }
 
     private static RechargeOrder paidOrder() {
         return new RechargeOrder(
                 ORDER_ID, USER, "flr_1", "zpay", "t1", "p10", 1000, 100, RechargeOrderStatus.PAID,
                 "127.0.0.1", null, null, null, "n", null, null, 0L, UUID.randomUUID(), Instant.now(), null, null,
-                Instant.now(), Instant.now());
+                art.pilipala.api.billing.domain.RechargeOrderKind.RECHARGE, null, Instant.now(), Instant.now());
     }
 
     private static final class StubOrders implements RechargeOrderRepository {
@@ -143,6 +148,8 @@ class FinalizeRechargePaymentTest {
                     paidAt,
                     order.refundedAt(),
                     order.failReason(),
+                    order.orderKind(),
+                    order.planPriceId(),
                     order.createdAt(),
                     Instant.now());
         }

@@ -19,8 +19,14 @@ test("parseStudioFeatures fills brief defaults and keeps snake_case fields", () 
         promo_cta: "限时抢购",
         membership_enabled: true,
         membership_badge: "限时 4.6 折",
+        enterprise_enabled: false,
     });
     expect(parsed).toEqual(STUDIO_FEATURE_DEFAULTS);
+});
+
+test("parseStudioFeatures defaults enterprise procurement to off", () => {
+    expect(parseStudioFeatures({}).enterprise_enabled).toBe(false);
+    expect(parseStudioFeatures({ enterprise_enabled: true }).enterprise_enabled).toBe(true);
 });
 
 test("parseStudioFeatures uses defaults for missing keys and keeps an empty membership badge", () => {
@@ -64,6 +70,7 @@ test("fetchStudioFeatures reads GET /api/v1/studio/features", async () => {
                     promo_cta: "马上充值",
                     membership_enabled: true,
                     membership_badge: "",
+                    enterprise_enabled: false,
                 },
                 error_code: null,
                 message: null,

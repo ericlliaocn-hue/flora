@@ -123,6 +123,44 @@ public class CreditGrantService {
                 null);
     }
 
+    @Transactional
+    public long grantForSubscription(UUID userId, Wallet wallet, String sourceId, long credits, Instant expiresAt) {
+        if (credits <= 0) {
+            return 0;
+        }
+        grants.insert(new CreditGrant(
+                0L,
+                userId,
+                wallet.id(),
+                "subscription",
+                sourceId,
+                "subscription",
+                credits,
+                credits,
+                expiresAt,
+                null,
+                Instant.now()));
+        return credits;
+    }
+
+    @Transactional
+    public long clearSubscriptionGrantRemaining(UUID userId, UUID walletId) {
+        long total = 0;
+        for (CreditGrant grant : grants.listSubscriptionRemainingForUpdate(userId)) {
+            long left = grant.creditsRemaining();
+            if (left <= 0) {
+                continue;
+            }
+            if (!wallets.deductAvailable(walletId, left)) {
+                log.warn("订阅重置扣减 available 失败 grant={} wallet={}", grant.id(), walletId);
+            }
+            grants.updateRemaining(grant.id(), 0);
+            ledger.insert(grant.walletId(), grant.userId(), WalletLedgerType.EXPIRE, -left, null, null, null);
+            total += left;
+        }
+        return total;
+    }
+
     private static Instant expiresAt(CreditProduct product) {
         if (product == null || product.validityDays() == null) {
             return null;
