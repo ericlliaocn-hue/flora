@@ -483,6 +483,16 @@ export default {
         cta: "立即开通",
         footerReset: "订阅积分每 31 天重置；未使用部分不结转。",
         activityPlaceholder: "限时活动权益以运营配置为准。",
+        enterprise: "企业采购",
+        limitedActivity: "限时活动",
+        lowestPriceTag: "全网触底价",
+        giftMonths: "加赠{{count}}个月",
+        storageGb: "{{gb}} GB 云存储空间",
+        cycleDiscount: {
+            year: "限时 45折",
+            quarter: "74折",
+            month: "87折",
+        },
         cycles: {
             year: "连续包年",
             quarter: "连续包季",

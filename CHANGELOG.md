@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [调整] 会员弹层对齐 LibTV 参考稿：积分子档切换移至积分暗盒上方固定行、至尊版三档与「加赠」角标、限时活动权益区与分层 CTA；Flyway V17 同步周期价与 `ultra_92` 档，API 暴露 `gift_months`。
 + [修复] 会员弹层五档卡片：积分档位切换并入固定高度积分区块，五列「立即开通」横向对齐；Flyway V16 为高级版/至尊版补齐连续包季/包年子 SKU 与包月一致。
 + [修复] 会员弹层与积分超市弹层：计费周期/分类 Tab 白底选中态与「立即开通」按钮在 antd `button { color: inherit }` 下恢复可读对比度（`studio-solid-on-white`；开通 CTA 统一珊瑚底白字）。
 + [新增] WP20 开通会员 Phase B：Flyway V15 会员档/周期价/用户订阅、z-pay 开通回调激活订阅并发放 subscription grant、订阅周期重置 job、C 端会员弹层与 Admin 会员套餐上下架；顶栏「开通会员」进入会员弹层。
