@@ -483,6 +483,16 @@ export default {
         cta: "Subscribe",
         footerReset: "Subscription credits reset every 31 days; unused balance does not roll over.",
         activityPlaceholder: "Limited-time perks follow live ops configuration.",
+        enterprise: "Enterprise",
+        limitedActivity: "Limited offers",
+        lowestPriceTag: "Best rate",
+        giftMonths: "+{{count}} mo free",
+        storageGb: "{{gb}} GB storage",
+        cycleDiscount: {
+            year: "45% off",
+            quarter: "26% off",
+            month: "13% off",
+        },
         cycles: {
             year: "Annual",
             quarter: "Quarterly",

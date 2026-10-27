@@ -85,6 +85,7 @@ public class ListMembershipPlans {
             Integer list_price_fen,
             Integer renew_price_fen,
             String badge_zh,
+            int gift_months,
             int sort_order) {
 
         static MembershipPlanPriceView of(MembershipPlanPrice price) {
@@ -97,6 +98,7 @@ public class ListMembershipPlans {
                     price.listPriceFen(),
                     price.renewPriceFen(),
                     price.badgeZh(),
+                    price.giftMonths(),
                     price.sortOrder());
         }
     }

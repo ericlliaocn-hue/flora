@@ -10,6 +10,7 @@ export type MembershipPlanPrice = {
     list_price_fen?: number | null;
     renew_price_fen?: number | null;
     badge_zh?: string | null;
+    gift_months?: number;
     sort_order: number;
 };
 
