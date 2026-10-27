@@ -482,6 +482,7 @@ export default {
         perMonth: "About ¥{{amount}} / month",
         cta: "Subscribe",
         footerReset: "Subscription credits reset every 31 days; unused balance does not roll over.",
+        moreBenefits: "More benefits",
         activityPlaceholder: "Limited-time perks follow live ops configuration.",
         enterprise: "Enterprise",
         limitedActivity: "Limited offers",

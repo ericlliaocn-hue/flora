@@ -1,24 +1,11 @@
-import { App, Switch } from "antd";
-import { Check, ChevronRight, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import {
-    checkoutMembership,
-    fetchMembershipMe,
-    fetchMembershipPlans,
-    type MembershipPlan,
-    type MembershipPlanPrice,
-} from "@/services/api/pilipala-membership";
-import { useAuthStore } from "@/stores/use-auth-store";
+import type { MembershipPlan, MembershipPlanPrice } from "@/services/api/pilipala-membership";
 
-const CYCLES = ["year", "quarter", "month"] as const;
-type Cycle = (typeof CYCLES)[number];
-
-type MembershipModalProps = {
-    open: boolean;
-    onClose: () => void;
-};
+export const MEMBERSHIP_CYCLES = ["year", "quarter", "month"] as const;
+export type MembershipCycle = (typeof MEMBERSHIP_CYCLES)[number];
 
 type ActivityRow = { ok: boolean; zh: string; en: string };
 
@@ -52,23 +39,18 @@ const PLAN_ACTIVITY: Record<string, ActivityRow[]> = {
     ],
 };
 
-export function useMembershipModal() {
-    const [open, setOpen] = useState(false);
-    return { open, openMembership: () => setOpen(true), closeMembership: () => setOpen(false) };
-}
-
-function formatYuan(fen: number): string {
+export function formatYuan(fen: number): string {
     const yuan = fen / 100;
     return yuan % 1 === 0 ? String(Math.round(yuan)) : yuan.toFixed(2);
 }
 
-function cycleMonths(cycle: Cycle): number {
+export function cycleMonths(cycle: MembershipCycle): number {
     if (cycle === "year") return 12;
     if (cycle === "quarter") return 3;
     return 1;
 }
 
-function cycleLabel(cycle: Cycle, localeZh: boolean): string {
+function cycleLabel(cycle: MembershipCycle, localeZh: boolean): string {
     if (localeZh) return ({ year: "年", quarter: "季", month: "月" } as const)[cycle];
     return ({ year: "yr", quarter: "qtr", month: "mo" } as const)[cycle];
 }
@@ -79,15 +61,15 @@ function formatCreditsK(credits: number, localeZh: boolean): string {
     return `${kStr}K${localeZh ? "/月" : "/mo"}`;
 }
 
-function defaultVariantCode(prices: MembershipPlanPrice[], cycle: Cycle): string {
+export function defaultVariantCode(prices: MembershipPlanPrice[], cycle: MembershipCycle): string {
     if (!prices.length) return "default";
     return cycle === "month" ? prices[0].variant_code : prices[prices.length - 1].variant_code;
 }
 
-function perCreditYuan(price: MembershipPlanPrice, cycle: Cycle): string {
+function perCreditYuan(price: MembershipPlanPrice, cycle: MembershipCycle): string {
     const gift = price.gift_months ?? 0;
     const totalMonths = cycleMonths(cycle) + gift;
-    const perCredit = (price.price_fen / 100) / (price.credits_per_month * totalMonths);
+    const perCredit = price.price_fen / 100 / (price.credits_per_month * totalMonths);
     const rounded = Number(perCredit.toFixed(3));
     return String(rounded);
 }
@@ -103,181 +85,7 @@ function parseBenefits(plan: MembershipPlan, localeZh: boolean): string[] {
     }
 }
 
-export function MembershipModal({ open, onClose }: MembershipModalProps) {
-    const { t, i18n } = useTranslation();
-    const { message } = App.useApp();
-    const user = useAuthStore((state) => state.user);
-    const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
-    const [loading, setLoading] = useState(false);
-    const [plans, setPlans] = useState<MembershipPlan[]>([]);
-    const [cycle, setCycle] = useState<Cycle>("year");
-    const [teamMode, setTeamMode] = useState(false);
-    const [variants, setVariants] = useState<Record<string, string>>({});
-
-    const localeZh = i18n.language.startsWith("zh");
-    const audience = teamMode ? "team" : "personal";
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        try {
-            setPlans(await fetchMembershipPlans());
-            if (user) {
-                await fetchMembershipMe().catch(() => null);
-            }
-        } catch {
-            message.error(t("membership.loadFailed"));
-        } finally {
-            setLoading(false);
-        }
-    }, [message, t, user]);
-
-    useEffect(() => {
-        if (open) void load();
-    }, [open, load]);
-
-    useEffect(() => {
-        if (!open) return;
-        setVariants((prev) => {
-            const next = { ...prev };
-            for (const plan of plans.filter((p) => p.audience === "personal")) {
-                const prices = plan.prices.filter((p) => p.cycle === cycle);
-                if (prices.length <= 1) continue;
-                const current = prev[plan.code];
-                if (!current || !prices.some((p) => p.variant_code === current)) {
-                    next[plan.code] = defaultVariantCode(prices, cycle);
-                }
-            }
-            return next;
-        });
-    }, [cycle, open, plans]);
-
-    const cards = useMemo(() => {
-        return plans
-            .filter((p) => p.audience === audience)
-            .map((plan) => {
-                const prices = plan.prices.filter((p) => p.cycle === cycle);
-                const variantCode = variants[plan.code] ?? defaultVariantCode(prices, cycle);
-                const price = prices.find((p) => p.variant_code === variantCode) ?? prices[0];
-                return { plan, price, prices };
-            })
-            .filter((row) => row.price);
-    }, [plans, cycle, audience, variants]);
-
-    const checkout = async (price: MembershipPlanPrice) => {
-        if (!user) {
-            setAuthModalOpen(true, "login");
-            return;
-        }
-        try {
-            const order = await checkoutMembership(price.id);
-            if (order.pay_url) {
-                window.open(order.pay_url, "_blank", "noopener,noreferrer");
-            } else {
-                message.info(t("studio.recharge.unavailable"));
-            }
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("membership.checkoutFailed"));
-        }
-    };
-
-    if (!open) return null;
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
-            <button type="button" className="absolute inset-0 bg-black/70 backdrop-blur-sm" aria-label={t("common.close")} onClick={onClose} />
-            <div
-                className="relative z-[1] flex max-h-[92vh] w-full max-w-[1180px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d]/98 shadow-2xl"
-                role="dialog"
-                aria-modal="true"
-            >
-                <button
-                    type="button"
-                    className="absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-full text-neutral-400 hover:bg-white/10 hover:text-neutral-100"
-                    onClick={onClose}
-                >
-                    <X className="size-4" />
-                </button>
-
-                <div className="border-b border-white/[0.06] px-5 pb-4 pt-5 sm:px-8">
-                    <p className="text-center text-[13px] text-neutral-400">{t("membership.promoLine")}</p>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <label className="flex items-center gap-2 text-[12px] text-neutral-400">
-                            <span>{t("membership.team")}</span>
-                            <Switch size="small" checked={teamMode} onChange={setTeamMode} />
-                        </label>
-
-                        <div className="mx-auto flex rounded-full bg-white/[0.06] p-1">
-                            {CYCLES.map((c) => {
-                                const active = cycle === c;
-                                const discountKey = `membership.cycleDiscount.${c}` as const;
-                                const discount = t(discountKey);
-                                const yearHighlight = c === "year";
-                                return (
-                                    <button
-                                        key={c}
-                                        type="button"
-                                        className={`rounded-full px-4 py-1.5 text-[12px] transition ${
-                                            active
-                                                ? "bg-white/[0.12] font-semibold text-white"
-                                                : "text-neutral-400 hover:text-neutral-200"
-                                        }`}
-                                        onClick={() => setCycle(c)}
-                                    >
-                                        {t(`membership.cycles.${c}`)}
-                                        {discount ? (
-                                            <span
-                                                className={`ml-1 text-[11px] font-semibold ${
-                                                    yearHighlight ? "text-[#ff8a65]" : "text-neutral-500"
-                                                }`}
-                                            >
-                                                {discount}
-                                            </span>
-                                        ) : null}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <button
-                            type="button"
-                            className="hidden items-center gap-0.5 text-[12px] text-[#6eb8b2] hover:text-[#8ed4ce] sm:inline-flex"
-                            onClick={onClose}
-                        >
-                            {t("membership.pointsMarket")}
-                            <ChevronRight className="size-3.5" />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
-                    {audience === "team" ? (
-                        <p className="py-16 text-center text-sm text-neutral-400">{t("membership.teamStub")}</p>
-                    ) : loading ? (
-                        <p className="py-16 text-center text-sm text-neutral-500">{t("common.loading")}</p>
-                    ) : (
-                        <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-2 xl:grid-cols-5">
-                            {cards.map(({ plan, price, prices }) => (
-                                <PlanCard
-                                    key={plan.code}
-                                    plan={plan}
-                                    price={price!}
-                                    prices={prices}
-                                    cycle={cycle}
-                                    localeZh={localeZh}
-                                    onSelectVariant={(code) => setVariants((prev) => ({ ...prev, [plan.code]: code }))}
-                                    onCheckout={() => void checkout(price!)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
-                <p className="border-t border-white/[0.06] px-6 py-3 text-center text-[11px] text-neutral-500">{t("membership.footerReset")}</p>
-            </div>
-        </div>
-    );
-}
-
-function PlanCard({
+export function MembershipPlanCard({
     plan,
     price,
     prices,
@@ -289,7 +97,7 @@ function PlanCard({
     plan: MembershipPlan;
     price: MembershipPlanPrice;
     prices: MembershipPlanPrice[];
-    cycle: Cycle;
+    cycle: MembershipCycle;
     localeZh: boolean;
     onSelectVariant: (code: string) => void;
     onCheckout: () => void;
@@ -353,25 +161,25 @@ function PlanCard({
     const activityTitleClass = isUltra ? "text-[#E8867A]" : isDeluxe ? "text-[#5ce1e6]" : "text-[#6eb8b2]";
 
     return (
-        <div className={`flex h-full min-h-0 min-w-0 flex-col rounded-xl border bg-white/[0.02] p-4 ${borderClass}`}>
-            <div className="-mx-4 -mt-4 mb-3 h-2 shrink-0 overflow-hidden rounded-t-xl" aria-hidden>
+        <div className={`flex h-full min-h-0 min-w-0 flex-col rounded-2xl border bg-white/[0.02] p-5 ${borderClass}`}>
+            <div className="-mx-5 -mt-5 mb-4 h-2 shrink-0 overflow-hidden rounded-t-2xl" aria-hidden>
                 {isDeluxe ? <div className="h-full bg-gradient-to-r from-[#2bb8d6] to-[#5ce1e6]" /> : null}
                 {isUltra ? <div className="h-full bg-gradient-to-r from-[#ff7a2f] to-[#ff4d00]" /> : null}
             </div>
 
             <div className="flex min-h-[46px] shrink-0 items-start justify-between gap-2">
                 <div className="min-w-0">
-                    <h3 className="text-[16px] font-semibold leading-tight text-white">{name}</h3>
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-500">{t(`membership.tagline.${plan.code}`)}</p>
+                    <h3 className="text-[17px] font-semibold leading-tight text-white">{name}</h3>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] text-neutral-500">{t(`membership.tagline.${plan.code}`)}</p>
                 </div>
                 {price.badge_zh ? (
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeClass}`}>{price.badge_zh}</span>
                 ) : null}
             </div>
 
-            <div className="mt-3 flex h-9 shrink-0 flex-wrap items-baseline gap-1.5">
-                <span className="text-[28px] font-bold leading-none tabular-nums text-white">¥{priceYuan}</span>
-                <span className="text-[13px] text-neutral-300">/{cycleLabel(cycle, localeZh)}</span>
+            <div className="mt-4 flex h-9 shrink-0 flex-wrap items-baseline gap-1.5">
+                <span className="text-[30px] font-bold leading-none tabular-nums text-white">¥{priceYuan}</span>
+                <span className="text-[14px] text-neutral-300">/{cycleLabel(cycle, localeZh)}</span>
                 {listYuan ? <span className="text-[12px] text-neutral-500 line-through">¥{listYuan}</span> : null}
             </div>
             <p className="mt-2 min-h-[2.75rem] shrink-0 text-[11px] leading-snug text-neutral-500 line-clamp-3">{subtitle}</p>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { StudioMobileDrawer } from "@/components/layout/studio/studio-mobile-drawer";
@@ -10,7 +10,6 @@ import { StudioUtilityBar } from "@/components/layout/studio/studio-utility-bar"
 
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
 import { CreditSupermarketModal, useCreditSupermarket } from "@/components/layout/studio/credit-supermarket-modal";
-import { MembershipModal, useMembershipModal } from "@/components/layout/studio/membership-modal";
 import { useRecharge } from "@/hooks/use-recharge";
 import { useAgentStore } from "@/stores/use-agent-store";
 
@@ -20,10 +19,11 @@ type StudioShellProps = {
 
 export function StudioShell({ children }: StudioShellProps) {
     const { pathname } = useLocation();
+    const navigate = useNavigate();
     const hideChrome = /^\/canvas\/[^/]+/.test(pathname);
+    const isMembershipPage = pathname === "/billing/membership";
     const handleRecharge = useRecharge();
     const creditStore = useCreditSupermarket();
-    const membership = useMembershipModal();
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [pluginsOpen, setPluginsOpen] = useState(false);
     const autoConnectRef = useRef(false);
@@ -61,11 +61,13 @@ export function StudioShell({ children }: StudioShellProps) {
                         <StudioUtilityBar
                             onOpenMenu={() => setMobileNavOpen(true)}
                             onToggleAgent={togglePanel}
-                            onOpenMembership={membership.openMembership}
+                            onOpenMembership={() => navigate("/billing/membership")}
                             onOpenCreditStore={creditStore.openStore}
                             agentPanelOpen={panelOpen}
                         />
-                        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+                        <div className={`min-h-0 flex-1 ${isMembershipPage ? "overflow-y-auto" : "overflow-hidden"}`}>
+                            {children}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -80,7 +82,6 @@ export function StudioShell({ children }: StudioShellProps) {
             />
             <AppConfigModal />
             <CreditSupermarketModal open={creditStore.open} onClose={creditStore.closeStore} />
-            <MembershipModal open={membership.open} onClose={membership.closeMembership} />
             <CanvasPluginManagerModal open={pluginsOpen} onClose={() => setPluginsOpen(false)} />
         </>
     );

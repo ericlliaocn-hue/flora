@@ -482,6 +482,7 @@ export default {
         perMonth: "约合 ¥{{amount}} / 月",
         cta: "立即开通",
         footerReset: "订阅积分每 31 天重置；未使用部分不结转。",
+        moreBenefits: "更多权益",
         activityPlaceholder: "限时活动权益以运营配置为准。",
         enterprise: "企业采购",
         limitedActivity: "限时活动",
