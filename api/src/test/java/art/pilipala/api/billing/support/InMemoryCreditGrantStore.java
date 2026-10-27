@@ -82,6 +82,13 @@ public class InMemoryCreditGrantStore implements CreditGrantRepository {
         return listByUser(userId, limit);
     }
 
+    @Override
+    public List<CreditGrant> listSubscriptionRemainingForUpdate(UUID userId) {
+        return grants.stream()
+                .filter(g -> g.userId().equals(userId) && "subscription".equals(g.grantType()) && g.creditsRemaining() > 0)
+                .toList();
+    }
+
     public List<CreditGrant> all() {
         return List.copyOf(grants);
     }

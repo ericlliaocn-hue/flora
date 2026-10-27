@@ -33,7 +33,9 @@ public class MybatisRechargeOrderRepository implements RechargeOrderRepository {
                 draft.productName(),
                 draft.productId(),
                 draft.productCode(),
-                draft.bonusCredits());
+                draft.bonusCredits(),
+                draft.orderKind().value(),
+                draft.planPriceId());
     }
 
     @Override

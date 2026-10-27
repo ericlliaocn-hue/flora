@@ -12,6 +12,7 @@ public final class StudioRuntimeKeys {
     public static final String PROMO_CTA = "studio.promo.cta";
     public static final String MEMBERSHIP_BADGE = "studio.membership.badge";
     public static final String MEMBERSHIP_ENABLED = "studio.membership.enabled";
+    public static final String ENTERPRISE_ENABLED = "studio.enterprise.enabled";
 
     public static final String DEFAULT_PROMO_END_AT = "2026-11-15T15:59:59.000Z";
     public static final String DEFAULT_PROMO_TITLE = "预付费加赠限时开启";

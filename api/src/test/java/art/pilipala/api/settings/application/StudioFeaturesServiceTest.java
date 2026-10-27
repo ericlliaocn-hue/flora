@@ -41,6 +41,7 @@ class StudioFeaturesServiceTest {
         assertThat(view.promoCta()).isEqualTo(StudioRuntimeKeys.DEFAULT_PROMO_CTA);
         assertThat(view.membershipEnabled()).isTrue();
         assertThat(view.membershipBadge()).isEqualTo(StudioRuntimeKeys.DEFAULT_MEMBERSHIP_BADGE);
+        assertThat(view.enterpriseEnabled()).isFalse();
     }
 
     @Test

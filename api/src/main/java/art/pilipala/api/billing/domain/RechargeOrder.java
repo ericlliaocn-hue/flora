@@ -28,6 +28,8 @@ public record RechargeOrder(
         Instant paidAt,
         Instant refundedAt,
         String failReason,
+        RechargeOrderKind orderKind,
+        Long planPriceId,
         Instant createdAt,
         Instant updatedAt) {
 }

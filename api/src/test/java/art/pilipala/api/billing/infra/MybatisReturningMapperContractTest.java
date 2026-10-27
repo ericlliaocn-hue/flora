@@ -61,7 +61,9 @@ class MybatisReturningMapperContractTest {
                 String.class,
                 Long.class,
                 String.class,
-                long.class);
+                long.class,
+                String.class,
+                Long.class);
         assertThat(method.getReturnType()).isEqualTo(RechargeOrder.class);
         assertThat(method.isAnnotationPresent(Select.class)).isTrue();
         assertThat(method.isAnnotationPresent(Insert.class)).isFalse();

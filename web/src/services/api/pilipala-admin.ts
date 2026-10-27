@@ -183,3 +183,50 @@ export function adminSetCreditProductEnabled(id: number, enabled: boolean, fetch
         fetchImpl,
     });
 }
+
+export type PilipalaAdminMembershipPlan = {
+    id: number;
+    code: string;
+    name_zh: string;
+    name_en: string;
+    sort_order: number;
+    credits_per_month: number;
+    enabled: boolean;
+};
+
+export type PilipalaAdminMembershipPlanPrice = {
+    id: number;
+    plan_id: number;
+    cycle: string;
+    variant_code: string;
+    credits_per_month: number;
+    price_fen: number;
+    list_price_fen?: number | null;
+    badge_zh?: string | null;
+    enabled: boolean;
+};
+
+export function fetchAdminMembershipPlans(fetchImpl?: typeof fetch) {
+    return pilipalaRequest<PilipalaAdminMembershipPlan[]>("/api/v1/admin/membership-plans", { fetchImpl });
+}
+
+export function fetchAdminMembershipPlanPrices(planId?: number, fetchImpl?: typeof fetch) {
+    const q = planId != null ? `?plan_id=${planId}` : "";
+    return pilipalaRequest<PilipalaAdminMembershipPlanPrice[]>(`/api/v1/admin/membership-plans/prices${q}`, { fetchImpl });
+}
+
+export function adminSetMembershipPlanEnabled(id: number, enabled: boolean, fetchImpl?: typeof fetch) {
+    const action = enabled ? "enable" : "disable";
+    return pilipalaRequest<PilipalaAdminMembershipPlan>(`/api/v1/admin/membership-plans/${id}/${action}`, {
+        method: "POST",
+        fetchImpl,
+    });
+}
+
+export function adminSetMembershipPlanPriceEnabled(id: number, enabled: boolean, fetchImpl?: typeof fetch) {
+    const action = enabled ? "enable" : "disable";
+    return pilipalaRequest<PilipalaAdminMembershipPlanPrice>(`/api/v1/admin/membership-plans/prices/${id}/${action}`, {
+        method: "POST",
+        fetchImpl,
+    });
+}

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import art.pilipala.api.billing.domain.CreditProduct;
 import art.pilipala.api.billing.domain.RechargeOrder;
+import art.pilipala.api.billing.domain.RechargeOrderKind;
 import art.pilipala.api.billing.domain.Wallet;
 import art.pilipala.api.billing.domain.WalletLedgerEntry;
 import art.pilipala.api.billing.infra.CreditProductRepository;
@@ -20,22 +21,28 @@ public class SettleRechargePayment {
     private final WalletService wallets;
     private final CreditGrantService grantService;
     private final FirstPurchaseBonusPolicy firstPurchase;
+    private final MembershipActivationService membershipActivation;
 
     public SettleRechargePayment(
             RechargeOrderRepository orders,
             CreditProductRepository products,
             WalletService wallets,
             CreditGrantService grantService,
-            FirstPurchaseBonusPolicy firstPurchase) {
+            FirstPurchaseBonusPolicy firstPurchase,
+            MembershipActivationService membershipActivation) {
         this.orders = orders;
         this.products = products;
         this.wallets = wallets;
         this.grantService = grantService;
         this.firstPurchase = firstPurchase;
+        this.membershipActivation = membershipActivation;
     }
 
     @Transactional
     public WalletLedgerEntry creditOrder(RechargeOrder order) {
+        if (order.orderKind() == RechargeOrderKind.MEMBERSHIP) {
+            return membershipActivation.activateFromPaidOrder(order);
+        }
         Wallet wallet = wallets.ensureWallet(order.userId());
         Optional<CreditProduct> product = order.productId() != null
                 ? products.findById(order.productId())
