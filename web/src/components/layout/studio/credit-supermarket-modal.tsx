@@ -2,6 +2,7 @@ import { App, Slider } from "antd";
 import { Gift, SlidersHorizontal, Sparkles, Trophy, X, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { create } from "zustand";
 
 import { meetsMinMembershipPlan } from "@/services/api/pilipala-membership";
 import { createRechargeOrder } from "@/services/api/pilipala-recharge";
@@ -313,12 +314,21 @@ function parseCustomMeta(raw?: string | null): CustomMeta {
     }
 }
 
+type CreditSupermarketUiState = {
+    open: boolean;
+    openStore: () => void;
+    closeStore: () => void;
+};
+
+export const useCreditSupermarketUi = create<CreditSupermarketUiState>((set) => ({
+    open: false,
+    openStore: () => set({ open: true }),
+    closeStore: () => set({ open: false }),
+}));
+
 export function useCreditSupermarket() {
-    const [open, setOpen] = useState(false);
-
-    const openStore = () => {
-        setOpen(true);
-    };
-
-    return { open, openStore, closeStore: () => setOpen(false) };
+    const open = useCreditSupermarketUi((s) => s.open);
+    const openStore = useCreditSupermarketUi((s) => s.openStore);
+    const closeStore = useCreditSupermarketUi((s) => s.closeStore);
+    return { open, openStore, closeStore };
 }
