@@ -199,32 +199,45 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                                         <p className="mt-1 text-[11px] text-neutral-500">
                                             {t("membership.perMonth", { amount: perMonth })}
                                         </p>
-                                        <div className="mt-4 rounded-lg border border-white/10 bg-black/30 px-3 py-3 text-center">
-                                            <p className="text-lg font-bold tabular-nums text-white">
-                                                {price!.credits_per_month.toLocaleString()}
-                                            </p>
-                                            <p className="text-[11px] text-neutral-500">{t("membership.creditsPerMonth")}</p>
-                                        </div>
-                                        {multiVariant ? (
-                                            <div className="mt-2 flex gap-1 rounded-full bg-black/40 p-0.5">
-                                                {prices.map((v) => (
-                                                    <button
-                                                        key={v.variant_code}
-                                                        type="button"
-                                                        className={`flex-1 rounded-full py-1 text-[10px] ${
-                                                            v.variant_code === price!.variant_code
-                                                                ? "bg-white/15 text-white"
-                                                                : "text-neutral-500"
-                                                        }`}
-                                                        onClick={() =>
-                                                            setVariants((prev) => ({ ...prev, [plan.code]: v.variant_code }))
-                                                        }
-                                                    >
-                                                        {(v.credits_per_month / 1000).toFixed(1)}K
-                                                    </button>
-                                                ))}
+                                        <div
+                                            className="mt-4 flex h-[7.25rem] flex-col rounded-lg border border-white/10 bg-black/30 px-2 py-2"
+                                        >
+                                            {multiVariant ? (
+                                                <div className="flex min-h-[1.75rem] shrink-0 items-center px-1">
+                                                    <div className="flex w-full gap-0.5 rounded-full bg-black/50 p-0.5">
+                                                        {prices.map((v) => {
+                                                            const selected = v.variant_code === price!.variant_code;
+                                                            const tierLabel = `${(v.credits_per_month / 1000).toFixed(1)}K`;
+                                                            return (
+                                                                <button
+                                                                    key={v.variant_code}
+                                                                    type="button"
+                                                                    className={`flex-1 rounded-full py-1 text-[10px] font-medium tabular-nums transition ${
+                                                                        selected
+                                                                            ? "studio-solid-on-white bg-white text-black"
+                                                                            : "text-neutral-400 hover:text-neutral-200"
+                                                                    }`}
+                                                                    onClick={() =>
+                                                                        setVariants((prev) => ({
+                                                                            ...prev,
+                                                                            [plan.code]: v.variant_code,
+                                                                        }))
+                                                                    }
+                                                                >
+                                                                    {tierLabel}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 text-center">
+                                                <p className="text-lg font-bold tabular-nums text-white">
+                                                    {price!.credits_per_month.toLocaleString()}
+                                                </p>
+                                                <p className="text-[11px] text-neutral-500">{t("membership.creditsPerMonth")}</p>
                                             </div>
-                                        ) : null}
+                                        </div>
                                         <button
                                             type="button"
                                             className="mt-4 w-full rounded-full py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
