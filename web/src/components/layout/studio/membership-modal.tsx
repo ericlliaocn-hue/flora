@@ -255,7 +255,7 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                     ) : loading ? (
                         <p className="py-16 text-center text-sm text-neutral-500">{t("common.loading")}</p>
                     ) : (
-                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
+                        <div className="grid grid-cols-1 items-stretch gap-2 md:grid-cols-2 xl:grid-cols-5">
                             {cards.map(({ plan, price, prices }) => (
                                 <PlanCard
                                     key={plan.code}
@@ -353,35 +353,32 @@ function PlanCard({
     const activityTitleClass = isUltra ? "text-[#E8867A]" : isDeluxe ? "text-[#5ce1e6]" : "text-[#6eb8b2]";
 
     return (
-        <div className={`flex min-w-0 flex-col rounded-xl border bg-white/[0.02] p-4 ${borderClass}`}>
-            {isDeluxe ? (
-                <div className="-mx-4 -mt-4 mb-3 h-2 rounded-t-xl bg-gradient-to-r from-[#2bb8d6] to-[#5ce1e6]" />
-            ) : isUltra ? (
-                <div className="-mx-4 -mt-4 mb-3 h-2 rounded-t-xl bg-gradient-to-r from-[#ff7a2f] to-[#ff4d00]" />
-            ) : (
-                <div className="mb-3 mt-5 h-2" aria-hidden />
-            )}
+        <div className={`flex h-full min-h-0 min-w-0 flex-col rounded-xl border bg-white/[0.02] p-4 ${borderClass}`}>
+            <div className="-mx-4 -mt-4 mb-3 h-2 shrink-0 overflow-hidden rounded-t-xl" aria-hidden>
+                {isDeluxe ? <div className="h-full bg-gradient-to-r from-[#2bb8d6] to-[#5ce1e6]" /> : null}
+                {isUltra ? <div className="h-full bg-gradient-to-r from-[#ff7a2f] to-[#ff4d00]" /> : null}
+            </div>
 
-            <div className="flex items-start justify-between gap-2">
-                <div>
+            <div className="flex min-h-[46px] shrink-0 items-start justify-between gap-2">
+                <div className="min-w-0">
                     <h3 className="text-[16px] font-semibold leading-tight text-white">{name}</h3>
-                    <p className="mt-0.5 text-[11px] text-neutral-500">{t(`membership.tagline.${plan.code}`)}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-500">{t(`membership.tagline.${plan.code}`)}</p>
                 </div>
                 {price.badge_zh ? (
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${badgeClass}`}>{price.badge_zh}</span>
                 ) : null}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-baseline gap-1.5">
+            <div className="mt-3 flex h-9 shrink-0 flex-wrap items-baseline gap-1.5">
                 <span className="text-[28px] font-bold leading-none tabular-nums text-white">¥{priceYuan}</span>
                 <span className="text-[13px] text-neutral-300">/{cycleLabel(cycle, localeZh)}</span>
                 {listYuan ? <span className="text-[12px] text-neutral-500 line-through">¥{listYuan}</span> : null}
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-neutral-500">{subtitle}</p>
+            <p className="mt-2 min-h-[2.75rem] shrink-0 text-[11px] leading-snug text-neutral-500 line-clamp-3">{subtitle}</p>
 
-            <div className="mt-4 flex h-7 items-center">
+            <div className="relative mt-4 h-11 shrink-0">
                 {multiVariant ? (
-                    <div className="flex w-full gap-0.5 rounded-full bg-white/[0.06] p-0.5">
+                    <div className="absolute inset-x-0 bottom-0 flex gap-0.5 rounded-full bg-white/[0.06] p-0.5">
                         {prices.map((v) => {
                             const selected = v.variant_code === price.variant_code;
                             const gift = v.gift_months ?? 0;
@@ -389,7 +386,7 @@ function PlanCard({
                                 <div key={v.variant_code} className="relative flex-1">
                                     {gift > 0 ? (
                                         <span
-                                            className={`pointer-events-none absolute -top-3.5 left-1/2 z-[1] -translate-x-1/2 whitespace-nowrap rounded px-1 py-px text-[9px] font-medium ${
+                                            className={`pointer-events-none absolute bottom-full left-1/2 z-[1] mb-0.5 -translate-x-1/2 whitespace-nowrap rounded px-1 py-px text-[9px] font-medium ${
                                                 selected ? "bg-[#E8867A] text-white" : "bg-white/15 text-neutral-200"
                                             }`}
                                         >
@@ -414,7 +411,7 @@ function PlanCard({
                 ) : null}
             </div>
 
-            <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3.5 py-3">
+            <div className="mt-4 shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3.5 py-3 min-h-[4.75rem]">
                 <p className="flex flex-wrap items-baseline gap-1.5">
                     <span className="text-[22px] font-bold tabular-nums text-white">
                         {price.credits_per_month.toLocaleString()}
@@ -430,7 +427,7 @@ function PlanCard({
 
             <button
                 type="button"
-                className={`mt-4 w-full rounded-full py-2.5 text-[13px] font-semibold transition ${
+                className={`mt-4 shrink-0 w-full rounded-full py-2.5 text-[13px] font-semibold transition ${
                     isUltra
                         ? "bg-[#E8867A] text-white hover:opacity-95"
                         : "studio-solid-on-white bg-white text-black hover:bg-neutral-200"
@@ -440,15 +437,19 @@ function PlanCard({
                 {t("membership.cta")}
             </button>
 
-            <div className="mt-4 flex flex-1 flex-col">
-                <p className={`text-[11px] font-medium ${activityTitleClass}`}>🎁 {t("membership.limitedActivity")}</p>
-                <div className={`mt-2 rounded-xl border p-3 ${activityBoxClass}`}>
-                    {isUltra ? (
-                        <span className="mb-2 inline-block rounded bg-[#E8867A]/25 px-1.5 py-0.5 text-[9px] font-medium text-[#E8867A]">
-                            {t("membership.lowestPriceTag")}
-                        </span>
-                    ) : null}
-                    <ul className="space-y-1.5 text-[10px] leading-relaxed text-neutral-300">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
+                <p className={`shrink-0 text-[11px] font-medium ${activityTitleClass}`}>🎁 {t("membership.limitedActivity")}</p>
+                <div
+                    className={`mt-2 flex min-h-[7.5rem] flex-1 flex-col overflow-hidden rounded-xl border p-3 ${activityBoxClass}`}
+                >
+                    <div className="mb-2 h-[1.125rem] shrink-0">
+                        {isUltra ? (
+                            <span className="inline-block rounded bg-[#E8867A]/25 px-1.5 py-0.5 text-[9px] font-medium text-[#E8867A]">
+                                {t("membership.lowestPriceTag")}
+                            </span>
+                        ) : null}
+                    </div>
+                    <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto text-[10px] leading-relaxed text-neutral-300">
                         {activityRows.map((row, i) => (
                             <li key={i} className="flex gap-1.5">
                                 <span className={row.ok ? "text-emerald-400" : "text-neutral-600"}>{row.ok ? "✓" : "×"}</span>
@@ -457,7 +458,7 @@ function PlanCard({
                         ))}
                     </ul>
                 </div>
-                <ul className="mt-3 space-y-1.5 text-[10px] text-neutral-400">
+                <ul className="mt-3 max-h-[5.5rem] shrink-0 space-y-1.5 overflow-y-auto text-[10px] text-neutral-400">
                     {benefitLines.map((line, i) => (
                         <li key={i} className="flex items-start gap-1.5">
                             <Check className="mt-0.5 size-3 shrink-0 text-neutral-300" strokeWidth={2.5} />
