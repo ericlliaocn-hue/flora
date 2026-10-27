@@ -87,11 +87,15 @@ INSERT INTO membership_plan_price (plan_id, cycle, variant_code, credits_per_mon
     ((SELECT id FROM membership_plan WHERE code = 'pro'), 'month', 'default', 11700, 46900, 48900, 46900, NULL, 10),
     ((SELECT id FROM membership_plan WHERE code = 'pro'), 'month', 'pro_alt', 16300, 64900, 69900, 64900, NULL, 20),
     ((SELECT id FROM membership_plan WHERE code = 'pro'), 'quarter', 'default', 11700, 129900, 146900, 129900, '8.8折', 10),
+    ((SELECT id FROM membership_plan WHERE code = 'pro'), 'quarter', 'pro_alt', 16300, 179900, 204900, 179900, '8.8折', 20),
     ((SELECT id FROM membership_plan WHERE code = 'pro'), 'year', 'default', 11700, 459900, 589900, 459900, '7.8折', 10),
+    ((SELECT id FROM membership_plan WHERE code = 'pro'), 'year', 'pro_alt', 16300, 639900, 819900, 639900, '7.8折', 20),
     ((SELECT id FROM membership_plan WHERE code = 'deluxe'), 'month', 'default', 32800, 119900, 129900, 119900, NULL, 10),
     ((SELECT id FROM membership_plan WHERE code = 'deluxe'), 'quarter', 'default', 32800, 329900, 389900, 329900, '8.5折', 10),
     ((SELECT id FROM membership_plan WHERE code = 'deluxe'), 'year', 'default', 32800, 1099900, 1559900, 1099900, '7.0折', 10),
     ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'month', 'default', 50500, 179900, 199900, 179900, NULL, 10),
     ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'month', 'ultra_alt', 66000, 229900, 259900, 229900, NULL, 20),
     ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'quarter', 'default', 50500, 499900, 599900, 499900, '8.3折', 10),
-    ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'year', 'default', 50500, 1829900, 4099900, 1829900, '4.5折', 10);
+    ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'quarter', 'ultra_alt', 66000, 639900, 779900, 639900, '8.3折', 20),
+    ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'year', 'default', 50500, 1829900, 4099900, 1829900, '4.5折', 10),
+    ((SELECT id FROM membership_plan WHERE code = 'ultra'), 'year', 'ultra_alt', 66000, 2339900, 5199900, 2339900, '4.5折', 10);
