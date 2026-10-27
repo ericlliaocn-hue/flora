@@ -128,7 +128,9 @@ export function CreditSupermarketModal({ open, onClose }: CreditSupermarketModal
                                 key={key}
                                 type="button"
                                 className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[12px] transition ${
-                                    active ? "bg-white text-black" : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
+                                    active
+                                        ? "studio-solid-on-white bg-white text-black"
+                                        : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
                                 }`}
                                 onClick={() => setTab(key)}
                             >

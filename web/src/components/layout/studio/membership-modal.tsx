@@ -139,7 +139,9 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                                     key={c}
                                     type="button"
                                     className={`relative rounded-full px-4 py-1.5 text-[12px] transition ${
-                                        cycle === c ? "bg-white text-black" : "text-neutral-300 hover:text-white"
+                                        cycle === c
+                                            ? "studio-solid-on-white bg-white text-black"
+                                            : "text-neutral-300 hover:text-white"
                                     }`}
                                     onClick={() => setCycle(c)}
                                 >
@@ -225,10 +227,8 @@ export function MembershipModal({ open, onClose }: MembershipModalProps) {
                                         ) : null}
                                         <button
                                             type="button"
-                                            className={`mt-4 w-full rounded-full py-2 text-[13px] font-semibold transition hover:opacity-90 ${
-                                                highlight ? "text-white" : "bg-white text-black"
-                                            }`}
-                                            style={highlight ? { background: CORAL } : undefined}
+                                            className="mt-4 w-full rounded-full py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
+                                            style={{ background: CORAL }}
                                             onClick={() => void checkout(price!)}
                                         >
                                             {t("membership.cta")}
