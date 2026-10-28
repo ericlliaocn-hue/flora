@@ -58,7 +58,7 @@ pilipala:
     dead-letter-queue: ${PILIPALA_JOB_DEAD_LETTER_QUEUE:pilipala.jobs.execute.dlq}
     # Redis 短锁 TTL（秒）：防同一个 job 被两个 worker 并发跑。
     lease-ttl-seconds: ${PILIPALA_JOB_LEASE_TTL_SECONDS:60}
-  # 唯一的模型供应商适配器（ADR 0001：只走 Anytoken，没有第二个适配器）。
+  # 受控网关层：Anytoken 存量 + NewAPI 视频/多渠道（ADR 0008）。
   gateway:
     # stub = 本地确定性假上游（默认，无需真实密钥即可跑通）；http = 调真实 Anytoken HTTP 接口
     mode: ${PILIPALA_GATEWAY_MODE:stub}
@@ -73,6 +73,11 @@ pilipala:
     video-status-path-prefix: ${PILIPALA_GATEWAY_VIDEO_STATUS_PATH_PREFIX:/v1/videos}
     video-poll-interval-ms: ${PILIPALA_GATEWAY_VIDEO_POLL_INTERVAL_MS:2000}
     video-max-poll-attempts: ${PILIPALA_GATEWAY_VIDEO_MAX_POLL_ATTEMPTS:90}
+    # WP21：视频多渠道 NewAPI 网关；base-url / api-key 为空时客户端拒绝发请求。
+    newapi:
+      base-url: ${PILIPALA_NEWAPI_BASE_URL:}
+      api-key: ${PILIPALA_NEWAPI_API_KEY:}
+      timeout-ms: ${PILIPALA_NEWAPI_TIMEOUT_MS:30000}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:
