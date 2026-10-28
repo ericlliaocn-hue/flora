@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +36,10 @@ import art.pilipala.api.auth.infra.AuthSessionService;
 import art.pilipala.api.auth.infra.SaTokenConfig;
 import art.pilipala.api.auth.infra.UserRepository;
 import art.pilipala.api.billing.application.WalletView;
+import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.job.infra.JobException;
+import art.pilipala.api.job.infra.ModelCatalogRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -53,7 +57,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * {@link AuthSessionService} 提供，只测控制器与信封这一层。
  */
 @WebMvcTest(controllers = { AdminUserController.class, AdminWalletController.class, AdminJobController.class,
-        AdminI18nController.class, AdminModelController.class, ModelController.class },
+        AdminI18nController.class, AdminModelController.class, ModelController.class, AdminVideoController.class },
         excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SaTokenConfig.class))
 @Import(AdminGuard.class)
 class AdminControllerSliceTest {
@@ -99,6 +103,9 @@ class AdminControllerSliceTest {
 
     @MockitoBean
     private UpdateModelDisplayConfig updateModelDisplayConfig;
+
+    @MockitoBean
+    private ModelCatalogRepository modelCatalogRepository;
 
     // ----- 权限闸门 -----
 
@@ -296,6 +303,38 @@ class AdminControllerSliceTest {
     }
 
     // ----- 测试辅助 -----
+
+    // ----- 视频产品 / target 只读 -----
+
+    @Test
+    void anAdminCanReadVideoProductsAndTargets() throws Exception {
+        loginAs("admin");
+        ModelProduct product = new ModelProduct(UUID.randomUUID(), "video-stable", "video.generate",
+                "Video", "test", 30, "{}", true, 10);
+        ModelTarget target = new ModelTarget(UUID.randomUUID(), "newapi/sd-2-c4", "newapi", "sd-2-c4",
+                "{}", "per_call", new BigDecimal("1.8"), "USD", 900, true);
+        when(modelCatalogRepository.findAllProducts()).thenReturn(List.of(product));
+        when(modelCatalogRepository.findAllTargets()).thenReturn(List.of(target));
+
+        mockMvc.perform(get("/api/v1/admin/video/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ok").value(true))
+                .andExpect(jsonPath("$.data[0].code").value("video-stable"))
+                .andExpect(jsonPath("$.data[0].price_credits").value(30));
+        mockMvc.perform(get("/api/v1/admin/video/targets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ok").value(true))
+                .andExpect(jsonPath("$.data[0].upstream_model").value("sd-2-c4"))
+                .andExpect(jsonPath("$.data[0].cost_amount").value(1.8));
+    }
+
+    @Test
+    void aNormalUserCannotReadVideoProducts() throws Exception {
+        loginAs("user");
+
+        mockMvc.perform(get("/api/v1/admin/video/products"))
+                .andExpect(jsonPath("$.error_code").value("FORBIDDEN"));
+    }
 
     private void loginAs(String role) {
         when(sessions.currentUserId()).thenReturn(USER.toString());

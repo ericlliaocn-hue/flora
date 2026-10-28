@@ -25,6 +25,11 @@ public class MybatisModelCatalogRepository implements ModelCatalogRepository {
     }
 
     @Override
+    public List<ModelProduct> findAllProducts() {
+        return mapper.findAllProducts();
+    }
+
+    @Override
     public List<ModelRoute> findRoutesByProduct(UUID productId) {
         return mapper.findRoutesByProduct(productId);
     }
@@ -32,5 +37,10 @@ public class MybatisModelCatalogRepository implements ModelCatalogRepository {
     @Override
     public Optional<ModelTarget> findTargetById(UUID targetId) {
         return Optional.ofNullable(mapper.findTargetById(targetId));
+    }
+
+    @Override
+    public List<ModelTarget> findAllTargets() {
+        return mapper.findAllTargets();
     }
 }

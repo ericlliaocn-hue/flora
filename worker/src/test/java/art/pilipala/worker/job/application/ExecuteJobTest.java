@@ -227,6 +227,29 @@ class ExecuteJobTest {
     }
 
     @Test
+    void videoTerminalFailureLeavesJobFailedForApiFallback() {
+        UUID jobId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
+        WorkerTargetRepository targets = id -> Optional.of(
+                new WorkerTarget(id, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true));
+        FakeVideoGateway video = new FakeVideoGateway(jobId);
+        video.terminalFailure = true;
+        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
+
+        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.POLLING);
+        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.FAILED);
+
+        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.FAILED);
+        assertThat(store.job(jobId).errorCode()).isEqualTo("UPSTREAM_VIDEO_FAILED");
+        assertThat(store.allSteps().get(0).status()).isEqualTo(WorkerStepStatus.FAILED);
+        assertThat(store.allProviderTasks().get(0).status()).isEqualTo("failed");
+        assertThat(video.submits).isEqualTo(1);
+        assertThat(video.queries).isEqualTo(1);
+        assertThat(video.stores).isZero();
+    }
+
+    @Test
     void storeFailureReschedulesWithoutSubmittingAgain() {
         UUID jobId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
@@ -260,7 +283,8 @@ class ExecuteJobTest {
 
         ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
 
-        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.DEAD);
+        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.FAILED);
+        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.FAILED);
         assertThat(store.job(jobId).errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
         assertThat(store.resultKeys(jobId)).isNull();
         assertThat(video.submits).isZero();
@@ -276,7 +300,9 @@ class ExecuteJobTest {
         private final UUID jobId;
         private int submits;
         private int queries;
+        private int stores;
         private boolean storeFails;
+        private boolean terminalFailure;
 
         private FakeVideoGateway(UUID jobId) {
             this.jobId = jobId;
@@ -291,12 +317,17 @@ class ExecuteJobTest {
         @Override
         public NewApiTaskStatus query(art.pilipala.worker.job.domain.PollingAttempt attempt, WorkerTarget target) {
             queries++;
+            if (terminalFailure) {
+                return NewApiTaskStatus.failed("task-1", "FAILED: bad prompt", "UPSTREAM_VIDEO_FAILED",
+                        "bad prompt", "200", "{}");
+            }
             return NewApiTaskStatus.succeeded("task-1", "SUCCEEDED", "https://cdn/v.mp4", "200", "{}");
         }
 
         @Override
         public AnytokenAttemptResult store(art.pilipala.worker.job.domain.PollingAttempt attempt,
                 NewApiTaskStatus status) {
+            stores++;
             if (storeFails) {
                 return AnytokenAttemptResult.failure("PROVIDER_UNAVAILABLE", true, "task-1", "DOWNLOAD", "{}");
             }

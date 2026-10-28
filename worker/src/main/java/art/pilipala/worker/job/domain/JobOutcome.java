@@ -15,6 +15,8 @@ public enum JobOutcome {
     CANCELLED,
     /** 终态失败：消息进死信队列。 */
     DEAD,
+    /** 视频产品终态失败：等待 api 产品级 fallback；消息 ack，不进 DLQ。 */
+    FAILED,
     /** 已提交上游，等待下一次 query；不持有租约。 */
     POLLING,
     /** 没轮上：任务不存在、不是 queued、或被别的 worker 持锁。 */

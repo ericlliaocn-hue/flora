@@ -41,6 +41,11 @@ public class InMemoryModelCatalogRepository implements ModelCatalogRepository {
     }
 
     @Override
+    public List<ModelProduct> findAllProducts() {
+        return List.copyOf(products.values());
+    }
+
+    @Override
     public List<ModelRoute> findRoutesByProduct(UUID productId) {
         return routes.stream()
                 .filter(ModelRoute::enabled)
@@ -52,5 +57,10 @@ public class InMemoryModelCatalogRepository implements ModelCatalogRepository {
     @Override
     public Optional<ModelTarget> findTargetById(UUID targetId) {
         return Optional.ofNullable(targets.get(targetId));
+    }
+
+    @Override
+    public List<ModelTarget> findAllTargets() {
+        return List.copyOf(targets.values());
     }
 }

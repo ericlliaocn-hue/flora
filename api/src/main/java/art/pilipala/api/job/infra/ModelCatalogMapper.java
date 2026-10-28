@@ -20,6 +20,9 @@ public interface ModelCatalogMapper {
     @Select("SELECT " + PRODUCT_COLS + " FROM model_product WHERE code = #{code}")
     ModelProduct findProductByCode(@Param("code") String code);
 
+    @Select("SELECT " + PRODUCT_COLS + " FROM model_product ORDER BY sort_order ASC, code ASC")
+    List<ModelProduct> findAllProducts();
+
     String ROUTE_COLS = "id, product_id, target_id, priority, max_cost_amount, enabled";
 
     @Select("SELECT " + ROUTE_COLS + " FROM model_route "
@@ -31,4 +34,7 @@ public interface ModelCatalogMapper {
 
     @Select("SELECT " + TARGET_COLS + " FROM model_target WHERE id = #{targetId}")
     ModelTarget findTargetById(@Param("targetId") UUID targetId);
+
+    @Select("SELECT " + TARGET_COLS + " FROM model_target ORDER BY code ASC")
+    List<ModelTarget> findAllTargets();
 }

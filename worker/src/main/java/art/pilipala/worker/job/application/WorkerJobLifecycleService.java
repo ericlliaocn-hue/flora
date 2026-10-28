@@ -163,6 +163,10 @@ public class WorkerJobLifecycleService {
 
         steps.end(job.id(), attempt, WorkerStepStatus.FAILED, result.errorCode(), providerTaskId);
         jobs.updateStatus(job.id(), WorkerJobStatus.RUNNING, WorkerJobStatus.FAILED, result.errorCode());
+        if (job.productId() != null && job.targetId() != null && fallbackEligible(result.errorCode())) {
+            // 产品级 fallback 由 api 的 VideoFallbackScheduler 决策；hold 仍冻结。
+            return JobOutcome.FAILED;
+        }
         jobs.updateStatus(job.id(), WorkerJobStatus.FAILED, WorkerJobStatus.DEAD, result.errorCode());
         return JobOutcome.DEAD;
     }
@@ -179,6 +183,13 @@ public class WorkerJobLifecycleService {
             case WorkerErrorCodes.GATEWAY_INVALID_RESPONSE -> "param";
             default -> "job_failed";
         };
+    }
+
+    /** 只有上游任务失败 / 超时 / 网关不可用才值得切下一个 target；参数/协议错误不 fallback。 */
+    private static boolean fallbackEligible(String errorCode) {
+        return WorkerErrorCodes.UPSTREAM_VIDEO_FAILED.equals(errorCode)
+                || WorkerErrorCodes.GATEWAY_TIMEOUT.equals(errorCode)
+                || WorkerErrorCodes.PROVIDER_UNAVAILABLE.equals(errorCode);
     }
 
     /** MQ 消息体：只有 job_id 与传输层 event_id（ADR 0003）。 */

@@ -3,7 +3,7 @@
 - 日期：2026-10-29
 - 作者：cavas / pilipala engineering（AI 执行，用户授权）
 - 对应 WP / 里程碑：WP21 / M2·M3 视频能力扩展
-- 状态：已确认（Phase 0 实测完成；Phase 1 实现中：1a 已提交，1b 拆步待做）
+- 状态：已确认（Phase 0 实测完成；Phase 1 实现中：1a/1b/1c 已提交，待真机 smoke）
 - 关联：[ADR 0008](../adr/0008-gateway-layer-video-multi-channel.md)
 
 ## 背景
@@ -43,7 +43,8 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 
 - **1a 已提交**：V18 `model_product/target/route` + 增量列；`ModelCatalog`；产品提交按产品价冻结并写 product/target；NewAPI 客户端。
 - **1b 已提交**：worker submit/query 拆步；`provider_task` 写 `polling` + `next_poll_at`；api `ProviderPollScheduler` 到期重投；worker resume 查询 → 下载 → TOS。查询阶段不持有长租约。
-- **后续**：fallback + 成本上限 + Admin 只读 + 真机 smoke。
+- **1c 已提交**：api `VideoFallbackScheduler` 按 `model_route.priority` 切下一个 target（c4 → c7 → c8），不重算用户价；全部失败才 dead + release。Admin 只读 `GET /api/v1/admin/video/products`、`/targets`；provider_task 原文继续走 admin 任务详情。
+- **待做**：真机 smoke（seed 产品默认 disabled、占位价 1000 需先确认/开启）。
 
 ## 目标
 

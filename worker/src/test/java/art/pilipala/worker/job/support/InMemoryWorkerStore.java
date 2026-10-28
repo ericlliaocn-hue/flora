@@ -45,8 +45,8 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     /** 放一个排队中的视频 job，带 WP21 target。 */
     public WorkerJob enqueueVideo(UUID jobId, UUID targetId, String paramsJson) {
         Instant now = Instant.now();
-        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "video.generate", "video-stable", null, targetId,
-                paramsJson, 0, 3, null, null, now);
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "video.generate", "video-stable",
+                UUID.randomUUID(), targetId, paramsJson, 0, 3, null, null, now);
         jobs.put(jobId, job);
         return job;
     }

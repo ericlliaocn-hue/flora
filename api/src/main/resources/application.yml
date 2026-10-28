@@ -100,6 +100,10 @@ pilipala:
     poll-scan-ms: ${PILIPALA_PROVIDER_POLL_SCAN_MS:2000}
     poll-batch-size: ${PILIPALA_PROVIDER_POLL_BATCH_SIZE:50}
     poll-lease-seconds: ${PILIPALA_PROVIDER_POLL_LEASE_SECONDS:30}
+  # WP21：产品级 fallback（failed 视频 job 切下一个 target）
+  video:
+    fallback-scan-ms: ${PILIPALA_VIDEO_FALLBACK_SCAN_MS:5000}
+    fallback-batch-size: ${PILIPALA_VIDEO_FALLBACK_BATCH_SIZE:50}
   # WP4 的 Job 域配置。队列名只存在这里与 Rabbit 声明里，禁止写进 job 行（ADR 0003）。
   job:
     # rabbit = 真 broker；fake = 本地内存假 transport（测试与无 broker 演练用）。

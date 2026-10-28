@@ -17,7 +17,11 @@ public interface ModelCatalogRepository {
 
     Optional<ModelProduct> findProductByCode(String code);
 
+    List<ModelProduct> findAllProducts();
+
     List<ModelRoute> findRoutesByProduct(UUID productId);
 
     Optional<ModelTarget> findTargetById(UUID targetId);
+
+    List<ModelTarget> findAllTargets();
 }
