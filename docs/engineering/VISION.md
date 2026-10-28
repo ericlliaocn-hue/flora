@@ -11,7 +11,7 @@
 ## 给谁用
 
 - **创作者（C 端）**：在一张画布上连续生图、改图、排参考、沉淀素材；不必自己申请一堆模型站、不必在前端保存供应商密钥。
-- **运营方**：用预付费钱包控制成本，用任务状态机与死信队列看清失败，用 Anytoken 换模型而不改业务账本。
+- **运营方**：用预付费钱包控制成本，用任务状态机与死信队列看清失败，用受控网关换模型而不改业务账本。
 - **内部实现者（人 / Minimax）**：按 brief 交付，按 ADR 守边界，避免再做出 qingfeng 那种上帝服务。
 
 第一阶段只做 **C 端最小托管闭环**。管理后台是运营工具，排在 C 端能用之后。
@@ -49,23 +49,23 @@ pilipala 不追求「什么都能做」，而是 **画布工作台 + 自有账�
 
 - 强项：更偏消费级 AI 创作入口，产品完整、运营重。
 - pilipala 不跟：不在第一阶段铺齐聊天/社区/营销增长闭环。
-- pilipala 要赢：画布是一等公民；模型供给外包给 Anytoken，自己只拥有用户、钱包、任务与画布数据。
+- pilipala 要赢：画布是一等公民；模型供给外包给受控网关（Anytoken / NewAPI），自己只拥有用户、钱包、任务与画布数据。
 
 一句话：**竞品拥有流量或工作流运行时；pilipala 拥有画布会话、任务账本和预付费。**
 
 ## 原则
 
-1. **账本只有一套。** 用户、额度、冻结/确认/释放只存在 pilipala 业务库。Anytoken 是模型网关，不是第二套用户/配额系统。
-2. **网关只 hop，不 fork。** 不 fork NewAPI / qfzy-api。供应商差异消化在 Anytoken，业务侧只认内部 DTO。
+1. **账本只有一套。** 用户、额度、冻结/确认/释放只存在 pilipala 业务库。Anytoken / NewAPI 是模型网关，不是第二套用户/配额系统。
+2. **网关只 hop，不把 NewAPI 做成业务后端。** 视频/多渠道允许独立 NewAPI 网关（[ADR 0008](./adr/0008-gateway-layer-video-multi-channel.md)）；供应商差异消化在网关，业务侧只认内部 DTO。
 3. **任务与队列解耦。** 状态机在 Postgres；MQ 消息体只有 `job_id`。第一期用 RabbitMQ，以后可换 RocketMQ，不必改 job 表。
-4. **Worker 必须瘦。** Worker 读 job、调 Anytoken、写 step/结果、ack/重试/DLQ。画布拓扑、提示词拼装、计费确认不进 worker。
+4. **Worker 必须瘦。** Worker 读 job、调受控网关、写 step/结果、ack/重试/DLQ。画布拓扑、提示词拼装、计费确认不进 worker。
 5. **错误对人友好。** 用户看到稳定 `error_code` + 本地化短句；上游原文只进日志和 `provider_task`。
 6. **Admin 不是第二产品。** 配置模型、查任务、调钱包。不做另一套创作台。
 
 ## 非目标（Non-goals）
 
-- 不 fork、不内嵌、不双写 NewAPI / qfzy-api。
-- 不在 Anytoken 与 pilipala 之间做双用户、双额度、双账单。
+- 不把 NewAPI / qfzy-api fork 成业务后端，不双写用户/额度/账单（视频多渠道独立网关见 [ADR 0008](./adr/0008-gateway-layer-video-multi-channel.md)）。
+- 不在任一网关与 pilipala 之间做双用户、双额度、双账单。
 - 不把管理后台做成第二个 C 端（没有画布创作、没有独立增长指标）。
 - 不在 M0–M4 做社区、作品广场、社交关系、公开模型市场。
 - 不自建 GPU / ComfyUI 集群。

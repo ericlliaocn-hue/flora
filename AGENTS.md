@@ -9,7 +9,7 @@
 - 入口：[docs/engineering/README.md](docs/engineering/README.md)
 - 大改动（新表、新 API、新进程、改任务/计费/品牌/错误合同、改栈）**必须先写** [feature brief](docs/engineering/feature-briefs/_TEMPLATE.md)，再实现、再开 PR；禁止直接开写或只凭聊天记录扩范围。
 - PR 对照 brief 验收，并遵守 [CONTRIBUTING.md](docs/engineering/CONTRIBUTING.md) 清单。
-- 硬约束：模型网关只用 Anytoken（不 fork NewAPI/qfzy-api、不做双账本）；Worker 保持瘦（MQ 只有 `job_id`）；C 端错误友好且带稳定 `error_code`；Admin 在 C 端最小闭环之后，且只做运维/配置。
+- 硬约束：模型网关走受控网关层（Anytoken 存量 + NewAPI 视频/多渠道，见 [ADR 0008](docs/engineering/adr/0008-gateway-layer-video-multi-channel.md)）；不 fork NewAPI 做业务后端、不做双账本；Worker 保持瘦（MQ 只有 `job_id`）；C 端错误友好且带稳定 `error_code`；Admin 在 C 端最小闭环之后，且只做运维/配置。
 - **不要**把工程文档写进 `docs/content/`，也 **不要** 掏空或重写 Fumadocs 公开文档站（`docs/app/`、`docs/Dockerfile` 等），除非任务明确要求。
 
 ## 基本原则
@@ -100,8 +100,8 @@
 ## 项目注意事项
 
 - 新增或调整超时、重试次数、大小限制、并发上限等会改变实际行为的边界值前，必须先向用户说明适用环节、默认值和失败后的处理方式，并取得确认；不要把经验值当成纯内部实现静默加入。
-- 当前画布项目和“我的素材”主要保存在浏览器本地，不要在文档中误写成已支持云同步。
-- 当前 AI API Key 存在浏览器本地，并由前端直接请求 OpenAI 兼容接口；涉及安全说明时要写清楚。
+- 画布项目/素材已由 WP10 做账号级云端持久化；本地存储仍是缓存/离线路径。文档不要写成“纯本地”，也不要夸大成“所有历史都已云同步”。
+- 托管模式不把供应商 Key 放浏览器；本地直连调试模式仍可能在浏览器保存 Key，涉及安全说明时要区分两种模式。
 - Docker 静态资源路径目前仍是待办项，文档中不要过度承诺生产部署已经完全验证。
 - Agent 对话消息必须同时按 `threadId`、`turnId` 和 `itemId` 归属；实时事件只用于补充未物化的 turn，历史快照成为权威后不得重复合并同一条消息。
 - Agent 通信协议版本与消息存储版本必须独立管理；消息存储格式升级时必须先备份再迁移，遇到未知版本、损坏清单或冲突备份时拒绝覆盖原文件，不得按记录数量或文件大小静默裁剪历史元数据。

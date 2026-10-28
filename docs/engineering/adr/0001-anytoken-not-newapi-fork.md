@@ -1,7 +1,9 @@
 # ADR 0001 — 只用 Anytoken，不 fork NewAPI
 
-- 状态：Accepted
+- 状态：Amended by [ADR 0008](./0008-gateway-layer-video-multi-channel.md)
 - 日期：2026-10-23
+
+> 本 ADR 的“账本唯一 / 不 fork NewAPI 做业务后端”仍然有效；其中“模型流量只经过 Anytoken”已由 ADR 0008 修订为“受控网关层：Anytoken 存量 + NewAPI 视频/多渠道”。
 
 ## 背景（Context）
 

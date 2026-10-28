@@ -476,9 +476,11 @@ C 端 `/api/v1/jobs/**`（`query` / `result` / `history`）严禁包含这两个
 
 可加传输层 `event_id`。**禁止**塞 `params` / 图片 / 钱包额。
 
-Worker 调 Anytoken 的请求 / 响应 **不** 定义为本合同的一部分。映射发生在基础设施层：上游失败 → `error_code` + `provider_task.raw_body`。
+Worker 调网关（Anytoken / NewAPI）的请求 / 响应 **不** 定义为本合同的一部分。映射发生在基础设施层：上游失败 → `error_code` + `provider_task.raw_body`。
 
-### Seedance 视频三步协议（WP12）
+### Seedance 视频三步协议（WP12，Anytoken 存量）
+
+> WP21 起，新的视频产品走 NewAPI 网关（见下节）；本节保留 Anytoken 存量路径，不删。
 
 `capability` 以 `video` 开头时，worker 走 Anytoken 的 **视频** 端点（与生图的
 `/v1/images/generations` 分开），用 `PILIPALA_GATEWAY_VIDEO_API_KEY` 认证：
@@ -526,6 +528,38 @@ worker 只写 `object_key`，读地址仍由 api 现签（同 `Result` 章节）
 | 上游没给任务 id | `GATEWAY_INVALID_RESPONSE` | 否 |
 
 上游原文一律进 `provider_task.raw_status` / `raw_body`（仅 Admin 可见），**不**进 C 端 `message`。
+
+### NewAPI 视频网关（WP21）
+
+视频多渠道走独立 NewAPI 网关（[ADR 0008](../adr/0008-gateway-layer-video-multi-channel.md)），与 Anytoken 存量分开。认证 `Authorization: Bearer ${PILIPALA_NEWAPI_API_KEY}`，base 为 `PILIPALA_NEWAPI_BASE_URL`。
+
+| 步 | 请求 | 说明 |
+| --- | --- | --- |
+| 1 | `POST /v1/video/generations` | body 至少 `model` / `prompt` / `duration` / `size`；返回 `id` / `task_id` / `status`（实测 `RUNNING`） |
+| 2 | `GET /v1/video/generations/{task_id}` | 状态 `RUNNING` → `SUCCEEDED` / `FAILED: <message>`；成片 URL 在 **`object`** |
+| 3 | 下载 `object` | 实测 `GET /content` 返回 404；不要依赖 content 端点；URL 可匿名下载，成功后立即落 TOS |
+
+实测（c4 / 4s / 1280x720）：提交 200，约 78s 后 `SUCCEEDED`，`object` 下载 795,903 bytes，`ffprobe` 4.096s。
+
+**硬约束（实测踩出来的）：**
+
+1. `status` 可能是 `FAILED: <message>`，不能只做精确匹配；按前缀 `FAILED` 处理。
+2. 非法参数可能返回 400 + 一个已失败的 task（`fail_to_fetch_task`），映射为不可重试的 `JOB_FAILED` / `VALIDATION_ERROR`。
+3. 不存在的 task 返回 HTTP 400 `task_not_exist`；不要无限轮询。
+4. `seconds` 恒为 0，不能当进度。
+5. 成片 URL 会过期（上游说明 3-5h），必须成功后立即下载/TOS。
+
+错误落点：
+
+| 情况 | `error_code` | 可重试 |
+| --- | --- | --- |
+| 提交 / 查询 429 或 5xx | `PROVIDER_UNAVAILABLE` | 查询原地退避；提交仅在无 task id 时 |
+| 提交 / 查询其他 4xx | `JOB_FAILED` | 否 |
+| `status` 前缀 `FAILED` | `UPSTREAM_VIDEO_FAILED` | 否（可走产品级 fallback） |
+| 查询超过 target 预算 | `GATEWAY_TIMEOUT` | 先按 task id 对账，再决定 |
+| `task_not_exist` | `GATEWAY_INVALID_RESPONSE` | 否 |
+
+产物对象键建议 `newapi/vid/{jobId}/{attempt}.mp4`，`video/mp4`。渠道级重试/负载均衡在 NewAPI；产品级 fallback 在 pilipala，见 WP21 brief。
 
 ## 画布侧怎么用
 

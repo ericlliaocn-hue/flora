@@ -2,7 +2,7 @@
 
 本页是已对齐的阶段目标与退出标准。工作包拆分见 [DEVELOPMENT.md](./DEVELOPMENT.md)。未写进退出标准的能力，默认不算该里程碑完成。
 
-当前仓库仍是 infinite-canvas 前端 fork：没有 Java API、没有 worker、没有 pilipala 账本。M0 从品牌与工程纪律开始，不假装后端已存在。
+当前仓库已包含 `web/`、`api/`、`worker/`、admin 与 WP0–WP20 的实现；本页保留 M0–M4 的阶段口径，WP12–WP21 的后续扩展见 [feature briefs](./feature-briefs/README.md)。
 
 ## 总览
 

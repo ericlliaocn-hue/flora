@@ -6,13 +6,14 @@
 
 | ID | 标题 | 状态 |
 | --- | --- | --- |
-| [0001](./0001-anytoken-not-newapi-fork.md) | 只用 Anytoken，不 fork NewAPI | Accepted |
+| [0001](./0001-anytoken-not-newapi-fork.md) | 只用 Anytoken，不 fork NewAPI | Amended by 0008 |
 | [0002](./0002-java-spring-business-api.md) | 业务 API 用 Java 21 + Spring Boot 3 | Accepted |
 | [0003](./0003-rabbitmq-first-queue-agnostic-jobs.md) | 队列先用 RabbitMQ，job 模型与队列无关 | Accepted |
 | [0004](./0004-thin-worker-no-god-classes.md) | Worker 必须瘦，禁止上帝类 | Accepted |
 | [0005](./0005-friendly-errors-vs-raw-upstream.md) | 用户友好错误 vs 上游原文 | Accepted |
 | [0006](./0006-mybatis-plus-persistence.md) | 业务库持久化采用 MyBatis-Plus（保留领域分包） | Accepted |
 | [0007](./0007-analytics-events-and-reports.md) | 数据分析：analytics 域、事件契约与报表口径 | Accepted |
+| [0008](./0008-gateway-layer-video-multi-channel.md) | 视频多渠道路由：Anytoken 存量 + NewAPI 网关 + 单一账本 | Accepted |
 
 ## 何时新写一条
 

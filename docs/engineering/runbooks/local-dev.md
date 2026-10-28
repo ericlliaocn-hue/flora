@@ -100,13 +100,20 @@ export PILIPALA_OUTBOX_POLL_MS=500            # outbox 轮询间隔
 export PILIPALA_OUTBOX_BATCH_SIZE=50          # 单轮最多投递多少条
 export PILIPALA_OUTBOX_MAX_ATTEMPTS=10        # 同一条消息连续失败多少次后停在 failed
 
-# WP5：worker 与唯一 Anytoken 网关
+# WP5：worker 与 Anytoken 网关（存量）
 export PILIPALA_WORKER_PORT=8081
 export PILIPALA_WORKER_PREFETCH=1             # 一次只预取一条
 export PILIPALA_GATEWAY_MODE=stub              # stub（本地假上游，默认）| http（真实 Anytoken）
 export PILIPALA_GATEWAY_BASE_URL=http://127.0.0.1:18080   # 仅 http 模式生效
 export PILIPALA_GATEWAY_API_KEY=               # 仅 http 模式生效；由环境变量注入，勿入库
 export PILIPALA_GATEWAY_TIMEOUT_MS=30000
+
+# WP21：NewAPI 视频网关（仅视频/多渠道时）
+export PILIPALA_NEWAPI_BASE_URL=https://api.meaicc.com
+export PILIPALA_NEWAPI_API_KEY=               # 由环境变量注入，勿入库、勿写进文档
+export PILIPALA_NEWAPI_TIMEOUT_MS=30000
+export PILIPALA_PROVIDER_POLL_SCAN_MS=2000    # provider_task 到期扫描间隔
+export PILIPALA_PROVIDER_POLL_BATCH_SIZE=50   # 单轮最多扫描多少条
 
 # WP6：预付费钱包
 export PILIPALA_BILLING_DEFAULT_JOB_COST=10    # 单次任务冻结 credit 数（正整数）

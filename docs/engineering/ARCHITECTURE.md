@@ -6,12 +6,12 @@
 
 | 进程 | 职责 | 不职责 |
 | --- | --- | --- |
-| **web** | C 端画布与托管 UI。托管模式只调用 pilipala API。静态文案走 locale。 | 不持有 Anytoken/供应商密钥；不实现钱包；不直接打上游模型。 |
-| **api** | Java 21 + Spring Boot 3。认证（Sa-Token）、钱包冻结、创建 job、outbox、查询、签发 TOS 读地址、把内部错误映射成 `error_code`。 | 不在请求线程里同步跑长生成；不 fork NewAPI；不做画布渲染。 |
-| **worker** | 瘦执行器。按 `job_id` 加载任务，调 Anytoken，写 `job_step` / `provider_task` / 结果键，ack 或重试或进 DLQ。 | 不读画布图；不拼节点拓扑；不 confirm/release 钱包（由 api 领域服务在状态迁移时做，或经明确的领域事件，不得散落在 worker 里复制一套账本）；不做 HTTP 面向用户的 API。 |
+| **web** | C 端画布与托管 UI。托管模式只调用 pilipala API。静态文案走 locale。 | 不持有网关/供应商密钥；不实现钱包；不直接打上游模型。 |
+| **api** | Java 21 + Spring Boot 3。认证（Sa-Token）、钱包冻结、创建 job、outbox、查询、签发 TOS 读地址、把内部错误映射成 `error_code`。 | 不在请求线程里同步跑长生成；不 fork NewAPI 做业务后端；不做画布渲染。 |
+| **worker** | 瘦执行器。按 `job_id` 加载任务，调受控网关（Anytoken / NewAPI），写 `job_step` / `provider_task` / 结果键，ack 或重试或进 DLQ。 | 不读画布图；不拼节点拓扑；不选产品/重算价格；不 confirm/release 钱包（由 api 领域服务在状态迁移时做，或经明确的领域事件，不得散落在 worker 里复制一套账本）；不做 HTTP 面向用户的 API。 |
 | **admin** | M4 才做。运维查询与配置。 | 不是第二套创作产品；不复制画布。 |
 
-四者共享 Postgres（账本与任务）和 Redis（会话/锁/短缓存）。对象文件走火山 TOS。模型请求只经 Anytoken。
+四者共享 Postgres（账本与任务）和 Redis（会话/锁/短缓存）。对象文件走火山 TOS。模型请求只经受控网关层（Anytoken / NewAPI）。
 
 ```
 浏览器 (web)
@@ -20,7 +20,7 @@
 pilipala api  ── Postgres / Redis / TOS 签名
     │  outbox → RabbitMQ (body = job_id)
     ▼
-pilipala worker ── Anytoken ── 上游模型
+pilipala worker ── Anytoken / NewAPI ── 上游模型
     │
     ▼
 写回 job_step / provider_task / TOS 对象键
@@ -45,13 +45,13 @@ art.pilipala.api.<domain>/
 | **web**（≈ Interface） | HTTP 控制器、内部 DTO 校验。只转合同，不写业务分支。 |
 | **application** | 用例。例如「提交生图」= 校验幂等 → 估价 → 冻结 → 建 job → 写 outbox。 |
 | **domain** | `Job` 状态机、钱包冻结单、错误码。状态迁移函数保持纯：非法迁移直接拒绝。 |
-| **infra**（Infrastructure） | Postgres + **MyBatis-Plus**（[ADR 0006](./adr/0006-mybatis-plus-persistence.md)）、Redis、RabbitMQ Transport、TOS、**唯一** Anytoken Client。application 依赖仓储端口，不在 web 层散落 SQL。 |
+| **infra**（Infrastructure） | Postgres + **MyBatis-Plus**（[ADR 0006](./adr/0006-mybatis-plus-persistence.md)）、Redis、RabbitMQ Transport、TOS、Anytoken / NewAPI 网关客户端。application 依赖仓储端口，不在 web 层散落 SQL。 |
 
 **跨域调用**：只调用对方领域的 **application** 用例（或明确端口）。例如 `job` 提交时通过 `billing` 的 freeze/confirm/release 用例，**禁止** `job` 直接注入 `billing` 的 Mapper 或读写他域表。
 
 **与经典 MVC**：Controller / Service / Repository 角色仍在，但嵌在各自领域包内，不是全局三目录。
 
-worker 只有 Application（执行一步）+ Infrastructure（队列、Anytoken、仓储）。没有 canvas 包。
+worker 只有 Application（执行一步）+ Infrastructure（队列、网关客户端、仓储）。没有 canvas 包。
 
 ### 领域与资金边界
 
@@ -66,22 +66,24 @@ worker 只有 Application（执行一步）+ Infrastructure（队列、Anytoken�
 - **与 auth / billing / job**：身份在 `auth`；资金与任务终态在 `billing` / `job`；analytics **消费**其数据或旁路记录意图事件，不替代账本。
 - **后续域**：`growth` / `ads` / `campaign` 尚未建仓；账本不双写；活动发奖仍走 `billing` 用例，与 ADR 0001 单账本一致。事件 `props` 可预留 `campaign_id`。
 
-## Anytoken hop
+## 网关 hop（Anytoken / NewAPI）
 
-pilipala **不** 做模型聚合网关，只做一跳：
+pilipala **不** 做业务型模型聚合网关，只做一跳：
 
 ```
-web → api（内部 DTO）→ worker → Anytoken → 上游
+web → api（内部 DTO）→ worker → 受控网关（Anytoken / NewAPI）→ 上游
 ```
 
 规则：
 
-- 浏览器永不拿到 Anytoken token 或上游 Key。
-- pilipala 用户表 / 钱包是唯一账本。Anytoken 侧若有 token 额度，那是运维成本，不映射成用户余额。
-- 禁止再接 NewAPI、qfzy-api 或「临时再写一个 OpenAI 兼容代理」。供应商差异在 Anytoken 消化。
-- api 给 worker 的是内部任务合同（模型名、能力、参数引用、job_id），不是把前端原始请求原样转抛。
+- 浏览器永不拿到网关 token 或上游 Key。
+- pilipala 用户表 / 钱包是唯一账本。网关侧若有 token 额度，那是运维成本，不映射成用户余额。
+- **Anytoken**：存量 GPT / 图片 / 已上线 Seedance，本期不改。
+- **NewAPI**：视频 / 多渠道，独立部署；负责渠道 Key、上游协议、模型映射、渠道级重试/负载均衡、任务日志。见 [ADR 0008](./adr/0008-gateway-layer-video-multi-channel.md)。
+- 禁止把 NewAPI 当业务后端、第二套账本或第二套用户系统；禁止在 worker 里做产品路由/定价。
+- api 给 worker 的是内部任务合同（产品/模型名、能力、参数引用、job_id），不是把前端原始请求原样转抛。
 
-见 [ADR 0001](./adr/0001-anytoken-not-newapi-fork.md)。
+见 [ADR 0001](./adr/0001-anytoken-not-newapi-fork.md)（已由 0008 修订）。
 
 ## 任务状态机
 
@@ -165,7 +167,7 @@ qingfeng 的教训不是「Java 不行」，而是职责粘在一起：
 
 - 一个 TaskCenter 同时懂状态、队列、画布、生产、重试。
 - worker 为了「方便」去拉创作上下文，最后变成第二个业务后端。
-- 两个网关适配器并存，账本对不齐。
+- 两个业务后端 / 两套账本并存，账本对不齐（ADR 0008 的 Anytoken + NewAPI 是受控网关层，不拥有用户/额度/定价）。
 
 pilipala 用进程边界强制：web 只展示，api 只编排账本与任务，worker 只执行一跳，admin 只看和配置。
 

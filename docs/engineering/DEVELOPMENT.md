@@ -48,6 +48,10 @@ WP14 MyBatis-Plus 代码迁移（[brief](./feature-briefs/2026-10-25-wp14-mybati
 WP15 数据分析事件字典与报表口径（docs-first；可与 WP14 并行，不互相阻塞）
   ↓
 WP16 z-pay 支付宝充值（billing / `recharge_order`；worker 零改动）
+  ↓
+WP17–WP20 认证 / 商业化壳层（见 [brief 索引](./feature-briefs/README.md)）
+  ↓
+WP21 视频多渠道路由 + NewAPI 网关（[brief](./feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md)）
 ```
 
 WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地冻结。WP7 依赖内部 DTO 稳定，见 [api/gateway-contract.md](./api/gateway-contract.md)。WP13 为工程真相源修正，可与 WP14 ORM 代码迁移、WP15 分析文档分开交付。
@@ -96,7 +100,7 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 
 - **里程碑**：M1（假任务）/ M2（真生图）
 - **做什么**：Worker 消费 `job_id`，加载 job，调 **唯一** Anytoken 适配器，写 `job_step` 与 `provider_task`。第一期可用 echo/假上游证明状态机，但适配器边界必须一次做对。
-- **禁止**：`TaskCenterService` / `CanvasAgentProductionService` 式大类；worker 拉画布节点、拼工作流、确认钱包；NewAPI 第二适配器。
+- **禁止**：`TaskCenterService` / `CanvasAgentProductionService` 式大类；worker 拉画布节点、拼工作流、确认钱包；WP5 阶段不在 worker 内加第二套业务适配。视频多渠道由 WP21 的独立 NewAPI 网关承载，见 [ADR 0008](./adr/0008-gateway-layer-video-multi-channel.md)。
 - **完成**：worker 模块编译依赖里看不到 canvas/creation UI；一个供应商适配器入口。
 
 ## WP6 — 预付费钱包
@@ -174,6 +178,14 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 - **完成**：`mvn -pl api -am test` 通过；仓库无真实 `PILIPALA_ZPAY_PID` / `PILIPALA_ZPAY_PKEY`。
 - **生产 `PILIPALA_PUBLIC_BASE_URL`**（env，不入库硬编码）：`https://pilipala.art` → notify `/api/v1/billing/recharge/webhook/zpay`，return `/billing/recharge/result`。
 
+## WP21 — 视频多渠道路由与 NewAPI 网关
+
+- **里程碑**：M2·M3 视频能力扩展
+- **Brief**：[2026-10-29-wp21-video-multi-channel-gateway.md](./feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md)
+- **做什么**：`model_product` / `model_route` / `model_target`；canonical video request；submit/query 拆步 + 到期调度；NewAPI 网关客户端；产品级 fallback + 价格上限；Admin 只读。
+- **不做**：C 端商城/原始分组、按秒计费 UI、GPT/图片迁移、自动熔断（Phase 3）、把 NewAPI 做成业务后端。
+- **完成**：一个产品端到端（c4 → c7 → c8）、不重复提交/不重复扣费、Admin 可排障、Anytoken 存量不回归。
+
 ## 每个 WP 的 PR 期望
 
 - 1 个 WP 可以多 PR，但每个 PR 只解决 brief 里的一截。
@@ -188,7 +200,7 @@ WP6 可以与 WP5 并行设计，但必须在真实出图路径接通前落地�
 | --- | --- | --- |
 | `TaskCenterService` | ~3k LOC | 任务协调拆成小服务：创建、投递、状态迁移、查询各管一段 |
 | `CanvasAgentProductionService` | ~5k LOC | 创作编排不进 worker，不进单一生产大类 |
-| 胖 worker 拉画布/创作 | — | worker 只认 `job_id` 与 Anytoken |
-| 双适配器 | — | 只有 Anytoken，不并行维护 NewAPI 适配 |
+| 胖 worker 拉画布/创作 | — | worker 只认 `job_id` 与受控网关 |
+| 双适配器 | — | 网关客户端分层，不在 worker 内并行维护两套业务适配；视频走独立 NewAPI 网关（ADR 0008） |
 
 新 brief 如果把上述职责塞回一个类，审查时应要求拆 brief，而不是先合并再重构。

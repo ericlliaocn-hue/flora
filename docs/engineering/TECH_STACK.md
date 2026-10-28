@@ -36,18 +36,18 @@ M2 之前前端仍可能直连 OpenAI 兼容口（上游现状）。M2 托管路
 | API 风格 | JSON；内部任务合同见 [api/gateway-contract.md](./api/gateway-contract.md) |
 | 持久化框架 | **MyBatis-Plus**（目标）；见 [ADR 0006](./adr/0006-mybatis-plus-persistence.md)。JdbcTemplate 仅过渡，文档与新代码不得再写「禁止 ORM」 |
 
-不在 stage-1 用 Node/Nest、Go、Kotlin 写业务 API。不在业务 API 里再实现一套模型聚合网关。
+不在 stage-1 用 Node/Nest、Go、Kotlin 写业务 API。不在业务 API 里再实现一套模型聚合网关；视频多渠道用独立 NewAPI 网关（Go 项目，不并入业务 API）。
 
 ## 模型网关
 
 | 项 | 冻结值 |
 | --- | --- |
-| 唯一网关 | **Anytoken** |
-| 禁止 | fork 或内嵌 NewAPI / qfzy-api |
-| 禁止 | pilipala 与 Anytoken 双用户、双额度、双账单 |
-| 浏览器 | 不持有 Anytoken 或上游供应商密钥 |
+| 网关层 | **Anytoken（存量 GPT/图片）+ NewAPI（视频/多渠道，独立部署）**，见 [ADR 0008](./adr/0008-gateway-layer-video-multi-channel.md) |
+| 禁止 | fork NewAPI 做业务后端；让网关拥有用户/额度/定价 |
+| 禁止 | pilipala 与任一网关双用户、双额度、双账单 |
+| 浏览器 | 不持有任何网关或上游供应商密钥 |
 
-pilipala 拥有用户与钱包；Anytoken 只负责把模型请求转到上游。
+pilipala 拥有用户与钱包；Anytoken / NewAPI 只负责把模型请求转到上游，不拥有用户/额度/定价。
 
 ## 队列与任务
 
@@ -57,7 +57,7 @@ pilipala 拥有用户与钱包；Anytoken 只负责把模型请求转到上游�
 | 消息体 | 仅 `job_id`（及队列需要的最小信封，不含业务大 JSON） |
 | Job 模型 | 与队列实现无关；状态存在 Postgres |
 | 后续可选 | RocketMQ；换队列不改 job 状态机 |
-| Worker | 瘦进程：读 job、调 Anytoken、写 step/结果、ack/重试/DLQ |
+| Worker | 瘦进程：读 job、调受控网关、写 step/结果、ack/重试/DLQ |
 
 ## 计费
 
@@ -96,7 +96,7 @@ pilipala 拥有用户与钱包；Anytoken 只负责把模型请求转到上游�
 
 ## 明确不进 stage-1
 
-- NewAPI / qfzy-api fork
+- 把 NewAPI / qfzy-api fork 成业务后端或第二套账本（视频多渠道独立网关见 ADR 0008）
 - Kafka、云厂商延时队列作为第一期主队列（第一期就是 RabbitMQ）
 - 自建 GPU / Comfy 运行时
 - 第二套额度账本

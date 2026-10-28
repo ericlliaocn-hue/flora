@@ -17,18 +17,21 @@
 | `job_step` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | 每次 attempt 一行 |
 | `outbox_message` | 投递 | WP4 已落地 | [jobs.md](./jobs.md) | 事务内待投递，消息体指向 `job_id` |
 | `idempotency_record` | 任务 | WP4 已落地 | [jobs.md](./jobs.md) | `user_id` + key → 已返回的 `job_id` |
-| `provider_task` | 网关痕迹 | WP5 已落地 | [jobs.md](./jobs.md) | Anytoken / 上游原文，不对 C 端默认暴露 |
+| `provider_task` | 网关痕迹 | WP5 已落地；WP21 增量列 | [jobs.md](./jobs.md) | Anytoken / NewAPI / 上游原文，不对 C 端默认暴露 |
 | `i18n_message` | 文案 | WP9 已落地 | [errors.md](./errors.md) | 动态运营 / 错误模板，zh + en |
 | `app_runtime_setting` | 运营 | WP18 已落地（`V11`）；Studio chrome seed `V13` | [下方字段](#app_runtime_settingwp18-已落地) | 运行时开关与运营文案（邮箱通道、Studio 顶栏/活动条） |
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
 | 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
+| `model_product` / `model_target` / `model_route` | 视频路由 | WP21 待实现（`V18`） | [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md) | 产品 SKU、target 参数/成本、路由链；**不是**渠道密钥表、**不是**额度账本 |
+
+> **WP21**：`job` / `job_step` / `provider_task` 的增量列先以 [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md) 为准；实现 PR 先更新 `jobs.md`，再写 Flyway。
 
 **分析事件与报表口径**见 [analytics.md](./analytics.md)（WP15；Phase 1 无强制新表）。**余额与流水权威仍在** [billing.md](./billing.md)。
 
 不建的表（非目标）：
 
-- NewAPI 风格的 `tokens` / `quotas` / `channels` 用户额度镜像
+- NewAPI 风格的 `tokens` / `quotas` / `channels` 用户额度镜像；NewAPI 的渠道表也不镜像进业务库，渠道配置留在网关
 - 按 RabbitMQ queue 名拆的业务表（`queue_name` / `routing_key` 不进业务表，见 ADR 0003）
 - Postgres `job_lease` 表（lease 等价物 = `status=running` + Redis 短锁，见 [jobs.md](./jobs.md)）
 - admin 专用「第二套用户」
