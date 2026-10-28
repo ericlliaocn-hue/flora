@@ -26,14 +26,14 @@ public interface VideoFallbackMapper {
             + "ORDER BY updated_at ASC LIMIT #{limit}")
     List<VideoFallbackJob> findFailed(@Param("limit") int limit);
 
-    @Select("SELECT t.id FROM model_route r "
+    @Select("SELECT t.id::text FROM model_route r "
             + "JOIN model_target t ON t.id = r.target_id "
             + "JOIN model_route cur ON cur.product_id = r.product_id AND cur.target_id = #{currentTargetId} "
             + "WHERE r.product_id = #{productId} AND r.enabled AND t.enabled "
             + "AND r.priority > cur.priority "
             + "AND (r.max_cost_amount IS NULL OR t.cost_amount <= r.max_cost_amount) "
             + "ORDER BY r.priority ASC LIMIT 1")
-    UUID findNextTarget(@Param("productId") UUID productId, @Param("currentTargetId") UUID currentTargetId);
+    String findNextTarget(@Param("productId") UUID productId, @Param("currentTargetId") UUID currentTargetId);
 
     @Update("UPDATE job SET status = 'queued', target_id = #{nextTargetId}, error_code = NULL, "
             + "max_attempts = GREATEST(max_attempts, attempt + 1), updated_at = now() "

@@ -44,7 +44,8 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 - **1a 已提交**：V18 `model_product/target/route` + 增量列；`ModelCatalog`；产品提交按产品价冻结并写 product/target；NewAPI 客户端。
 - **1b 已提交**：worker submit/query 拆步；`provider_task` 写 `polling` + `next_poll_at`；api `ProviderPollScheduler` 到期重投；worker resume 查询 → 下载 → TOS。查询阶段不持有长租约。
 - **1c 已提交**：api `VideoFallbackScheduler` 按 `model_route.priority` 切下一个 target（c4 → c7 → c8），不重算用户价；全部失败才 dead + release。Admin 只读 `GET /api/v1/admin/video/products`、`/targets`；provider_task 原文继续走 admin 任务详情。
-- **待做**：真机 smoke（seed 产品默认 disabled、占位价 1000 需先确认/开启）。
+- **1d 已提交**：真实 Postgres 全链路 smoke（API/worker + Postgres/Redis/Rabbit + fake NewAPI + TOS stub）：提交 → 冻结 → submit/poll/query → TOS → confirm 通过；job/provider_task/step 均 succeeded，wallet 990/0，hold confirmed。smoke 同时修掉真实 Postgres 暴露的 type-handler、JSONB cast、RETURNING UUID 问题。
+- **待做**：运营确认 seed 产品价格并开启；真实 NewAPI 全链路复跑（Phase 0 已验真实协议）。
 
 ## 目标
 

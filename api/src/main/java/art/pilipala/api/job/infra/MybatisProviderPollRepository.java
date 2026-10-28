@@ -16,6 +16,6 @@ public class MybatisProviderPollRepository implements ProviderPollRepository {
 
     @Override
     public List<UUID> claimDue(int limit, int leaseSeconds) {
-        return mapper.claimDue(limit, leaseSeconds);
+        return mapper.claimDue(limit, leaseSeconds).stream().map(UUID::fromString).toList();
     }
 }

@@ -24,7 +24,7 @@ public class MybatisVideoFallbackRepository implements VideoFallbackRepository {
 
     @Override
     public Optional<UUID> findNextTarget(UUID productId, UUID currentTargetId) {
-        return Optional.ofNullable(mapper.findNextTarget(productId, currentTargetId));
+        return Optional.ofNullable(mapper.findNextTarget(productId, currentTargetId)).map(UUID::fromString);
     }
 
     @Override

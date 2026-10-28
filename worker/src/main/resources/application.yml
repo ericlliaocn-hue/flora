@@ -2,6 +2,8 @@ server:
   port: ${PILIPALA_WORKER_PORT:8081}
 
 mybatis-plus:
+  # worker 也要注册领域枚举 type handler（job/step 状态）。
+  type-handlers-package: art.pilipala.worker.infra.mybatis
   configuration:
     map-underscore-to-camel-case: true
   global-config:

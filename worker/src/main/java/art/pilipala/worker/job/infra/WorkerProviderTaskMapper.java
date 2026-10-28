@@ -15,8 +15,8 @@ public interface WorkerProviderTaskMapper {
 
     @Select("INSERT INTO provider_task (job_id, job_step_id, target_id, upstream_request_id, raw_status, raw_body) "
             + "VALUES (#{jobId}, #{jobStepId}, #{targetId,jdbcType=OTHER}, #{upstreamRequestId}, #{rawStatus}, "
-            + "#{rawBodyJson,jdbcType=OTHER}) RETURNING id")
-    UUID insert(
+            + "#{rawBodyJson,jdbcType=VARCHAR}::jsonb) RETURNING id::text")
+    String insert(
             @Param("jobId") UUID jobId,
             @Param("jobStepId") UUID jobStepId,
             @Param("targetId") UUID targetId,
@@ -27,8 +27,8 @@ public interface WorkerProviderTaskMapper {
     @Select("INSERT INTO provider_task (job_id, job_step_id, target_id, upstream_task_id, status, next_poll_at, "
             + "raw_status, raw_body) "
             + "VALUES (#{jobId}, #{jobStepId}, #{targetId,jdbcType=OTHER}, #{upstreamTaskId}, 'polling', "
-            + "#{nextPollAt}, #{rawStatus}, #{rawBodyJson,jdbcType=OTHER}) RETURNING id")
-    UUID insertPolling(
+            + "#{nextPollAt}, #{rawStatus}, #{rawBodyJson,jdbcType=VARCHAR}::jsonb) RETURNING id::text")
+    String insertPolling(
             @Param("jobId") UUID jobId,
             @Param("jobStepId") UUID jobStepId,
             @Param("targetId") UUID targetId,
@@ -45,7 +45,7 @@ public interface WorkerProviderTaskMapper {
     PollingTask findOpenByJob(@Param("jobId") UUID jobId);
 
     @Update("UPDATE provider_task SET status = 'polling', raw_status = #{rawStatus}, "
-            + "raw_body = #{rawBodyJson,jdbcType=OTHER}, next_poll_at = #{nextPollAt}, "
+            + "raw_body = #{rawBodyJson,jdbcType=VARCHAR}::jsonb, next_poll_at = #{nextPollAt}, "
             + "poll_count = #{pollCount}, last_poll_at = now() WHERE id = #{providerTaskId}")
     int reschedule(
             @Param("providerTaskId") UUID providerTaskId,
@@ -55,7 +55,7 @@ public interface WorkerProviderTaskMapper {
             @Param("pollCount") int pollCount);
 
     @Update("UPDATE provider_task SET status = #{status}, raw_status = #{rawStatus}, "
-            + "raw_body = #{rawBodyJson,jdbcType=OTHER}, error_class = #{errorClass}, "
+            + "raw_body = #{rawBodyJson,jdbcType=VARCHAR}::jsonb, error_class = #{errorClass}, "
             + "latency_ms = #{latencyMs}, last_poll_at = now() WHERE id = #{providerTaskId}")
     int finish(
             @Param("providerTaskId") UUID providerTaskId,

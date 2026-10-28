@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Param;
 public interface WorkerOutboxMapper {
 
     @Insert("INSERT INTO outbox_message (id, aggregate_type, aggregate_id, payload, status) "
-            + "VALUES (#{id}, #{aggregateType}, #{aggregateId}, #{payloadJson,jdbcType=OTHER}, 'pending')")
+            + "VALUES (#{id}, #{aggregateType}, #{aggregateId}, #{payloadJson,jdbcType=VARCHAR}::jsonb, 'pending')")
     void insertPending(
             @Param("id") UUID id,
             @Param("aggregateType") String aggregateType,

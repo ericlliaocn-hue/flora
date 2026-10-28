@@ -14,15 +14,15 @@ import art.pilipala.api.job.domain.Job;
 public interface JobMapper {
 
     String COLS = "id, user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
-            + "params AS params_json, attempt, max_attempts, "
+            + "params::text AS params_json, attempt, max_attempts, "
             + "hold_id, idempotency_key, cancel_requested_at, error_code, "
-            + "result_object_keys AS result_object_keys_json, created_at, updated_at";
+            + "result_object_keys::text AS result_object_keys_json, created_at, updated_at";
 
     @Select("INSERT INTO job (user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
             + "params, idempotency_key, hold_id) "
             + "VALUES (#{userId}, 'created', #{capability}, #{model}, #{productId,jdbcType=OTHER}, "
             + "#{targetId,jdbcType=OTHER}, #{quotedPrice,jdbcType=BIGINT}, #{pricingVersion,jdbcType=VARCHAR}, "
-            + "#{paramsJson,jdbcType=OTHER}, #{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
+            + "#{paramsJson,jdbcType=VARCHAR}::jsonb, #{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
             + "ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING " + COLS)
     Job insertIfAbsent(
             @Param("userId") UUID userId,
@@ -54,7 +54,7 @@ public interface JobMapper {
             @Param("to") String to,
             @Param("errorCode") String errorCode);
 
-    @Update("UPDATE job SET result_object_keys = #{resultObjectKeysJson,jdbcType=OTHER}, updated_at = now() "
+    @Update("UPDATE job SET result_object_keys = #{resultObjectKeysJson,jdbcType=VARCHAR}::jsonb, updated_at = now() "
             + "WHERE id = #{jobId} AND status = 'running'")
     int updateResult(@Param("jobId") UUID jobId, @Param("resultObjectKeysJson") String resultObjectKeysJson);
 

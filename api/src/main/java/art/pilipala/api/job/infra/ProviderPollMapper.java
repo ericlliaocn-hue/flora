@@ -21,6 +21,6 @@ public interface ProviderPollMapper {
             + "  SELECT id FROM provider_task "
             + "  WHERE status IN ('submitted', 'polling') AND target_id IS NOT NULL AND next_poll_at <= now() "
             + "  ORDER BY next_poll_at LIMIT #{limit} FOR UPDATE SKIP LOCKED"
-            + ") RETURNING job_id")
-    List<UUID> claimDue(@Param("limit") int limit, @Param("leaseSeconds") int leaseSeconds);
+            + ") RETURNING job_id::text")
+    List<String> claimDue(@Param("limit") int limit, @Param("leaseSeconds") int leaseSeconds);
 }

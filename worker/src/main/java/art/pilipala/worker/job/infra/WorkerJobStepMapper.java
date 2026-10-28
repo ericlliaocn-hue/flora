@@ -11,8 +11,8 @@ import org.apache.ibatis.annotations.Update;
 public interface WorkerJobStepMapper {
 
     @Select("INSERT INTO job_step (job_id, attempt, status, target_id) "
-            + "VALUES (#{jobId}, #{attempt}, 'running', #{targetId,jdbcType=OTHER}) RETURNING id")
-    UUID start(@Param("jobId") UUID jobId, @Param("attempt") int attempt, @Param("targetId") UUID targetId);
+            + "VALUES (#{jobId}, #{attempt}, 'running', #{targetId,jdbcType=OTHER}) RETURNING id::text")
+    String start(@Param("jobId") UUID jobId, @Param("attempt") int attempt, @Param("targetId") UUID targetId);
 
     @Update("UPDATE job_step SET status = #{status}, error_code = #{errorCode}, provider_task_id = #{providerTaskId}, "
             + "ended_at = now() WHERE job_id = #{jobId} AND attempt = #{attempt}")

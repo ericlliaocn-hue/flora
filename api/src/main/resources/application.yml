@@ -2,6 +2,8 @@ server:
   port: ${PILIPALA_API_PORT:8080}
 
 mybatis-plus:
+  # 领域枚举与 DB 小写字符串互转；不配这个包，WalletHoldStatus/JobStatus 会走默认 EnumTypeHandler 报错。
+  type-handlers-package: art.pilipala.api.infra.mybatis
   configuration:
     map-underscore-to-camel-case: true
   global-config:

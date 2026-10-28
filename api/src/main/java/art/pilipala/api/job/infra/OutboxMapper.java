@@ -13,10 +13,10 @@ import art.pilipala.api.job.domain.OutboxMessage;
 @Mapper
 public interface OutboxMapper {
 
-    String COLS = "id, aggregate_type, aggregate_id, payload AS payload_json, status, created_at, sent_at";
+    String COLS = "id, aggregate_type, aggregate_id, payload::text AS payload_json, status, created_at, sent_at";
 
     @Select("INSERT INTO outbox_message (id, aggregate_type, aggregate_id, payload, status) "
-            + "VALUES (#{id}, #{aggregateType}, #{aggregateId}, #{payloadJson,jdbcType=OTHER}, 'pending') RETURNING " + COLS)
+            + "VALUES (#{id}, #{aggregateType}, #{aggregateId}, #{payloadJson,jdbcType=VARCHAR}::jsonb, 'pending') RETURNING " + COLS)
     OutboxMessage insertPending(
             @Param("id") UUID id,
             @Param("aggregateType") String aggregateType,

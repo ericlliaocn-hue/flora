@@ -16,7 +16,7 @@ public interface CanvasProjectMapper {
     String COLS = "id, user_id, name, canvas_data AS canvas_data_json, version, created_at, updated_at";
 
     @Select("INSERT INTO canvas_project (user_id, name, canvas_data) VALUES "
-            + "(#{userId}, #{name}, #{canvasDataJson,jdbcType=OTHER}) RETURNING " + COLS)
+            + "(#{userId}, #{name}, #{canvasDataJson,jdbcType=VARCHAR}::jsonb) RETURNING " + COLS)
     CanvasProject insert(
             @Param("userId") UUID userId, @Param("name") String name, @Param("canvasDataJson") String canvasDataJson);
 
@@ -27,7 +27,7 @@ public interface CanvasProjectMapper {
     List<CanvasProject> findByUser(@Param("userId") UUID userId, @Param("limit") int limit);
 
     @Select("UPDATE canvas_project SET name = COALESCE(#{name}, name), "
-            + "canvas_data = COALESCE(#{canvasDataJson,jdbcType=OTHER}, canvas_data), "
+            + "canvas_data = COALESCE(#{canvasDataJson,jdbcType=VARCHAR}::jsonb, canvas_data), "
             + "version = version + 1, updated_at = now() WHERE id = #{projectId} AND user_id = #{userId} RETURNING " + COLS)
     CanvasProject update(
             @Param("projectId") UUID projectId,
