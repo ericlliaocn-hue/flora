@@ -3,6 +3,7 @@ package art.pilipala.worker.job.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -13,6 +14,8 @@ import art.pilipala.worker.gateway.AnytokenGatewayAdapter;
 import art.pilipala.worker.gateway.AnytokenProperties;
 import art.pilipala.worker.gateway.AnytokenRequest;
 import art.pilipala.worker.job.domain.JobOutcome;
+import art.pilipala.worker.job.domain.WorkerTarget;
+import art.pilipala.worker.job.infra.WorkerTargetRepository;
 import art.pilipala.worker.storage.TosObjectStorage;
 import art.pilipala.worker.storage.TosObjectStorageAdapter;
 import art.pilipala.worker.storage.TosProperties;
@@ -48,7 +51,7 @@ class ExecuteJobTest {
         AnytokenGatewayAdapter stubGateway = new AnytokenGatewayAdapter(
                 new AnytokenProperties("stub", "http://127.0.0.1:18080", "", 30000, "/v1/generations"), mapper,
                 tosStorage());
-        return new ExecuteJob(lifecycle, stubGateway, lease);
+        return new ExecuteJob(lifecycle, stubGateway, lease, null, null);
     }
 
     @Test
@@ -151,7 +154,7 @@ class ExecuteJobTest {
             store.requestCancel(request.jobId());
             return AnytokenAttemptResult.success(List.of("anytoken/img/x.png"), "req-1", "200", "{}");
         };
-        ExecuteJob job = new ExecuteJob(lifecycle, cancelThenSucceed, lease);
+        ExecuteJob job = new ExecuteJob(lifecycle, cancelThenSucceed, lease, null, null);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.CANCELLED);
 
@@ -170,7 +173,7 @@ class ExecuteJobTest {
             calls.incrementAndGet();
             return AnytokenAttemptResult.success(List.of(), "req-1", "200", "{}");
         };
-        ExecuteJob job = new ExecuteJob(lifecycle, counting, lease);
+        ExecuteJob job = new ExecuteJob(lifecycle, counting, lease, null, null);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.SKIPPED);
 
@@ -190,6 +193,45 @@ class ExecuteJobTest {
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.QUEUED);
         assertThat(store.allSteps()).isEmpty();
         assertThat(store.allProviderTasks()).isEmpty();
+    }
+
+    @Test
+    void videoTargetUsesTheVideoExecutorAndDoesNotCallAnytoken() {
+        UUID jobId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
+        WorkerTargetRepository targets = id -> Optional.of(
+                new WorkerTarget(id, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true));
+        VideoExecutor video = (attempt, target) -> AnytokenAttemptResult.success(
+                List.of("newapi/vid/" + jobId + "/1.mp4"), "task-1", "200", "{}");
+        AnytokenGateway mustNotCall = request -> {
+            throw new AssertionError("legacy Anytoken gateway should not be called for a target job");
+        };
+
+        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCall, lease, targets, video);
+
+        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.SUCCEEDED);
+        assertThat(store.resultKeys(jobId)).contains("newapi/vid/" + jobId + "/1.mp4");
+        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.SUCCEEDED);
+    }
+
+    @Test
+    void missingOrDisabledTargetFailsWithoutCallingTheVideoExecutor() {
+        UUID jobId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
+        WorkerTargetRepository targets = id -> Optional.empty();
+        VideoExecutor video = (attempt, target) -> {
+            throw new AssertionError("video executor should not be called without a target");
+        };
+
+        ExecuteJob job = new ExecuteJob(lifecycle, request -> {
+            throw new AssertionError("legacy Anytoken gateway should not be called");
+        }, lease, targets, video);
+
+        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.DEAD);
+        assertThat(store.job(jobId).errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
+        assertThat(store.resultKeys(jobId)).isNull();
     }
 
     @Test

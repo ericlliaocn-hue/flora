@@ -12,5 +12,5 @@ public interface ProviderTaskRepository {
     /**
      * 写一行上游留痕，返回它的 id（随后要关联到 job_step）。
      */
-    UUID insert(UUID jobId, UUID jobStepId, String upstreamRequestId, String rawStatus, String rawBodyJson);
+    UUID insert(UUID jobId, UUID jobStepId, UUID targetId, String upstreamRequestId, String rawStatus, String rawBodyJson);
 }

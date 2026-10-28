@@ -14,5 +14,7 @@ public record ClaimedAttempt(
         int maxAttempts,
         String capability,
         String model,
+        UUID productId,
+        UUID targetId,
         String paramsJson) {
 }

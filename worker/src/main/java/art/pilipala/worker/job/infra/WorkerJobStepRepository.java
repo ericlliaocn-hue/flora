@@ -10,7 +10,7 @@ import art.pilipala.worker.job.domain.WorkerStepStatus;
 public interface WorkerJobStepRepository {
 
     /** 插入一行 status=running 的 step，返回它的 id。 */
-    UUID start(UUID jobId, int attempt);
+    UUID start(UUID jobId, int attempt, UUID targetId);
 
     /**
      * 收尾：写 step 的终态、错误码、关联的 provider_task 与结束时间。

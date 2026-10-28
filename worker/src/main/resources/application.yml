@@ -78,6 +78,7 @@ pilipala:
       base-url: ${PILIPALA_NEWAPI_BASE_URL:}
       api-key: ${PILIPALA_NEWAPI_API_KEY:}
       timeout-ms: ${PILIPALA_NEWAPI_TIMEOUT_MS:30000}
+      poll-interval-ms: ${PILIPALA_NEWAPI_POLL_INTERVAL_MS:2000}
   # WP8 的火山引擎 TOS：worker 只把生成结果字节写进 TOS，job 行里只留对象键。
   storage:
     tos:

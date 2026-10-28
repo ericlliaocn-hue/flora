@@ -3,7 +3,7 @@
 - 日期：2026-10-29
 - 作者：cavas / pilipala engineering（AI 执行，用户授权）
 - 对应 WP / 里程碑：WP21 / M2·M3 视频能力扩展
-- 状态：已确认（Phase 0 实测完成；Phase 1 待实现）
+- 状态：已确认（Phase 0 实测完成；Phase 1 实现中：1a 已提交，1b 拆步待做）
 - 关联：[ADR 0008](../adr/0008-gateway-layer-video-multi-channel.md)
 
 ## 背景
@@ -38,6 +38,12 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 待 Phase 1/2 验证：参考图/视频/音频、`metadata` 长尾参数、按秒模型（d2）、429/5xx 语义、失败任务是否计费。**Phase 0 不 fork NewAPI**；如果 Phase 1 发现参考素材或参数映射无法用 stock 表达，再薄 fork 视频 adapter。
 
 > 实测使用真实 Key，只存 `/tmp`，不入仓库、不入文档、不入日志。
+
+## 实现进度（2026-10-29）
+
+- **1a 已提交**：V18 `model_product/target/route` + 增量列；`ModelCatalog`；产品提交按产品价冻结并写 product/target；NewAPI 客户端；worker 同步 NewAPI 执行器（提交 → 轮询 → 下载 → TOS）。
+- **1b 待做**：submit/query 拆步 + `provider_task` 到期调度。当前同步执行器会阻塞 worker，部署时必须把 `PILIPALA_JOB_LEASE_TTL_SECONDS` 调到 ≥ target timeout。
+- **后续**：fallback + 成本上限 + Admin 只读 + 真机 smoke。
 
 ## 目标
 

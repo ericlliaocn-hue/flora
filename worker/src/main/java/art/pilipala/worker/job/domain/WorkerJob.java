@@ -10,12 +10,16 @@ import java.util.UUID;
  * （ADR 0003 / ADR 0004）。
  *
  * @param paramsJson 已物化的参数（JSON 文本）
+ * @param productId  WP21 产品 SKU；老 job 为空
+ * @param targetId   WP21 路由 target；为空走 Anytoken 存量路径
  */
 public record WorkerJob(
         UUID id,
         WorkerJobStatus status,
         String capability,
         String model,
+        UUID productId,
+        UUID targetId,
         String paramsJson,
         int attempt,
         int maxAttempts,

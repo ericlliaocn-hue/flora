@@ -15,6 +15,7 @@ public record ProviderTaskRecord(
         UUID id,
         UUID jobId,
         UUID jobStepId,
+        UUID targetId,
         String upstreamRequestId,
         String rawStatus,
         String rawBodyJson,

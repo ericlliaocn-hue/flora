@@ -34,8 +34,17 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     /** 放一个排队中的 job。 */
     public WorkerJob enqueue(UUID jobId, String paramsJson) {
         Instant now = Instant.now();
-        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", paramsJson,
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null, paramsJson,
                 0, 3, null, null, now);
+        jobs.put(jobId, job);
+        return job;
+    }
+
+    /** 放一个排队中的视频 job，带 WP21 target。 */
+    public WorkerJob enqueueVideo(UUID jobId, UUID targetId, String paramsJson) {
+        Instant now = Instant.now();
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "video.generate", "video-stable", null, targetId,
+                paramsJson, 0, 3, null, null, now);
         jobs.put(jobId, job);
         return job;
     }
@@ -43,7 +52,7 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     /** 放一个排队中、且已有取消意图的 job。 */
     public WorkerJob enqueueWithCancelIntent(UUID jobId, String paramsJson) {
         Instant now = Instant.now();
-        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", paramsJson,
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null, paramsJson,
                 0, 3, now, null, now);
         jobs.put(jobId, job);
         return job;
@@ -81,14 +90,15 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
         if (job == null || job.status() != WorkerJobStatus.RUNNING) {
             return false;
         }
-        jobs.put(jobId, new WorkerJob(job.id(), job.status(), job.capability(), job.model(), job.paramsJson(),
+        jobs.put(jobId, new WorkerJob(job.id(), job.status(), job.capability(), job.model(),
+                job.productId(), job.targetId(), job.paramsJson(),
                 job.attempt(), job.maxAttempts(), job.cancelRequestedAt(), job.errorCode(), Instant.now()));
         resultKeys.put(jobId, resultObjectKeysJson);
         return true;
     }
 
     @Override
-    public UUID start(UUID jobId, int attempt) {
+    public UUID start(UUID jobId, int attempt, UUID targetId) {
         UUID stepId = UUID.randomUUID();
         steps.add(new Step(stepId, jobId, attempt, WorkerStepStatus.RUNNING, null, null));
         return stepId;
@@ -107,9 +117,11 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     }
 
     @Override
-    public UUID insert(UUID jobId, UUID jobStepId, String upstreamRequestId, String rawStatus, String rawBodyJson) {
+    public UUID insert(UUID jobId, UUID jobStepId, UUID targetId, String upstreamRequestId, String rawStatus,
+            String rawBodyJson) {
         UUID id = UUID.randomUUID();
-        providerTasks.put(id, new ProviderTaskRecord(id, jobId, jobStepId, upstreamRequestId, rawStatus, rawBodyJson, Instant.now()));
+        providerTasks.put(id, new ProviderTaskRecord(id, jobId, jobStepId, targetId, upstreamRequestId, rawStatus,
+                rawBodyJson, Instant.now()));
         return id;
     }
 
@@ -153,7 +165,8 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     }
 
     private static WorkerJob copy(WorkerJob job, WorkerJobStatus status, String errorCode, int attempt, Instant cancelRequestedAt) {
-        return new WorkerJob(job.id(), status, job.capability(), job.model(), job.paramsJson(), attempt,
+        return new WorkerJob(job.id(), status, job.capability(), job.model(), job.productId(), job.targetId(),
+                job.paramsJson(), attempt,
                 job.maxAttempts(), cancelRequestedAt, errorCode, Instant.now());
     }
 

@@ -8,7 +8,10 @@ import art.pilipala.worker.gateway.AnytokenRequest;
 import art.pilipala.worker.gateway.AnytokenAttemptResult;
 import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.JobOutcome;
+import art.pilipala.worker.job.domain.WorkerErrorCodes;
+import art.pilipala.worker.job.domain.WorkerTarget;
 import art.pilipala.worker.job.infra.WorkerJobLease;
+import art.pilipala.worker.job.infra.WorkerTargetRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,12 +30,17 @@ public class ExecuteJob {
     private final WorkerJobLifecycleService lifecycle;
     private final AnytokenGateway gateway;
     private final WorkerJobLease lease;
+    private final WorkerTargetRepository targets;
+    private final VideoExecutor videoExecutor;
     private final String workerId;
 
-    public ExecuteJob(WorkerJobLifecycleService lifecycle, AnytokenGateway gateway, WorkerJobLease lease) {
+    public ExecuteJob(WorkerJobLifecycleService lifecycle, AnytokenGateway gateway, WorkerJobLease lease,
+            WorkerTargetRepository targets, VideoExecutor videoExecutor) {
         this.lifecycle = lifecycle;
         this.gateway = gateway;
         this.lease = lease;
+        this.targets = targets;
+        this.videoExecutor = videoExecutor;
         this.workerId = "worker-" + UUID.randomUUID();
     }
 
@@ -47,8 +55,17 @@ public class ExecuteJob {
                 return JobOutcome.SKIPPED;
             }
             ClaimedAttempt attempt = claimed.get();
-            AnytokenAttemptResult result = gateway.execute(new AnytokenRequest(
-                    attempt.jobId(), attempt.attempt(), attempt.capability(), attempt.model(), attempt.paramsJson()));
+            AnytokenAttemptResult result;
+            if (attempt.targetId() != null) {
+                result = targets.findById(attempt.targetId())
+                        .filter(WorkerTarget::enabled)
+                        .map(target -> videoExecutor.execute(attempt, target))
+                        .orElseGet(() -> AnytokenAttemptResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE,
+                                false, null, "TARGET", "target missing or disabled"));
+            } else {
+                result = gateway.execute(new AnytokenRequest(
+                        attempt.jobId(), attempt.attempt(), attempt.capability(), attempt.model(), attempt.paramsJson()));
+            }
             return lifecycle.complete(attempt, result);
         } finally {
             lease.release(jobId, workerId);

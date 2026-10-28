@@ -14,7 +14,8 @@ public class MybatisProviderTaskRepository implements ProviderTaskRepository {
     }
 
     @Override
-    public UUID insert(UUID jobId, UUID jobStepId, String upstreamRequestId, String rawStatus, String rawBodyJson) {
-        return mapper.insert(jobId, jobStepId, upstreamRequestId, rawStatus, rawBodyJson);
+    public UUID insert(UUID jobId, UUID jobStepId, UUID targetId, String upstreamRequestId, String rawStatus,
+            String rawBodyJson) {
+        return mapper.insert(jobId, jobStepId, targetId, upstreamRequestId, rawStatus, rawBodyJson);
     }
 }

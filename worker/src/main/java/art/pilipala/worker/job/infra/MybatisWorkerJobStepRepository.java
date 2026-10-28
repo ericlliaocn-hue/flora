@@ -16,8 +16,8 @@ public class MybatisWorkerJobStepRepository implements WorkerJobStepRepository {
     }
 
     @Override
-    public UUID start(UUID jobId, int attempt) {
-        return mapper.start(jobId, attempt);
+    public UUID start(UUID jobId, int attempt, UUID targetId) {
+        return mapper.start(jobId, attempt, targetId);
     }
 
     @Override

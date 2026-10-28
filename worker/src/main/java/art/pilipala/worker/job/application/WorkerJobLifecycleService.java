@@ -78,9 +78,9 @@ public class WorkerJobLifecycleService {
             return Optional.empty();
         }
         WorkerJob running = claimed.get();
-        UUID stepId = steps.start(running.id(), running.attempt());
+        UUID stepId = steps.start(running.id(), running.attempt(), running.targetId());
         return Optional.of(new ClaimedAttempt(running.id(), stepId, running.attempt(), running.maxAttempts(),
-                running.capability(), running.model(), running.paramsJson()));
+                running.capability(), running.model(), running.productId(), running.targetId(), running.paramsJson()));
     }
 
     /**
@@ -91,7 +91,7 @@ public class WorkerJobLifecycleService {
      */
     @Transactional
     public JobOutcome complete(ClaimedAttempt attempt, AnytokenAttemptResult result) {
-        UUID providerTaskId = providerTasks.insert(attempt.jobId(), attempt.jobStepId(),
+        UUID providerTaskId = providerTasks.insert(attempt.jobId(), attempt.jobStepId(), attempt.targetId(),
                 result.upstreamRequestId(), result.rawStatus(), result.rawBodyJson());
 
         WorkerJob job = jobs.findById(attempt.jobId()).orElseThrow(
