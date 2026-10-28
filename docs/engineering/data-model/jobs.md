@@ -51,7 +51,11 @@ created → queued → running → succeeded
 | `user_id` | UUID | NO | IDX (`user_id`, `created_at` DESC) | 提交者；FK → `users.id`（`users` 表 WP3 建） |
 | `status` | TEXT | NO | CHECK ∈ 上表枚举；IDX (`status`, `updated_at`) | 状态机权威 |
 | `capability` | TEXT | NO | | 如 `image.generate` |
-| `model` | TEXT | NO | | pilipala 内部模型名 |
+| `model` | TEXT | NO | | pilipala 内部模型名；WP21 起可为产品 code |
+| `product_id` | UUID | YES | IDX | WP21：产品 SKU；老 job 为空 |
+| `target_id` | UUID | YES | | WP21：当前 / 最后 target |
+| `quoted_price` | BIGINT | YES | | WP21：冻结时的产品价快照（credits） |
+| `pricing_version` | TEXT | YES | | WP21：定价版本 |
 | `params` | JSONB | NO | | 入队前已物化；worker 不回源画布 |
 | `attempt` | INT | NO | DEFAULT 0；CHECK >= 0 | 已开始的 attempt 数 |
 | `max_attempts` | INT | NO | DEFAULT 3；CHECK >= 1 | 默认 3；实现 WP 不得静默改默认，除非改本文档 |
@@ -95,6 +99,8 @@ Worker 领取一个 job 时：
 | `status` | TEXT | NO | CHECK ∈ `running` \| `succeeded` \| `failed` \| `cancelled` | |
 | `error_code` | TEXT | YES | | 映射码 |
 | `provider_task_id` | UUID | YES | FK → `provider_task.id` | 指向原文痕迹 |
+| `target_id` | UUID | YES | | WP21：本 attempt 的 target；fallback 新开 attempt |
+| `error_class` | TEXT | YES | | WP21：`transient/content/param/auth/task_failed/timeout/download` |
 | `started_at` | TIMESTAMPTZ | NO | | |
 | `ended_at` | TIMESTAMPTZ | YES | | |
 
@@ -132,12 +138,26 @@ dispatcher 只负责投递。重试间隔与失败处理由实现 WP 再定。�
 | `id` | UUID | NO | PK | |
 | `job_id` | UUID | NO | IDX (`job_id`)；FK → `job.id` | |
 | `job_step_id` | UUID | YES | FK → `job_step.id` | |
-| `upstream_request_id` | TEXT | YES | | Anytoken / 上游 id |
+| `upstream_request_id` | TEXT | YES | | Anytoken / 上游请求 id |
 | `raw_status` | TEXT | YES | | 上游状态 |
 | `raw_body` | JSONB | YES | | 原文 |
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
+| `target_id` | UUID | YES | | WP21：本次 attempt 的 target |
+| `upstream_task_id` | TEXT | YES | | WP21：NewAPI 异步任务 id |
+| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | WP21 轮询子状态；存量 / Anytoken 旧路径为 `legacy`，NewAPI 新行显式写 `submitted` |
+| `next_poll_at` | TIMESTAMPTZ | YES | 部分索引 (`status`, `next_poll_at`) WHERE `status IN ('submitted','polling')` | 调度器按此重投 |
+| `poll_count` | INT | NO | DEFAULT 0；CHECK >= 0 | |
+| `last_poll_at` | TIMESTAMPTZ | YES | | |
+| `error_class` | TEXT | YES | | 同 `job_step` |
+| `latency_ms` | INT | YES | | 提交 / 查询耗时 |
+| `cost_amount` | NUMERIC(12,4) | YES | | 上游成本快照，只做毛利分析 |
+| `cost_currency` | TEXT | YES | | |
 
 C 端 `query` / `result` **不** 包含 `raw_body`。原文只进日志与本表，仅 M4 / WP11 admin 可见。
+
+## 视频路由三表（WP21）
+
+`model_product` / `model_target` / `model_route` 的字段级定义见 [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md)。它们不存渠道 Key、不是额度账本；产品价只在 `model_product`，上游成本只做毛利分析。
 
 ## MQ 消息体
 

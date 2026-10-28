@@ -34,6 +34,8 @@ public final class ErrorCodes {
     public static final String GATEWAY_INVALID_RESPONSE = "GATEWAY_INVALID_RESPONSE";
     /** WP12 起启用：上游视频任务进入失败终态（不可重试）。 */
     public static final String UPSTREAM_VIDEO_FAILED = "UPSTREAM_VIDEO_FAILED";
+    /** WP21 起启用：视频产品没有可用 target（全部禁用/不兼容/超成本上限）。 */
+    public static final String NO_AVAILABLE_CHANNEL = "NO_AVAILABLE_CHANNEL";
     /** WP16：充值订单不存在或不属于当前用户。 */
     public static final String RECHARGE_ORDER_NOT_FOUND = "RECHARGE_ORDER_NOT_FOUND";
     /** WP16：z-pay 下单/查单/退款上游失败。 */

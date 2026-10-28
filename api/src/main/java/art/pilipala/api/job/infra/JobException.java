@@ -38,6 +38,11 @@ public class JobException extends RuntimeException {
         return new JobException(ErrorCodes.WALLET_INSUFFICIENT);
     }
 
+    /** 视频产品没有可用 target（全部禁用/不兼容/超成本上限）。 */
+    public static JobException noAvailableChannel() {
+        return new JobException(ErrorCodes.NO_AVAILABLE_CHANNEL);
+    }
+
     public static JobException rechargeOrderNotFound() {
         return new JobException(ErrorCodes.RECHARGE_ORDER_NOT_FOUND);
     }

@@ -142,7 +142,7 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 | --- | --- | --- | --- |
 | `target_id` | UUID | YES | |
 | `upstream_task_id` | TEXT | YES | NewAPI task id |
-| `status` | TEXT | NO | DEFAULT `submitted`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` |
+| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | 存量 / Anytoken 旧路径 `legacy`；NewAPI 新行显式写 `submitted` |
 | `next_poll_at` | TIMESTAMPTZ | YES | 调度器按此重投 |
 | `poll_count` | INT | NO | DEFAULT 0 |
 | `last_poll_at` | TIMESTAMPTZ | YES | |
@@ -153,7 +153,7 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 
 索引：`provider_task (status, next_poll_at)` 部分索引 `WHERE status IN ('submitted','polling')`。
 
-> 迁移时存量 `provider_task` 行统一回填 `status='legacy'`，调度器只扫 `submitted` / `polling`；新行才进入轮询状态，避免 Flyway 上线后把历史行当新任务重查。
+> 迁移时存量 `provider_task` 行取默认 `status='legacy'`，调度器只扫 `submitted` / `polling`；Anytoken 旧路径的新行也不写 `submitted`，避免被视频调度器误扫。只有 NewAPI 新行显式进入轮询状态。
 
 ## API
 

@@ -71,6 +71,9 @@ public final class I18nDefaultCatalog {
             Map.entry(ErrorCodes.UPSTREAM_VIDEO_FAILED, Map.of(
                     "zh", "视频生成失败，请调整提示词后重试。",
                     "en", "The video generation failed. Please adjust the prompt and try again.")),
+            Map.entry(ErrorCodes.NO_AVAILABLE_CHANNEL, Map.of(
+                    "zh", "当前没有可用的视频线路，请稍后重试。",
+                    "en", "No video channel is available right now. Please try again later.")),
             Map.entry(KEY_JOB_FAILED_RETRY, Map.of(
                     "zh", "生成服务异常，正在重试（第 {attempt}/{max_attempts} 次）。",
                     "en", "Generation issue, retrying ({attempt}/{max_attempts}).")),
