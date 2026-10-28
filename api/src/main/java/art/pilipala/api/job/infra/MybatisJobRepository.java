@@ -22,8 +22,10 @@ public class MybatisJobRepository implements JobRepository {
 
     @Override
     public Optional<Job> insertIfAbsent(
-            UUID userId, String capability, String model, String paramsJson, String idempotencyKey, UUID holdId) {
-        return Optional.ofNullable(mapper.insertIfAbsent(userId, capability, model, paramsJson, idempotencyKey, holdId));
+            UUID userId, String capability, String model, UUID productId, UUID targetId, Long quotedPrice,
+            String pricingVersion, String paramsJson, String idempotencyKey, UUID holdId) {
+        return Optional.ofNullable(mapper.insertIfAbsent(userId, capability, model, productId, targetId, quotedPrice,
+                pricingVersion, paramsJson, idempotencyKey, holdId));
     }
 
     @Override

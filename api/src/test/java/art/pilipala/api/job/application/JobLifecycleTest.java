@@ -3,6 +3,7 @@ package art.pilipala.api.job.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,7 +23,11 @@ import art.pilipala.api.billing.support.InMemoryWalletStore;
 import art.pilipala.api.billing.support.LedgerAssertions;
 import art.pilipala.api.i18n.InMemoryI18nMessageRepository;
 import art.pilipala.api.i18n.application.I18nMessageService;
+import art.pilipala.api.job.domain.Job;
 import art.pilipala.api.job.domain.JobStatus;
+import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelRoute;
+import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.storage.TosProperties;
 import art.pilipala.api.storage.TosUrlSigner;
 import art.pilipala.api.job.infra.JobException;
@@ -31,6 +36,7 @@ import art.pilipala.api.job.infra.FakeJobTransport;
 import art.pilipala.api.job.infra.JobRequestHasher;
 import art.pilipala.api.job.support.FakeJobLease;
 import art.pilipala.api.job.support.InMemoryJobStore;
+import art.pilipala.api.job.support.InMemoryModelCatalogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +58,8 @@ class JobLifecycleTest {
 
     private final InMemoryJobStore store = new InMemoryJobStore();
     private final InMemoryWalletStore wallets = new InMemoryWalletStore(store::statusOf);
+    private final InMemoryModelCatalogRepository catalogRepository = new InMemoryModelCatalogRepository();
+    private final ModelCatalog modelCatalog = new ModelCatalog(catalogRepository);
     private final FakeJobTransport transport = new FakeJobTransport();
     private final FakeJobLease lease = new FakeJobLease();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -65,7 +73,7 @@ class JobLifecycleTest {
     private final I18nMessageService i18n = new I18nMessageService(i18nRepository);
 
     private final SubmitJob submitJob = new SubmitJob(store, store, store, new JobRequestHasher(), walletService,
-            new JobCostPolicy(billing));
+            new JobCostPolicy(billing), modelCatalog);
     private final GetJob getJob = new GetJob(store, holdSettlement, i18n);
     private final TosUrlSigner tosUrlSigner = new TosUrlSigner(new TosProperties("stub", "http://127.0.0.1:18080",
             "cn-beijing", "pilipala-dev", "pilipala-local-ak", "pilipala-local-sk", 900, 15000, "/tmp/pilipala-tos"));
@@ -362,6 +370,77 @@ class JobLifecycleTest {
         failing.tick();
         assertThat(store.allOutbox().get(0).status()).isEqualTo("failed");
         assertThat(jobId).isNotNull();
+    }
+
+    @Test
+    void productSubmitUsesProductPriceAndPrimaryTarget() {
+        ModelProduct product = product("video-stable", 30, true);
+        ModelTarget target = target("newapi/sd-2-c4");
+        catalogRepository.product(product).target(target)
+                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, new BigDecimal("2.0"), true));
+
+        SubmitJobView view = submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null);
+
+        Job job = store.findById(UUID.fromString(view.jobId())).orElseThrow();
+        assertThat(job.productId()).isEqualTo(product.id());
+        assertThat(job.targetId()).isEqualTo(target.id());
+        assertThat(job.quotedPrice()).isEqualTo(30);
+        assertThat(job.pricingVersion()).isEqualTo("wp21-v1");
+        assertThat(job.model()).isEqualTo("video-stable");
+        assertThat(wallets.walletOf(USER).available()).isEqualTo(70);
+        assertThat(wallets.walletOf(USER).frozen()).isEqualTo(30);
+        assertThat(wallets.allHolds()).hasSize(1);
+    }
+
+    @Test
+    void disabledProductDoesNotFallBackToLegacyPricing() {
+        ModelProduct product = product("video-disabled", 30, false);
+        ModelTarget target = target("newapi/sd-2-c4");
+        catalogRepository.product(product).target(target)
+                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, BigDecimal.ONE, true));
+
+        assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null))
+                .isInstanceOf(JobException.class)
+                .satisfies(e -> assertThat(((JobException) e).errorCode()).isEqualTo("VALIDATION_ERROR"));
+
+        assertThat(store.allJobs()).isEmpty();
+        assertThat(wallets.allHolds()).isEmpty();
+    }
+
+    @Test
+    void productWithoutUsableTargetIsNoAvailableChannel() {
+        ModelProduct product = product("video-no-target", 30, true);
+        catalogRepository.product(product);
+
+        assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null))
+                .isInstanceOf(JobException.class)
+                .satisfies(e -> assertThat(((JobException) e).errorCode()).isEqualTo("NO_AVAILABLE_CHANNEL"));
+
+        assertThat(store.allJobs()).isEmpty();
+        assertThat(wallets.allHolds()).isEmpty();
+    }
+
+    @Test
+    void productSubmitWithoutPromptIsValidationError() {
+        ModelProduct product = product("video-no-prompt", 30, true);
+        ModelTarget target = target("newapi/sd-2-c4");
+        catalogRepository.product(product).target(target)
+                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, BigDecimal.ONE, true));
+
+        assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(),
+                mapper.createObjectNode(), null))
+                .isInstanceOf(JobException.class)
+                .satisfies(e -> assertThat(((JobException) e).errorCode()).isEqualTo("VALIDATION_ERROR"));
+        assertThat(store.allJobs()).isEmpty();
+    }
+
+    private ModelProduct product(String code, long price, boolean enabled) {
+        return new ModelProduct(UUID.randomUUID(), code, "video.generate", "Video", "test", price, "{}", enabled, 10);
+    }
+
+    private ModelTarget target(String code) {
+        return new ModelTarget(UUID.randomUUID(), code, "newapi", "sd-2-c4", "{}", "per_call",
+                new BigDecimal("1.8"), "USD", 900, true);
     }
 
     private UUID submit(String key) {

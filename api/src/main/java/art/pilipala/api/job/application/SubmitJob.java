@@ -11,6 +11,7 @@ import art.pilipala.api.job.domain.IdempotencyRecord;
 import art.pilipala.api.job.domain.Job;
 import art.pilipala.api.job.domain.JobStatus;
 import art.pilipala.api.job.domain.JobTransitions;
+import art.pilipala.api.job.domain.ModelProduct;
 import art.pilipala.api.job.infra.IdempotencyRepository;
 import art.pilipala.api.job.infra.JobException;
 import art.pilipala.api.job.infra.JobMessagePayload;
@@ -38,6 +39,8 @@ public class SubmitJob {
     private static final int MAX_IDEMPOTENCY_KEY_LENGTH = 128;
     private static final int MAX_CAPABILITY_LENGTH = 64;
     private static final int MAX_MODEL_LENGTH = 128;
+    /** WP21：产品价快照的定价版本；产品改价时递增。 */
+    private static final String PRICING_VERSION = "wp21-v1";
 
     private final JobRepository jobs;
     private final OutboxRepository outbox;
@@ -45,15 +48,17 @@ public class SubmitJob {
     private final JobRequestHasher hasher;
     private final WalletService wallets;
     private final JobCostPolicy costPolicy;
+    private final ModelCatalog catalog;
 
     public SubmitJob(JobRepository jobs, OutboxRepository outbox, IdempotencyRepository idempotency, JobRequestHasher hasher,
-            WalletService wallets, JobCostPolicy costPolicy) {
+            WalletService wallets, JobCostPolicy costPolicy, ModelCatalog catalog) {
         this.jobs = jobs;
         this.outbox = outbox;
         this.idempotency = idempotency;
         this.hasher = hasher;
         this.wallets = wallets;
         this.costPolicy = costPolicy;
+        this.catalog = catalog;
     }
 
     @Transactional
@@ -72,11 +77,34 @@ public class SubmitJob {
             return replay(recorded.get(), hash);
         }
 
+        // 产品路径：按产品价冻结、写产品/首个 target；老 model 名仍走 legacy 价格。
+        Optional<ModelProduct> product = catalog.findProduct(modelText);
+        long cost;
+        UUID productId = null;
+        UUID targetId = null;
+        Long quotedPrice = null;
+        String pricingVersion = null;
+        if (product.isPresent()) {
+            ModelProduct resolvedProduct = product.get();
+            if (!resolvedProduct.enabled()
+                    || !resolvedProduct.capability().equalsIgnoreCase(capabilityText)
+                    || params.path("prompt").asText("").isBlank()) {
+                throw JobException.validation();
+            }
+            ModelCatalog.ResolvedProduct route = catalog.resolve(resolvedProduct);
+            productId = resolvedProduct.id();
+            targetId = route.primary().target().id();
+            quotedPrice = resolvedProduct.priceCredits();
+            pricingVersion = PRICING_VERSION;
+            cost = resolvedProduct.priceCredits();
+        } else {
+            cost = costPolicy.costOf(capabilityText, modelText);
+        }
         // 冻结：余额不足直接抛 WALLET_INSUFFICIENT，此时还没写 job。
-        long cost = costPolicy.costOf(capabilityText, modelText);
         WalletHold hold = wallets.freeze(userId, cost);
 
-        Optional<Job> created = jobs.insertIfAbsent(userId, capabilityText, modelText, params.toString(), key, hold.id());
+        Optional<Job> created = jobs.insertIfAbsent(userId, capabilityText, modelText, productId, targetId,
+                quotedPrice, pricingVersion, params.toString(), key, hold.id());
         if (created.isEmpty()) {
             // 并发同键：另一个事务已经写好 job 与幂等记录。
             // 本次冻结要退回（冻结单 + release 流水），再重放对方的结果。

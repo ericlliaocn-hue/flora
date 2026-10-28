@@ -13,7 +13,11 @@ import java.util.UUID;
  * @param userId            提交者
  * @param status            状态机权威
  * @param capability        如 image.generate
- * @param model             pilipala 内部模型名
+ * @param model             pilipala 内部模型名；WP21 起可为产品 code
+ * @param productId         WP21 产品 SKU；老 job 为空
+ * @param targetId          WP21 当前 / 最后 target
+ * @param quotedPrice       WP21 冻结时的产品价快照（credits）
+ * @param pricingVersion    WP21 定价版本
  * @param paramsJson        已物化参数（JSON 文本）
  * @param attempt           已开始的 attempt 数
  * @param maxAttempts       重试上限
@@ -29,6 +33,10 @@ public record Job(
         JobStatus status,
         String capability,
         String model,
+        UUID productId,
+        UUID targetId,
+        Long quotedPrice,
+        String pricingVersion,
         String paramsJson,
         int attempt,
         int maxAttempts,

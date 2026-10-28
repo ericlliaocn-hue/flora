@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import art.pilipala.api.job.domain.ModelProduct;
 import art.pilipala.api.job.domain.ModelRoute;
@@ -31,11 +32,19 @@ public class ModelCatalog {
         this.repository = repository;
     }
 
-    public ResolvedProduct resolve(String productCode) {
+    public Optional<ModelProduct> findProduct(String productCode) {
         String code = productCode == null ? "" : productCode.trim();
-        ModelProduct product = repository.findProductByCode(code)
+        return code.isEmpty() ? Optional.empty() : repository.findProductByCode(code);
+    }
+
+    public ResolvedProduct resolve(String productCode) {
+        return findProduct(productCode)
                 .filter(ModelProduct::enabled)
+                .map(this::resolve)
                 .orElseThrow(JobException::validation);
+    }
+
+    public ResolvedProduct resolve(ModelProduct product) {
         List<ResolvedTarget> targets = repository.findRoutesByProduct(product.id()).stream()
                 .filter(ModelRoute::enabled)
                 .sorted(Comparator.comparingInt(ModelRoute::priority))

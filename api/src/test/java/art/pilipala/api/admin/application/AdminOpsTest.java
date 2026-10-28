@@ -147,7 +147,7 @@ class AdminOpsTest {
     void retryRejectsAJobThatIsNotDeadOrFailed() {
         InMemoryJobStore jobs = new InMemoryJobStore();
         InMemoryAdminStore admin = new InMemoryAdminStore();
-        UUID jobId = jobs.insertIfAbsent(USER, "image.generate", "gpt-image-2", "{}", "k1", null).orElseThrow().id();
+        UUID jobId = jobs.insertIfAbsent(USER, "image.generate", "gpt-image-2", null, null, null, null, "{}", "k1", null).orElseThrow().id();
         jobs.updateStatus(jobId, JobStatus.CREATED, JobStatus.SUCCEEDED, null);
         admin.putJob(jobId, USER, "demo", "succeeded", "", 1, 3, null, null);
 
@@ -276,7 +276,7 @@ class AdminOpsTest {
 
     /** 造一个 dead 任务：created → queued → claim → dead。 */
     private static UUID deadJob(InMemoryJobStore jobs, InMemoryAdminStore admin, UUID holdId) {
-        Job job = jobs.insertIfAbsent(USER, "image.generate", "gpt-image-2", "{}", "k1", holdId).orElseThrow();
+        Job job = jobs.insertIfAbsent(USER, "image.generate", "gpt-image-2", null, null, null, null, "{}", "k1", holdId).orElseThrow();
         jobs.updateStatus(job.id(), JobStatus.CREATED, JobStatus.QUEUED, null);
         jobs.claim(job.id());
         jobs.updateStatus(job.id(), JobStatus.RUNNING, JobStatus.DEAD, "PROVIDER_UNAVAILABLE");

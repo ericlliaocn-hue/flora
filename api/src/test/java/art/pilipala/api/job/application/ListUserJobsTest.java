@@ -66,7 +66,8 @@ class ListUserJobsTest {
 
     @Test
     void aFailedJobCarriesTheFriendlyMessageAndNoResultUrls() {
-        UUID jobId = jobs.insertIfAbsent(owner, "image.generate", "demo", "{\"prompt\":\"x\"}", "k1", null).orElseThrow().id();
+        UUID jobId = jobs.insertIfAbsent(owner, "image.generate", "demo", null, null, null, null,
+                "{\"prompt\":\"x\"}", "k1", null).orElseThrow().id();
         jobs.updateStatus(jobId, JobStatus.CREATED, JobStatus.DEAD, "PROVIDER_UNAVAILABLE");
 
         JobHistoryItemView item = service.list(owner, 50, "zh").get(0);
@@ -80,7 +81,8 @@ class ListUserJobsTest {
 
     @Test
     void anUnfinishedJobHasNoFinishedAt() {
-        jobs.insertIfAbsent(owner, "image.generate", "demo", "{\"prompt\":\"x\"}", "k1", null);
+        jobs.insertIfAbsent(owner, "image.generate", "demo", null, null, null, null,
+                "{\"prompt\":\"x\"}", "k1", null);
 
         JobHistoryItemView item = service.list(owner, 50, "zh").get(0);
 
@@ -102,7 +104,8 @@ class ListUserJobsTest {
     }
 
     private void succeeded(UUID userId, String idempotencyKey, String paramsJson, String objectKey) {
-        UUID jobId = jobs.insertIfAbsent(userId, "image.generate", "demo", paramsJson, idempotencyKey, null).orElseThrow().id();
+        UUID jobId = jobs.insertIfAbsent(userId, "image.generate", "demo", null, null, null, null,
+                paramsJson, idempotencyKey, null).orElseThrow().id();
         jobs.updateStatus(jobId, JobStatus.CREATED, JobStatus.RUNNING, null);
         jobs.updateResult(jobId, "[\"" + objectKey + "\"]");
         jobs.updateStatus(jobId, JobStatus.RUNNING, JobStatus.SUCCEEDED, null);

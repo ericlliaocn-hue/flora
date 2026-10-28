@@ -13,18 +13,25 @@ import art.pilipala.api.job.domain.Job;
 @Mapper
 public interface JobMapper {
 
-    String COLS = "id, user_id, status, capability, model, params AS params_json, attempt, max_attempts, "
+    String COLS = "id, user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
+            + "params AS params_json, attempt, max_attempts, "
             + "hold_id, idempotency_key, cancel_requested_at, error_code, "
             + "result_object_keys AS result_object_keys_json, created_at, updated_at";
 
-    @Select("INSERT INTO job (user_id, status, capability, model, params, idempotency_key, hold_id) "
-            + "VALUES (#{userId}, 'created', #{capability}, #{model}, #{paramsJson,jdbcType=OTHER}, "
-            + "#{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
+    @Select("INSERT INTO job (user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
+            + "params, idempotency_key, hold_id) "
+            + "VALUES (#{userId}, 'created', #{capability}, #{model}, #{productId,jdbcType=OTHER}, "
+            + "#{targetId,jdbcType=OTHER}, #{quotedPrice,jdbcType=BIGINT}, #{pricingVersion,jdbcType=VARCHAR}, "
+            + "#{paramsJson,jdbcType=OTHER}, #{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
             + "ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING " + COLS)
     Job insertIfAbsent(
             @Param("userId") UUID userId,
             @Param("capability") String capability,
             @Param("model") String model,
+            @Param("productId") UUID productId,
+            @Param("targetId") UUID targetId,
+            @Param("quotedPrice") Long quotedPrice,
+            @Param("pricingVersion") String pricingVersion,
             @Param("paramsJson") String paramsJson,
             @Param("idempotencyKey") String idempotencyKey,
             @Param("holdId") UUID holdId);

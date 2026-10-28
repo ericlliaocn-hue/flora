@@ -33,15 +33,16 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
     private final Map<String, IdempotencyRecord> idempotency = new LinkedHashMap<>();
 
     @Override
-    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, String paramsJson, String idempotencyKey,
-            UUID holdId) {
+    public Optional<Job> insertIfAbsent(UUID userId, String capability, String model, UUID productId, UUID targetId,
+            Long quotedPrice, String pricingVersion, String paramsJson, String idempotencyKey, UUID holdId) {
         boolean exists = jobs.values().stream()
                 .anyMatch(job -> job.userId().equals(userId) && job.idempotencyKey().equals(idempotencyKey));
         if (exists) {
             return Optional.empty();
         }
         Instant now = Instant.now();
-        Job job = new Job(UUID.randomUUID(), userId, JobStatus.CREATED, capability, model, paramsJson, 0, 3, holdId,
+        Job job = new Job(UUID.randomUUID(), userId, JobStatus.CREATED, capability, model, productId, targetId,
+                quotedPrice, pricingVersion, paramsJson, 0, 3, holdId,
                 idempotencyKey, null, null, null, now, now);
         jobs.put(job.id(), job);
         return Optional.of(job);
@@ -128,6 +129,7 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
             return false;
         }
         jobs.put(jobId, new Job(job.id(), job.userId(), JobStatus.QUEUED, job.capability(), job.model(),
+                job.productId(), job.targetId(), job.quotedPrice(), job.pricingVersion(),
                 job.paramsJson(), job.attempt(), Math.max(job.maxAttempts(), job.attempt()) + 1,
                 clearHoldId ? null : job.holdId(), job.idempotencyKey(), null, null, null,
                 job.createdAt(), Instant.now()));
@@ -217,7 +219,9 @@ public class InMemoryJobStore implements JobRepository, JobStepRepository, Outbo
     }
 
     private static Job copy(Job job, JobStatus status, String errorCode, int attempt, Instant cancelRequestedAt, String resultObjectKeysJson) {
-        return new Job(job.id(), job.userId(), status, job.capability(), job.model(), job.paramsJson(), attempt,
+        return new Job(job.id(), job.userId(), status, job.capability(), job.model(),
+                job.productId(), job.targetId(), job.quotedPrice(), job.pricingVersion(),
+                job.paramsJson(), attempt,
                 job.maxAttempts(), job.holdId(), job.idempotencyKey(), cancelRequestedAt, errorCode,
                 resultObjectKeysJson, job.createdAt(), Instant.now());
     }

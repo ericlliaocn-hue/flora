@@ -63,7 +63,7 @@ class AssetServiceTest {
 
     @Test
     void failedJobsAreNotSynced() {
-        UUID jobId = jobs.insertIfAbsent(owner, "image.generate", "demo", "{}", "k1", null).orElseThrow().id();
+        UUID jobId = jobs.insertIfAbsent(owner, "image.generate", "demo", null, null, null, null, "{}", "k1", null).orElseThrow().id();
         jobs.updateStatus(jobId, JobStatus.CREATED, JobStatus.DEAD, "JOB_FAILED");
 
         assertThat(service.listUserAssets(owner, 100)).isEmpty();
@@ -106,7 +106,8 @@ class AssetServiceTest {
 
     /** 建一条成功且带结果对象键的 job。 */
     private UUID succeededJob(UUID userId, String objectKey) {
-        UUID jobId = jobs.insertIfAbsent(userId, "image.generate", "demo", "{\"prompt\":\"hi\"}", "k-" + UUID.randomUUID(), null)
+        UUID jobId = jobs.insertIfAbsent(userId, "image.generate", "demo", null, null, null, null,
+                        "{\"prompt\":\"hi\"}", "k-" + UUID.randomUUID(), null)
                 .orElseThrow()
                 .id();
         jobs.updateStatus(jobId, JobStatus.CREATED, JobStatus.RUNNING, null);
