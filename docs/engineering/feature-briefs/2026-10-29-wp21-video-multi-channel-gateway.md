@@ -41,8 +41,8 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 
 ## 实现进度（2026-10-29）
 
-- **1a 已提交**：V18 `model_product/target/route` + 增量列；`ModelCatalog`；产品提交按产品价冻结并写 product/target；NewAPI 客户端；worker 同步 NewAPI 执行器（提交 → 轮询 → 下载 → TOS）。
-- **1b 待做**：submit/query 拆步 + `provider_task` 到期调度。当前同步执行器会阻塞 worker，部署时必须把 `PILIPALA_JOB_LEASE_TTL_SECONDS` 调到 ≥ target timeout。
+- **1a 已提交**：V18 `model_product/target/route` + 增量列；`ModelCatalog`；产品提交按产品价冻结并写 product/target；NewAPI 客户端。
+- **1b 已提交**：worker submit/query 拆步；`provider_task` 写 `polling` + `next_poll_at`；api `ProviderPollScheduler` 到期重投；worker resume 查询 → 下载 → TOS。查询阶段不持有长租约。
 - **后续**：fallback + 成本上限 + Admin 只读 + 真机 smoke。
 
 ## 目标
@@ -148,7 +148,7 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 | --- | --- | --- | --- |
 | `target_id` | UUID | YES | |
 | `upstream_task_id` | TEXT | YES | NewAPI task id |
-| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | 存量 / Anytoken 旧路径 `legacy`；NewAPI 新行显式写 `submitted` |
+| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | 存量 / Anytoken 旧路径 `legacy`；NewAPI 新行显式写 `polling`（`submitted` 预留给未来两段式提交） |
 | `next_poll_at` | TIMESTAMPTZ | YES | 调度器按此重投 |
 | `poll_count` | INT | NO | DEFAULT 0 |
 | `last_poll_at` | TIMESTAMPTZ | YES | |
@@ -193,9 +193,9 @@ WP12 的视频生成只有一条 Anytoken 适配器，请求体固定，worker �
 `provider_task` 新增子状态：
 
 ```
-submitted → polling → succeeded
-                    ↘ failed
-                    ↘ cancelled
+polling → succeeded
+       ↘ failed
+       ↘ cancelled
 ```
 
 - submit 成功：写 `upstream_task_id`、`status=polling`、`next_poll_at`；worker 释放租约；

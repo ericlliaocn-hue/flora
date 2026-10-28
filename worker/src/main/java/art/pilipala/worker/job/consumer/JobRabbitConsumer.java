@@ -40,6 +40,10 @@ public class JobRabbitConsumer {
     public void onMessage(Message message) {
         UUID jobId = parseJobId(message);
         JobOutcome outcome = executeJob.execute(jobId);
+        if (outcome == JobOutcome.POLLING) {
+            log.debug("job 已提交上游，等待下一次 query：{}", jobId);
+            return;
+        }
         if (outcome == JobOutcome.DEAD) {
             log.warn("job 已 dead，消息进死信队列：{}", jobId);
             throw new AmqpRejectAndDontRequeueException("job 已 dead：" + jobId);

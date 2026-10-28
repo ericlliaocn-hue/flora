@@ -16,8 +16,14 @@ public record ProviderTaskRecord(
         UUID jobId,
         UUID jobStepId,
         UUID targetId,
+        String upstreamTaskId,
+        String status,
+        int pollCount,
+        Instant nextPollAt,
         String upstreamRequestId,
         String rawStatus,
         String rawBodyJson,
+        String errorClass,
+        Integer latencyMs,
         Instant createdAt) {
 }

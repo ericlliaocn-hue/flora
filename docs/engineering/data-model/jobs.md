@@ -144,7 +144,7 @@ dispatcher 只负责投递。重试间隔与失败处理由实现 WP 再定。�
 | `created_at` | TIMESTAMPTZ | NO | DEFAULT now() | |
 | `target_id` | UUID | YES | | WP21：本次 attempt 的 target |
 | `upstream_task_id` | TEXT | YES | | WP21：NewAPI 异步任务 id |
-| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | WP21 轮询子状态；存量 / Anytoken 旧路径为 `legacy`，NewAPI 新行显式写 `submitted` |
+| `status` | TEXT | NO | DEFAULT `legacy`；CHECK ∈ `submitted` \| `polling` \| `succeeded` \| `failed` \| `cancelled` \| `legacy` | WP21 轮询子状态；存量 / Anytoken 旧路径为 `legacy`，NewAPI 新行显式写 `polling` |
 | `next_poll_at` | TIMESTAMPTZ | YES | 部分索引 (`status`, `next_poll_at`) WHERE `status IN ('submitted','polling')` | 调度器按此重投 |
 | `poll_count` | INT | NO | DEFAULT 0；CHECK >= 0 | |
 | `last_poll_at` | TIMESTAMPTZ | YES | | |

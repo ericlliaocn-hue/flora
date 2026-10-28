@@ -112,8 +112,8 @@ export PILIPALA_GATEWAY_TIMEOUT_MS=30000
 export PILIPALA_NEWAPI_BASE_URL=https://api.meaicc.com
 export PILIPALA_NEWAPI_API_KEY=               # 由环境变量注入，勿入库、勿写进文档
 export PILIPALA_NEWAPI_TIMEOUT_MS=30000
-export PILIPALA_NEWAPI_POLL_INTERVAL_MS=2000  # 同步执行器的轮询间隔
-export PILIPALA_JOB_LEASE_TTL_SECONDS=1200     # 同步执行器需 ≥ target timeout；拆步后调回
+export PILIPALA_NEWAPI_POLL_INTERVAL_MS=2000  # 查询间隔 / provider_task next_poll_at 间隔
+export PILIPALA_PROVIDER_POLL_LEASE_SECONDS=30 # 到期扫描租期；worker 租约只覆盖单次 submit/query
 export PILIPALA_PROVIDER_POLL_SCAN_MS=2000    # provider_task 到期扫描间隔
 export PILIPALA_PROVIDER_POLL_BATCH_SIZE=50   # 单轮最多扫描多少条
 

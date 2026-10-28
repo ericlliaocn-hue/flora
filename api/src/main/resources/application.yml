@@ -95,6 +95,11 @@ pilipala:
   gateway:
     base-url: ${PILIPALA_GATEWAY_BASE_URL:}
     api-key: ${PILIPALA_GATEWAY_API_KEY:}
+  # WP21：视频 polling 到期扫描（只投 job_id，不调 NewAPI）
+  provider:
+    poll-scan-ms: ${PILIPALA_PROVIDER_POLL_SCAN_MS:2000}
+    poll-batch-size: ${PILIPALA_PROVIDER_POLL_BATCH_SIZE:50}
+    poll-lease-seconds: ${PILIPALA_PROVIDER_POLL_LEASE_SECONDS:30}
   # WP4 的 Job 域配置。队列名只存在这里与 Rabbit 声明里，禁止写进 job 行（ADR 0003）。
   job:
     # rabbit = 真 broker；fake = 本地内存假 transport（测试与无 broker 演练用）。

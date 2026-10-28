@@ -2,12 +2,14 @@ package art.pilipala.worker.job.support;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import art.pilipala.worker.job.domain.PollingTask;
 import art.pilipala.worker.job.domain.ProviderTaskRecord;
 import art.pilipala.worker.job.domain.WorkerJob;
 import art.pilipala.worker.job.domain.WorkerJobStatus;
@@ -120,9 +122,55 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     public UUID insert(UUID jobId, UUID jobStepId, UUID targetId, String upstreamRequestId, String rawStatus,
             String rawBodyJson) {
         UUID id = UUID.randomUUID();
-        providerTasks.put(id, new ProviderTaskRecord(id, jobId, jobStepId, targetId, upstreamRequestId, rawStatus,
-                rawBodyJson, Instant.now()));
+        providerTasks.put(id, new ProviderTaskRecord(id, jobId, jobStepId, targetId, null, "legacy", 0, null,
+                upstreamRequestId, rawStatus, rawBodyJson, null, null, Instant.now()));
         return id;
+    }
+
+    @Override
+    public UUID insertPolling(UUID jobId, UUID jobStepId, UUID targetId, String upstreamTaskId,
+            String rawStatus, String rawBodyJson, Instant nextPollAt) {
+        UUID id = UUID.randomUUID();
+        providerTasks.put(id, new ProviderTaskRecord(id, jobId, jobStepId, targetId, upstreamTaskId, "polling", 0,
+                nextPollAt, null, rawStatus, rawBodyJson, null, null, Instant.now()));
+        return id;
+    }
+
+    @Override
+    public Optional<PollingTask> findOpenByJob(UUID jobId) {
+        return providerTasks.values().stream()
+                .filter(task -> task.jobId().equals(jobId))
+                .filter(task -> "submitted".equals(task.status()) || "polling".equals(task.status()))
+                .max(Comparator.comparing(ProviderTaskRecord::createdAt))
+                .map(task -> new PollingTask(task.id(), task.jobId(), task.jobStepId(), task.targetId(),
+                        task.upstreamTaskId(), task.status(), task.pollCount(), task.rawStatus(),
+                        task.rawBodyJson()));
+    }
+
+    @Override
+    public boolean reschedule(UUID providerTaskId, String rawStatus, String rawBodyJson, Instant nextPollAt,
+            int pollCount) {
+        ProviderTaskRecord task = providerTasks.get(providerTaskId);
+        if (task == null) {
+            return false;
+        }
+        providerTasks.put(providerTaskId, new ProviderTaskRecord(task.id(), task.jobId(), task.jobStepId(),
+                task.targetId(), task.upstreamTaskId(), "polling", pollCount, nextPollAt, task.upstreamRequestId(),
+                rawStatus, rawBodyJson, task.errorClass(), task.latencyMs(), task.createdAt()));
+        return true;
+    }
+
+    @Override
+    public boolean finish(UUID providerTaskId, String status, String rawStatus, String rawBodyJson,
+            String errorClass, Integer latencyMs) {
+        ProviderTaskRecord task = providerTasks.get(providerTaskId);
+        if (task == null) {
+            return false;
+        }
+        providerTasks.put(providerTaskId, new ProviderTaskRecord(task.id(), task.jobId(), task.jobStepId(),
+                task.targetId(), task.upstreamTaskId(), status, task.pollCount(), task.nextPollAt(),
+                task.upstreamRequestId(), rawStatus, rawBodyJson, errorClass, latencyMs, task.createdAt()));
+        return true;
     }
 
     @Override

@@ -20,6 +20,7 @@ import art.pilipala.api.job.infra.IdempotencyMapper;
 import art.pilipala.api.job.infra.JobMapper;
 import art.pilipala.api.job.infra.JobStepMapper;
 import art.pilipala.api.job.infra.OutboxMapper;
+import art.pilipala.api.job.infra.ProviderPollMapper;
 import art.pilipala.api.job.infra.ProviderTaskMapper;
 import art.pilipala.api.project.infra.CanvasProjectMapper;
 import art.pilipala.api.project.infra.UserAssetMapper;
@@ -42,6 +43,7 @@ class MybatisReturningMapperContractTest {
             JobStepMapper.class,
             OutboxMapper.class,
             ProviderTaskMapper.class,
+            ProviderPollMapper.class,
             CanvasProjectMapper.class,
             UserAssetMapper.class,
             I18nMessageMapper.class);

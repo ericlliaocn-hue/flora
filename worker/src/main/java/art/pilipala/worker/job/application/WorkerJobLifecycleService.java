@@ -1,5 +1,6 @@
 package art.pilipala.worker.job.application;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import art.pilipala.worker.gateway.AnytokenAttemptResult;
 import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.JobOutcome;
+import art.pilipala.worker.job.domain.PollingAttempt;
 import art.pilipala.worker.job.domain.WorkerErrorCodes;
 import art.pilipala.worker.job.domain.WorkerJob;
 import art.pilipala.worker.job.domain.WorkerJobStatus;
@@ -23,13 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * job 状态机的两段短事务：claim 与 complete。
+ * job 状态机的短事务：claim（submit 入口）、startPolling、resume + completePolling。
  *
- * <p>两段之间是上游调用（可能很慢），所以 **绝不在事务里调上游**：
- * claim 提交 → 事务外调 Anytoken → complete 提交。
- *
- * <p>complete 里的「写 dead」必须先提交事务，消费者再决定是否把消息投进死信队列，
- * 否则抛异常会把已经写好的 dead 状态回滚掉。
+ * <p>submit 成功后 job/step 仍是 running，provider_task 进入 polling；worker 释放租约，
+ * 由 api 的 ProviderPollScheduler 按 next_poll_at 重投。查询成功/终态才收尾 job。
  */
 @Service
 public class WorkerJobLifecycleService {
@@ -68,7 +67,7 @@ public class WorkerJobLifecycleService {
             return Optional.empty();
         }
         if (job.status() != WorkerJobStatus.QUEUED) {
-            log.info("job 状态不是 queued（{}），幂等跳过：{}", job.status().value(), jobId);
+            log.debug("job 状态不是 queued（{}），交给 resume/幂等路径：{}", job.status().value(), jobId);
             return Optional.empty();
         }
 
@@ -83,37 +82,78 @@ public class WorkerJobLifecycleService {
                 running.capability(), running.model(), running.productId(), running.targetId(), running.paramsJson()));
     }
 
+    /** submit 成功：写 polling 行，job/step 保持 running。 */
+    @Transactional
+    public void startPolling(ClaimedAttempt attempt, String upstreamTaskId, String rawStatus, String rawBodyJson,
+            Instant nextPollAt) {
+        providerTasks.insertPolling(attempt.jobId(), attempt.jobStepId(), attempt.targetId(), upstreamTaskId,
+                rawStatus, rawBodyJson, nextPollAt);
+    }
+
+    /** resume：running job + 打开的 provider_task；没有则空。 */
+    @Transactional(readOnly = true)
+    public Optional<PollingAttempt> resume(UUID jobId) {
+        WorkerJob job = jobs.findById(jobId).orElse(null);
+        if (job == null || job.status() != WorkerJobStatus.RUNNING) {
+            return Optional.empty();
+        }
+        return providerTasks.findOpenByJob(jobId)
+                .map(task -> new PollingAttempt(job.id(), task.jobStepId(), job.attempt(), job.maxAttempts(),
+                        job.capability(), job.model(), task.targetId(), task.providerTaskId(), task.upstreamTaskId(),
+                        task.pollCount(), job.paramsJson()));
+    }
+
+    /** 查询未终态：保持 polling，更新 poll_count / next_poll_at。 */
+    @Transactional
+    public void reschedulePolling(PollingAttempt attempt, String rawStatus, String rawBodyJson, Instant nextPollAt) {
+        providerTasks.reschedule(attempt.providerTaskId(), rawStatus, rawBodyJson, nextPollAt,
+                attempt.pollCount() + 1);
+    }
+
+    /** 查询终态：更新已有 provider_task，收尾 step/job。 */
+    @Transactional
+    public JobOutcome completePolling(PollingAttempt attempt, AnytokenAttemptResult result) {
+        return finish(attempt.jobId(), attempt.jobStepId(), attempt.attempt(), attempt.maxAttempts(),
+                attempt.providerTaskId(), result);
+    }
+
     /**
-     * complete 短事务：插 provider_task + 收尾 job_step + 推进 job。
-     *
-     * <p>取消意图优先：运行期间用户点了取消，无论上游这次成功还是失败，
-     * job_step 与 job 一律落 cancelled，且不写 result_object_keys。
+     * legacy：一次性完成后插 provider_task 再收尾（Anytoken 存量路径）。
      */
     @Transactional
     public JobOutcome complete(ClaimedAttempt attempt, AnytokenAttemptResult result) {
         UUID providerTaskId = providerTasks.insert(attempt.jobId(), attempt.jobStepId(), attempt.targetId(),
                 result.upstreamRequestId(), result.rawStatus(), result.rawBodyJson());
+        return finish(attempt.jobId(), attempt.jobStepId(), attempt.attempt(), attempt.maxAttempts(),
+                providerTaskId, result);
+    }
 
-        WorkerJob job = jobs.findById(attempt.jobId()).orElseThrow(
-                () -> new IllegalStateException("job 不存在：" + attempt.jobId()));
+    private JobOutcome finish(UUID jobId, UUID jobStepId, int attempt, int maxAttempts, UUID providerTaskId,
+            AnytokenAttemptResult result) {
+        WorkerJob job = jobs.findById(jobId).orElseThrow(
+                () -> new IllegalStateException("job 不存在：" + jobId));
 
         if (job.cancelRequestedAt() != null) {
-            steps.end(job.id(), job.attempt(), WorkerStepStatus.CANCELLED, WorkerErrorCodes.JOB_CANCELLED, providerTaskId);
+            providerTasks.finish(providerTaskId, "cancelled", result.rawStatus(), result.rawBodyJson(), "cancelled", null);
+            steps.end(job.id(), attempt, WorkerStepStatus.CANCELLED, WorkerErrorCodes.JOB_CANCELLED, providerTaskId);
             jobs.updateStatus(job.id(), WorkerJobStatus.RUNNING, WorkerJobStatus.CANCELLED, WorkerErrorCodes.JOB_CANCELLED);
             log.info("运行期间收到取消，收敛为 cancelled：{}", job.id());
             return JobOutcome.CANCELLED;
         }
 
         if (result.succeeded()) {
-            steps.end(job.id(), job.attempt(), WorkerStepStatus.SUCCEEDED, null, providerTaskId);
+            providerTasks.finish(providerTaskId, "succeeded", result.rawStatus(), result.rawBodyJson(), null, null);
+            steps.end(job.id(), attempt, WorkerStepStatus.SUCCEEDED, null, providerTaskId);
             jobs.updateResult(job.id(), resultKeysJson(result.outputObjectKeys()));
             jobs.updateStatus(job.id(), WorkerJobStatus.RUNNING, WorkerJobStatus.SUCCEEDED, null);
             return JobOutcome.SUCCEEDED;
         }
 
-        boolean retryable = result.retryable() && job.attempt() < job.maxAttempts();
+        boolean retryable = result.retryable() && attempt < maxAttempts;
+        providerTasks.finish(providerTaskId, "failed", result.rawStatus(), result.rawBodyJson(),
+                errorClass(result), null);
         if (retryable) {
-            steps.end(job.id(), job.attempt(), WorkerStepStatus.FAILED, result.errorCode(), providerTaskId);
+            steps.end(job.id(), attempt, WorkerStepStatus.FAILED, result.errorCode(), providerTaskId);
             jobs.updateStatus(job.id(), WorkerJobStatus.RUNNING, WorkerJobStatus.FAILED, result.errorCode());
             jobs.updateStatus(job.id(), WorkerJobStatus.FAILED, WorkerJobStatus.QUEUED, result.errorCode());
             UUID eventId = UUID.randomUUID();
@@ -121,10 +161,24 @@ public class WorkerJobLifecycleService {
             return JobOutcome.RETRY_QUEUED;
         }
 
-        steps.end(job.id(), job.attempt(), WorkerStepStatus.FAILED, result.errorCode(), providerTaskId);
+        steps.end(job.id(), attempt, WorkerStepStatus.FAILED, result.errorCode(), providerTaskId);
         jobs.updateStatus(job.id(), WorkerJobStatus.RUNNING, WorkerJobStatus.FAILED, result.errorCode());
         jobs.updateStatus(job.id(), WorkerJobStatus.FAILED, WorkerJobStatus.DEAD, result.errorCode());
         return JobOutcome.DEAD;
+    }
+
+    private static String errorClass(AnytokenAttemptResult result) {
+        String code = result.errorCode();
+        if (code == null) {
+            return null;
+        }
+        return switch (code) {
+            case WorkerErrorCodes.PROVIDER_UNAVAILABLE -> "transient";
+            case WorkerErrorCodes.GATEWAY_TIMEOUT -> "timeout";
+            case WorkerErrorCodes.UPSTREAM_VIDEO_FAILED -> "task_failed";
+            case WorkerErrorCodes.GATEWAY_INVALID_RESPONSE -> "param";
+            default -> "job_failed";
+        };
     }
 
     /** MQ 消息体：只有 job_id 与传输层 event_id（ADR 0003）。 */
