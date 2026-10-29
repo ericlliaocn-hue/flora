@@ -54,7 +54,8 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **真实 meaicc smoke**：NewAPI channel4 `meaicc-real-c4`（type-61，base `https://api.meaicc.com`，model `sd-2-c4`）；product job `cc932748-…` 约 130s 完成，job SUCCESS；NewAPI task 走 channel4 SUCCESS、无 fallback；TOS 1.0MB；wallet 960/0、hold confirmed；`target_id=null`。
 - **key hygiene**：真实 key 只存在 NewAPI channel 记录；临时 key 文件已删除；pilipala/NewAPI 源码目录扫描无 key。key 已在聊天中出现，建议 smoke 后轮换。
 - **C 端视频 product 对齐**：web 托管视频列表只保留 `seedance-2-720p-stable`，移除未落库的 `seedance2/2.5/fast/mini`；旧持久化模型回落到该 product code，避免落到 legacy 价格/Anytoken 路径。前端 worktree 没有 node_modules，未跑 typecheck/build。
-- **未做**：C 端产品入口 UI 的完整验收；旧 target/route/fallback 代码删除（当前仅保留回滚）。
+- **C 端价格/上架**：V20 将 `seedance-2-720p-stable` 设为 `5000 credits`、enabled=true（按 pack 有效积分价值约 ¥0.0044-0.0053/credit，c4 上游约 USD 1.8，保留约 40-50% 毛利）。fake channel C 端价格 smoke：job `824f0879-…`，wallet 10960→5960、hold 5000 confirmed、job SUCCESS；随后恢复真实 channel4。
+- **未做**：C 端产品入口的浏览器/typecheck/build 验收（worktree 无 node_modules，Data 卷仅 753Mi）；旧 target/route/fallback 代码删除（当前仅保留回滚）。
 
 
 

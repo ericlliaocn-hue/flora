@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [新增] WP21：Seedance 2 720p 视频产品上架（5000 credits），C 端 remote 视频只保留该 SKU，走 NewAPI 真实 c4 通道。
 + [修复] WP21：补齐 MyBatis 枚举 type-handler 扫描、JSONB 参数 cast 与 RETURNING UUID 映射，修复真实 Postgres 上冻结、建任务与 worker 步骤的运行时错误。
 + [调整] Studio「开通会员」改为独立全页 `/billing/membership`（LibTV 式顶栏促销+倒计时、周期胶囊、五列宽松卡片）；移除 `MembershipModal` 弹层，积分超市仍用顶栏同款弹层。
 + [优化] Studio 会员弹层五档个人卡片：网格等高拉伸 + 固定顶栏/档位/积分区块高度，CTA 与限时活动区横向对齐，权益列表区内滚动。
