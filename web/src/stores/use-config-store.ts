@@ -90,12 +90,9 @@ export const PILIPALA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
     { name: "flux-1-schnell", capability: "image" },
 ];
 
-/** 托管云端模式内置的视频模型（WP12：Anytoken Seedance）。 */
+/** 托管云端模式内置的视频产品；只列 model_product 里真实存在的 SKU。 */
 export const PILIPALA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
-    { name: "seedance2", capability: "video" },
-    { name: "seedance2.5", capability: "video" },
-    { name: "seedance-fast", capability: "video" },
-    { name: "seedance-mini", capability: "video" },
+    { name: "seedance-2-720p-stable", capability: "video" },
 ];
 
 /** 云端内置视频模型名（不带渠道前缀）。 */

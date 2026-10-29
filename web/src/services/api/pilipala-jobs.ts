@@ -90,10 +90,10 @@ export function usesPilipalaManagedVideoChannel(config: AiConfig): boolean {
     return config.channelMode === "remote" && !decodeChannelModel(config.model || config.videoModel);
 }
 
-/** 托管视频通道要用的模型：只认 Seedance 托管模型，其余回落到 seedance2。 */
+/** 托管视频通道要用的产品 code；只认 model_product 中存在的 SKU。 */
 export function resolvePilipalaVideoModel(config: AiConfig): string {
-    const model = modelOptionName(config.model || config.videoModel || "seedance2");
-    return isRemoteVideoModel(model) ? model : "seedance2";
+    const model = modelOptionName(config.model || config.videoModel || "seedance-2-720p-stable");
+    return isRemoteVideoModel(model) ? model : "seedance-2-720p-stable";
 }
 
 /**
