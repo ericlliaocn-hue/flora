@@ -44,7 +44,9 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **auth fuse**：fork `a0e35b6`；轮询 401/402/403 立即失败 task 并按 `channel.AutoBan` 自动禁用渠道，不再累计 poll failure 重试；已验证 channel2 返回 401 后 `status=3`、task `FAILURE(upstream auth failure)`，channel1 恢复后同模型任务成功。
 - **submit 幂等**：fork `3c29c75`；`X-Pilipala-Request-Id` → `tasks.client_request_id`（user 维度唯一）；重复提交返回同一 public task id，不再提交上游；已验证两次提交同一 id、DB 1 行、fake 上游仅 1 个 task。
 - **跨 target fallback**：fork `94f5830`；终态失败（非 auth/content/param/deadline）时选择同 group/model、同插件绑定的另一 channel，重放 bounded original body，更新同一 public task 的 channel/upstream/plugin_state/data，CAS 回 SUBMITTED；已验证 channel3 `FAILED` → channel1 `SUCCESS`，`fallback_attempts=1`、`fallback_channels=[3]`、content 1.1MB。
-- **未做**：NewAPI billing 隔离；真实 meaicc channel 未接；当前 service token 仍走 NewAPI 内部 quota（`billing_source=wallet, token_id=1`），pilipala 钱包仍是唯一用户账本；pilipala 的 product→group/API 迁移未开始。
+- **Phase 2 第二段 A：worker 切 NewAPI /v1/videos**：commit `bc6e00f`；submit 带 `X-Pilipala-Request-Id` / `X-Pilipala-Deadline-At`，poll 公开 task id，content 带 service token 下载后写 TOS；NewAPI 内部负责 channel retry/fallback，worker 不再走 `/v1/video/generations` 或本地上游 fallback；最终失败映射 `NO_AVAILABLE_CHANNEL`。
+- **全链路 smoke**：product job `ea1c034b-…` → NewAPI task，channel3 `FAILED` → channel1 fallback；NewAPI `fallback_attempts=1`、`fallback_channels=[3]`；job succeeded、provider_task succeeded、TOS 1.1MB、wallet 990/0、hold confirmed。
+- **未做**：NewAPI billing 隔离；真实 meaicc channel/Key 未接；pilipala 的 product→group V19 / 内部 API / worker 旧 Phase 1 fallback 清理未开始；当前 service token 仍走 NewAPI 内部 quota（`billing_source=wallet, token_id=1`），pilipala 钱包仍是唯一用户账本。
 
 
 
