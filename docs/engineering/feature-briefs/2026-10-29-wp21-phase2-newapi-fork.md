@@ -51,7 +51,9 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **NewAPI billing 边界**：NewAPI DB 只有 root service user + 一个 unlimited service token，没有 C 端用户/钱包表；token 的 `used_quota` 是内部成本观测，不是用户余额。pilipala wallet 仍是唯一用户账本；C 端不创建 NewAPI token，不暴露 NewAPI quota。
 - **target 写入清理**：`SubmitJob` 产品路径只解析 group，不再写 `job.target_id`；旧 `model_target/model_route`/`VideoFallbackScheduler` 保留只读回滚，worker/poll scheduler 已不依赖 target。cleanup smoke job `e49415fd-…`：`target_id=null`、`gateway_group=default`、`gateway_model=sd-2-c4`，job SUCCESS。
 - **service user quota**：NewAPI 的 service user quota 也参与 task 预扣，默认 100M 会被用尽并返回 `insufficient_user_quota`；本地已把 root service user quota 提到 int64 max，并清理 Redis DB1 的 user-quota cache。它是内部成本观测，不是用户余额。
-- **未做**：真实 meaicc channel/Key；C 端产品入口 UI。
+- **真实 meaicc smoke**：NewAPI channel4 `meaicc-real-c4`（type-61，base `https://api.meaicc.com`，model `sd-2-c4`）；product job `cc932748-…` 约 130s 完成，job SUCCESS；NewAPI task 走 channel4 SUCCESS、无 fallback；TOS 1.0MB；wallet 960/0、hold confirmed；`target_id=null`。
+- **key hygiene**：真实 key 只存在 NewAPI channel 记录；临时 key 文件已删除；pilipala/NewAPI 源码目录扫描无 key。key 已在聊天中出现，建议 smoke 后轮换。
+- **未做**：C 端产品入口 UI；旧 target/route/fallback 代码删除（当前仅保留回滚）。
 
 
 
