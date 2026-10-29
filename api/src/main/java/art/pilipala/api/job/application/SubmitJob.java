@@ -94,10 +94,8 @@ public class SubmitJob {
                     || params.path("prompt").asText("").isBlank()) {
                 throw JobException.validation();
             }
-            ModelCatalog.ResolvedProduct route = catalog.resolve(resolvedProduct);
             ModelCatalog.ResolvedGroup group = catalog.resolveGroup(resolvedProduct);
             productId = resolvedProduct.id();
-            targetId = route.primary().target().id();
             gatewayGroup = group.group().groupCode();
             gatewayModel = group.group().modelCode();
             gatewayTimeoutSeconds = group.group().timeoutSeconds();

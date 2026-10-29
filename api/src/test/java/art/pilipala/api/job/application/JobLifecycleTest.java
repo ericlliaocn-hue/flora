@@ -374,11 +374,10 @@ class JobLifecycleTest {
     }
 
     @Test
-    void productSubmitUsesProductPriceAndPrimaryTarget() {
+    void productSubmitUsesProductPriceAndGatewayGroup() {
         ModelProduct product = product("video-stable", 30, true);
         ModelTarget target = target("newapi/sd-2-c4");
-        catalogRepository.product(product).target(target)
-                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, new BigDecimal("2.0"), true))
+        catalogRepository.product(product)
                 .group(new ModelProductGroup(UUID.randomUUID(), product.id(), "default", target.upstreamModel(),
                         10, 900, new BigDecimal("2.0"), true));
 
@@ -386,7 +385,7 @@ class JobLifecycleTest {
 
         Job job = store.findById(UUID.fromString(view.jobId())).orElseThrow();
         assertThat(job.productId()).isEqualTo(product.id());
-        assertThat(job.targetId()).isEqualTo(target.id());
+        assertThat(job.targetId()).isNull();
         assertThat(job.gatewayGroup()).isEqualTo("default");
         assertThat(job.gatewayModel()).isEqualTo(target.upstreamModel());
         assertThat(job.gatewayTimeoutSeconds()).isEqualTo(900);
@@ -414,8 +413,8 @@ class JobLifecycleTest {
     }
 
     @Test
-    void productWithoutUsableTargetIsNoAvailableChannel() {
-        ModelProduct product = product("video-no-target", 30, true);
+    void productWithoutUsableGroupIsNoAvailableChannel() {
+        ModelProduct product = product("video-no-group", 30, true);
         catalogRepository.product(product);
 
         assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null))
