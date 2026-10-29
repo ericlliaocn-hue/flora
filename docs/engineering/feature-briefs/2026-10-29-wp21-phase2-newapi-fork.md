@@ -41,7 +41,8 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **task plugin 原型**：NewAPI fork `25936dc`，`plugins/tasks/pilipala-video/plugin.js` + `fixture.json`；`openai_video` / `per_task`，c4/c7/c8，submit → meaicc `/v1/video/generations`，query 按 task id，content 走 credentialless 输出 URL；fixture 7/7。
 - **type-61 fake channel E2E**：本地 channel `pilipala-fake-video` + service token；`POST /v1/videos` → query → content 返回 1.1MB MP4；fake upstream 在 18091。
 - **per-task deadline**：fork `fc0d894`；`parseSubmitResponse` 从 `X-Pilipala-Deadline-At` / `X-Pilipala-Timeout-Seconds` 写 `plugin_state.deadlineAt`；过期后 task `FAILURE`，已验 `fail_reason=task deadline exceeded`；fixture 9/9。
-- **未做**：跨 target fallback、submit 幂等/对账、auth fuse、NewAPI billing 隔离；真实 meaicc channel 未接；当前 service token 仍走 NewAPI 内部 quota（`billing_source=wallet, token_id=1`），pilipala 钱包仍是唯一用户账本。
+- **auth fuse**：fork `a0e35b6`；轮询 401/402/403 立即失败 task 并按 `channel.AutoBan` 自动禁用渠道，不再累计 poll failure 重试；已验证 channel2 返回 401 后 `status=3`、task `FAILURE(upstream auth failure)`，channel1 恢复后同模型任务成功。
+- **未做**：跨 target fallback、submit 幂等/对账、NewAPI billing 隔离；真实 meaicc channel 未接；当前 service token 仍走 NewAPI 内部 quota（`billing_source=wallet, token_id=1`），pilipala 钱包仍是唯一用户账本。
 
 
 
