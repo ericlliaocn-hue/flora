@@ -34,6 +34,7 @@ WP21 Phase 1 用外置 NewAPI + pilipala worker 跑通了视频 happy path，但
 - 独立实例：`13000`，Postgres `pilipala_newapi`（38 张表），Redis `56379/1`，Admin setup 成功；
 - task plugin runtime：generation 12，`plugin_error_count=0`；
 - 源码结构：`plugins/tasks/*/plugin.js`、`relay/channel/task/jsplugin/*`、`service/task_polling.go`；
+- 源码构建：`web/dist` 68M + `go build` 152M；source-built binary 在 13000 启动，Admin/plugin runtime/lint 通过；
 - host 已拥有 persistence/retries/polling/billing/settlement（plugin 只做 request/parse/usage 变换）。
 
 ## 后果（Consequences）

@@ -3,7 +3,7 @@
 - 日期：2026-10-29
 - 作者：DSH / pilipala engineering
 - 对应 WP / 里程碑：WP21 Phase 2
-- 状态：实现中（Phase 0 受控实例完成，源码构建待验；Phase 1 契约/迁移待落地）
+- 状态：实现中（Phase 0 受控实例/源码构建通过；Phase 1 契约/迁移待落地）
 
 ## 背景
 
