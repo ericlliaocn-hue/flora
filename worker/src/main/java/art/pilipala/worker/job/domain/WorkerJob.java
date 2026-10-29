@@ -11,7 +11,10 @@ import java.util.UUID;
  *
  * @param paramsJson 已物化的参数（JSON 文本）
  * @param productId  WP21 产品 SKU；老 job 为空
- * @param targetId   WP21 路由 target；为空走 Anytoken 存量路径
+ * @param targetId   Phase 1 旧 target；Phase 2 起可为空
+ * @param gatewayGroup Phase 2 NewAPI group；为空走 Anytoken 存量路径
+ * @param gatewayModel Phase 2 NewAPI model
+ * @param gatewayTimeoutSeconds Phase 2 task deadline 秒数
  */
 public record WorkerJob(
         UUID id,
@@ -20,6 +23,9 @@ public record WorkerJob(
         String model,
         UUID productId,
         UUID targetId,
+        String gatewayGroup,
+        String gatewayModel,
+        Integer gatewayTimeoutSeconds,
         String paramsJson,
         int attempt,
         int maxAttempts,

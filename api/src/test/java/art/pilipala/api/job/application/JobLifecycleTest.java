@@ -26,6 +26,7 @@ import art.pilipala.api.i18n.application.I18nMessageService;
 import art.pilipala.api.job.domain.Job;
 import art.pilipala.api.job.domain.JobStatus;
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.storage.TosProperties;
@@ -377,13 +378,18 @@ class JobLifecycleTest {
         ModelProduct product = product("video-stable", 30, true);
         ModelTarget target = target("newapi/sd-2-c4");
         catalogRepository.product(product).target(target)
-                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, new BigDecimal("2.0"), true));
+                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, new BigDecimal("2.0"), true))
+                .group(new ModelProductGroup(UUID.randomUUID(), product.id(), "default", target.upstreamModel(),
+                        10, 900, new BigDecimal("2.0"), true));
 
         SubmitJobView view = submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null);
 
         Job job = store.findById(UUID.fromString(view.jobId())).orElseThrow();
         assertThat(job.productId()).isEqualTo(product.id());
         assertThat(job.targetId()).isEqualTo(target.id());
+        assertThat(job.gatewayGroup()).isEqualTo("default");
+        assertThat(job.gatewayModel()).isEqualTo(target.upstreamModel());
+        assertThat(job.gatewayTimeoutSeconds()).isEqualTo(900);
         assertThat(job.quotedPrice()).isEqualTo(30);
         assertThat(job.pricingVersion()).isEqualTo("wp21-v1");
         assertThat(job.model()).isEqualTo("video-stable");

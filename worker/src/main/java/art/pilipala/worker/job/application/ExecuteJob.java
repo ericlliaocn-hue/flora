@@ -13,9 +13,7 @@ import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.JobOutcome;
 import art.pilipala.worker.job.domain.PollingAttempt;
 import art.pilipala.worker.job.domain.WorkerErrorCodes;
-import art.pilipala.worker.job.domain.WorkerTarget;
 import art.pilipala.worker.job.infra.WorkerJobLease;
-import art.pilipala.worker.job.infra.WorkerTargetRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,18 +38,16 @@ public class ExecuteJob {
     private final WorkerJobLifecycleService lifecycle;
     private final AnytokenGateway gateway;
     private final WorkerJobLease lease;
-    private final WorkerTargetRepository targets;
     private final VideoTaskGateway videoGateway;
     private final long pollIntervalMs;
     private final String workerId;
 
     public ExecuteJob(WorkerJobLifecycleService lifecycle, AnytokenGateway gateway, WorkerJobLease lease,
-            WorkerTargetRepository targets, VideoTaskGateway videoGateway,
+            VideoTaskGateway videoGateway,
             @Value("${pilipala.gateway.newapi.poll-interval-ms:2000}") long pollIntervalMs) {
         this.lifecycle = lifecycle;
         this.gateway = gateway;
         this.lease = lease;
-        this.targets = targets;
         this.videoGateway = videoGateway;
         this.pollIntervalMs = Math.max(1, pollIntervalMs);
         this.workerId = "worker-" + UUID.randomUUID();
@@ -66,7 +62,7 @@ public class ExecuteJob {
             Optional<ClaimedAttempt> claimed = lifecycle.claim(jobId);
             if (claimed.isPresent()) {
                 ClaimedAttempt attempt = claimed.get();
-                if (attempt.targetId() == null) {
+                if (attempt.gatewayModel() == null || attempt.gatewayModel().isBlank()) {
                     AnytokenAttemptResult result = gateway.execute(new AnytokenRequest(attempt.jobId(),
                             attempt.attempt(), attempt.capability(), attempt.model(), attempt.paramsJson()));
                     return lifecycle.complete(attempt, result);
@@ -84,12 +80,7 @@ public class ExecuteJob {
     }
 
     private JobOutcome submitVideo(ClaimedAttempt attempt) {
-        Optional<WorkerTarget> target = target(attempt.targetId());
-        if (target.isEmpty()) {
-            return lifecycle.complete(attempt, failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, false,
-                    "TARGET", "target missing or disabled"));
-        }
-        NewApiSubmitResult submitted = videoGateway.submit(attempt, target.get());
+        NewApiSubmitResult submitted = videoGateway.submit(attempt);
         if (!submitted.accepted()) {
             return lifecycle.complete(attempt, failure(submitted.errorCode(), submitted.retryable(),
                     submitted.rawStatus(), submitted.rawBody()));
@@ -106,12 +97,7 @@ public class ExecuteJob {
     }
 
     private JobOutcome queryVideo(PollingAttempt polling) {
-        Optional<WorkerTarget> target = target(polling.targetId());
-        if (target.isEmpty()) {
-            return lifecycle.completePolling(polling, failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, false,
-                    "TARGET", "target missing or disabled"));
-        }
-        NewApiTaskStatus status = videoGateway.query(polling, target.get());
+        NewApiTaskStatus status = videoGateway.query(polling);
         if (status.succeeded()) {
             AnytokenAttemptResult stored = videoGateway.store(polling, status);
             if (stored.succeeded()) {
@@ -130,10 +116,6 @@ public class ExecuteJob {
         lifecycle.reschedulePolling(polling, status.rawStatus(), status.rawBody(),
                 Instant.now().plusMillis(pollIntervalMs));
         return JobOutcome.POLLING;
-    }
-
-    private Optional<WorkerTarget> target(UUID targetId) {
-        return targets.findById(targetId).filter(WorkerTarget::enabled);
     }
 
     private static AnytokenAttemptResult failure(String errorCode, boolean retryable, String rawStatus,

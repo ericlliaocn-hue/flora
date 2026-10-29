@@ -31,8 +31,7 @@ class NewApiVideoTaskGatewayTest {
     void submitBuildsTheRequestFromCanonicalParams() {
         client.submitResult = NewApiSubmitResult.accepted("task-1", "RUNNING", "200", "{}");
 
-        NewApiSubmitResult result = gateway().submit(claimed("{\"prompt\":\"hi\",\"duration\":4,\"aspect_ratio\":\"16:9\"}"),
-                target());
+        NewApiSubmitResult result = gateway().submit(claimed("{\"prompt\":\"hi\",\"duration\":4,\"aspect_ratio\":\"16:9\"}"));
 
         assertThat(result.accepted()).isTrue();
         assertThat(result.taskId()).isEqualTo("task-1");
@@ -46,7 +45,7 @@ class NewApiVideoTaskGatewayTest {
     void submitRejectedIsPassedThrough() {
         client.submitResult = NewApiSubmitResult.failure("JOB_FAILED", false, "400", "{}");
 
-        NewApiSubmitResult result = gateway().submit(claimed("{\"prompt\":\"hi\"}"), target());
+        NewApiSubmitResult result = gateway().submit(claimed("{\"prompt\":\"hi\"}"));
 
         assertThat(result.accepted()).isFalse();
         assertThat(result.errorCode()).isEqualTo("JOB_FAILED");
@@ -56,7 +55,7 @@ class NewApiVideoTaskGatewayTest {
     void queryUsesTheUpstreamTaskId() {
         client.queryStatus = NewApiTaskStatus.succeeded("task-1", "SUCCEEDED", "https://cdn/v.mp4", "200", "{}");
 
-        NewApiTaskStatus status = gateway().query(polling(), target());
+        NewApiTaskStatus status = gateway().query(polling());
 
         assertThat(client.lastTaskId).isEqualTo("task-1");
         assertThat(status.succeeded()).isTrue();
@@ -104,7 +103,7 @@ class NewApiVideoTaskGatewayTest {
 
     private ClaimedAttempt claimed(String paramsJson) {
         return new ClaimedAttempt(jobId, stepId, 1, 3, "video.generate", "video-stable", UUID.randomUUID(),
-                targetId, paramsJson);
+                targetId, "default", "sd-2-c4", 900, paramsJson);
     }
 
     private PollingAttempt polling() {

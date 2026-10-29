@@ -18,9 +18,10 @@ public interface ProviderPollMapper {
 
     @Select("UPDATE provider_task SET next_poll_at = now() + make_interval(secs => #{leaseSeconds}) "
             + "WHERE id IN ("
-            + "  SELECT id FROM provider_task "
-            + "  WHERE status IN ('submitted', 'polling') AND target_id IS NOT NULL AND next_poll_at <= now() "
-            + "  ORDER BY next_poll_at LIMIT #{limit} FOR UPDATE SKIP LOCKED"
+            + "  SELECT pt.id FROM provider_task pt JOIN job j ON j.id = pt.job_id "
+            + "  WHERE pt.status IN ('submitted', 'polling') AND j.gateway_model IS NOT NULL "
+            + "  AND pt.next_poll_at <= now() "
+            + "  ORDER BY pt.next_poll_at LIMIT #{limit} FOR UPDATE SKIP LOCKED"
             + ") RETURNING job_id::text")
     List<String> claimDue(@Param("limit") int limit, @Param("leaseSeconds") int leaseSeconds);
 }

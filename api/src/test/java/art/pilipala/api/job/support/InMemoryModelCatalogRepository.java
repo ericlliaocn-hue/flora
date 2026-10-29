@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.job.infra.ModelCatalogRepository;
@@ -19,6 +20,7 @@ public class InMemoryModelCatalogRepository implements ModelCatalogRepository {
     private final Map<String, ModelProduct> products = new LinkedHashMap<>();
     private final Map<UUID, ModelTarget> targets = new LinkedHashMap<>();
     private final List<ModelRoute> routes = new ArrayList<>();
+    private final List<ModelProductGroup> groups = new ArrayList<>();
 
     public InMemoryModelCatalogRepository product(ModelProduct product) {
         products.put(product.code(), product);
@@ -32,6 +34,11 @@ public class InMemoryModelCatalogRepository implements ModelCatalogRepository {
 
     public InMemoryModelCatalogRepository route(ModelRoute route) {
         routes.add(route);
+        return this;
+    }
+
+    public InMemoryModelCatalogRepository group(ModelProductGroup group) {
+        groups.add(group);
         return this;
     }
 
@@ -62,5 +69,14 @@ public class InMemoryModelCatalogRepository implements ModelCatalogRepository {
     @Override
     public List<ModelTarget> findAllTargets() {
         return List.copyOf(targets.values());
+    }
+
+    @Override
+    public List<ModelProductGroup> findGroupsByProduct(UUID productId) {
+        return groups.stream()
+                .filter(ModelProductGroup::enabled)
+                .filter(group -> group.productId().equals(productId))
+                .sorted(Comparator.comparingInt(ModelProductGroup::priority))
+                .toList();
     }
 }

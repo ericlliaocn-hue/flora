@@ -3,7 +3,6 @@ package art.pilipala.worker.job.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -16,8 +15,6 @@ import art.pilipala.worker.gateway.AnytokenRequest;
 import art.pilipala.worker.gateway.newapi.NewApiSubmitResult;
 import art.pilipala.worker.gateway.newapi.NewApiTaskStatus;
 import art.pilipala.worker.job.domain.JobOutcome;
-import art.pilipala.worker.job.domain.WorkerTarget;
-import art.pilipala.worker.job.infra.WorkerTargetRepository;
 import art.pilipala.worker.storage.TosObjectStorage;
 import art.pilipala.worker.storage.TosObjectStorageAdapter;
 import art.pilipala.worker.storage.TosProperties;
@@ -53,7 +50,7 @@ class ExecuteJobTest {
         AnytokenGatewayAdapter stubGateway = new AnytokenGatewayAdapter(
                 new AnytokenProperties("stub", "http://127.0.0.1:18080", "", 30000, "/v1/generations"), mapper,
                 tosStorage());
-        return new ExecuteJob(lifecycle, stubGateway, lease, null, null, 1);
+        return new ExecuteJob(lifecycle, stubGateway, lease, null, 1);
     }
 
     @Test
@@ -156,7 +153,7 @@ class ExecuteJobTest {
             store.requestCancel(request.jobId());
             return AnytokenAttemptResult.success(List.of("anytoken/img/x.png"), "req-1", "200", "{}");
         };
-        ExecuteJob job = new ExecuteJob(lifecycle, cancelThenSucceed, lease, null, null, 1);
+        ExecuteJob job = new ExecuteJob(lifecycle, cancelThenSucceed, lease, null, 1);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.CANCELLED);
 
@@ -175,7 +172,7 @@ class ExecuteJobTest {
             calls.incrementAndGet();
             return AnytokenAttemptResult.success(List.of(), "req-1", "200", "{}");
         };
-        ExecuteJob job = new ExecuteJob(lifecycle, counting, lease, null, null, 1);
+        ExecuteJob job = new ExecuteJob(lifecycle, counting, lease, null, 1);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.SKIPPED);
 
@@ -202,10 +199,8 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
-        WorkerTargetRepository targets = id -> Optional.of(
-                new WorkerTarget(id, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true));
         FakeVideoGateway video = new FakeVideoGateway(jobId);
-        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
+        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, video, 1);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.POLLING);
         assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.RUNNING);
@@ -231,11 +226,9 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
-        WorkerTargetRepository targets = id -> Optional.of(
-                new WorkerTarget(id, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true));
         FakeVideoGateway video = new FakeVideoGateway(jobId);
         video.terminalFailure = true;
-        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
+        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, video, 1);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.POLLING);
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.FAILED);
@@ -254,11 +247,9 @@ class ExecuteJobTest {
         UUID jobId = UUID.randomUUID();
         UUID targetId = UUID.randomUUID();
         store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
-        WorkerTargetRepository targets = id -> Optional.of(
-                new WorkerTarget(id, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true));
         FakeVideoGateway video = new FakeVideoGateway(jobId);
         video.storeFails = true;
-        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
+        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, video, 1);
 
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.POLLING);
         assertThat(job.execute(jobId)).isEqualTo(JobOutcome.POLLING);
@@ -271,23 +262,6 @@ class ExecuteJobTest {
         assertThat(video.submits).isEqualTo(1);
         assertThat(video.queries).isEqualTo(2);
         assertThat(store.resultKeys(jobId)).contains("newapi/vid/" + jobId + "/1.mp4");
-    }
-
-    @Test
-    void missingOrDisabledTargetFailsWithoutCallingTheVideoGateway() {
-        UUID jobId = UUID.randomUUID();
-        UUID targetId = UUID.randomUUID();
-        store.enqueueVideo(jobId, targetId, "{\"prompt\":\"hi\"}");
-        WorkerTargetRepository targets = id -> Optional.empty();
-        FakeVideoGateway video = new FakeVideoGateway(jobId);
-
-        ExecuteJob job = new ExecuteJob(lifecycle, mustNotCallAnytoken(), lease, targets, video, 1);
-
-        assertThat(job.execute(jobId)).isEqualTo(JobOutcome.FAILED);
-        assertThat(store.job(jobId).status()).isEqualTo(WorkerJobStatus.FAILED);
-        assertThat(store.job(jobId).errorCode()).isEqualTo("PROVIDER_UNAVAILABLE");
-        assertThat(store.resultKeys(jobId)).isNull();
-        assertThat(video.submits).isZero();
     }
 
     private static AnytokenGateway mustNotCallAnytoken() {
@@ -309,13 +283,13 @@ class ExecuteJobTest {
         }
 
         @Override
-        public NewApiSubmitResult submit(art.pilipala.worker.job.domain.ClaimedAttempt attempt, WorkerTarget target) {
+        public NewApiSubmitResult submit(art.pilipala.worker.job.domain.ClaimedAttempt attempt) {
             submits++;
             return NewApiSubmitResult.accepted("task-1", "RUNNING", "200", "{}");
         }
 
         @Override
-        public NewApiTaskStatus query(art.pilipala.worker.job.domain.PollingAttempt attempt, WorkerTarget target) {
+        public NewApiTaskStatus query(art.pilipala.worker.job.domain.PollingAttempt attempt) {
             queries++;
             if (terminalFailure) {
                 return NewApiTaskStatus.failed("task-1", "FAILED: bad prompt", "UPSTREAM_VIDEO_FAILED",

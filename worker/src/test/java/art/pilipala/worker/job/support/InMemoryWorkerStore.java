@@ -36,7 +36,8 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     /** 放一个排队中的 job。 */
     public WorkerJob enqueue(UUID jobId, String paramsJson) {
         Instant now = Instant.now();
-        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null, paramsJson,
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null,
+                null, null, null, paramsJson,
                 0, 3, null, null, now);
         jobs.put(jobId, job);
         return job;
@@ -46,7 +47,7 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     public WorkerJob enqueueVideo(UUID jobId, UUID targetId, String paramsJson) {
         Instant now = Instant.now();
         WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "video.generate", "video-stable",
-                UUID.randomUUID(), targetId, paramsJson, 0, 3, null, null, now);
+                UUID.randomUUID(), targetId, "default", "sd-2-c4", 900, paramsJson, 0, 3, null, null, now);
         jobs.put(jobId, job);
         return job;
     }
@@ -54,7 +55,8 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
     /** 放一个排队中、且已有取消意图的 job。 */
     public WorkerJob enqueueWithCancelIntent(UUID jobId, String paramsJson) {
         Instant now = Instant.now();
-        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null, paramsJson,
+        WorkerJob job = new WorkerJob(jobId, WorkerJobStatus.QUEUED, "image.generate", "demo", null, null,
+                null, null, null, paramsJson,
                 0, 3, now, null, now);
         jobs.put(jobId, job);
         return job;
@@ -93,7 +95,8 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
             return false;
         }
         jobs.put(jobId, new WorkerJob(job.id(), job.status(), job.capability(), job.model(),
-                job.productId(), job.targetId(), job.paramsJson(),
+                job.productId(), job.targetId(), job.gatewayGroup(), job.gatewayModel(),
+                job.gatewayTimeoutSeconds(), job.paramsJson(),
                 job.attempt(), job.maxAttempts(), job.cancelRequestedAt(), job.errorCode(), Instant.now()));
         resultKeys.put(jobId, resultObjectKeysJson);
         return true;
@@ -214,7 +217,7 @@ public class InMemoryWorkerStore implements WorkerJobRepository, WorkerJobStepRe
 
     private static WorkerJob copy(WorkerJob job, WorkerJobStatus status, String errorCode, int attempt, Instant cancelRequestedAt) {
         return new WorkerJob(job.id(), status, job.capability(), job.model(), job.productId(), job.targetId(),
-                job.paramsJson(), attempt,
+                job.gatewayGroup(), job.gatewayModel(), job.gatewayTimeoutSeconds(), job.paramsJson(), attempt,
                 job.maxAttempts(), cancelRequestedAt, errorCode, Instant.now());
     }
 

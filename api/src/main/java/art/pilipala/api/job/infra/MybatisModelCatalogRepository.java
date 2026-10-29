@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 
@@ -42,5 +43,10 @@ public class MybatisModelCatalogRepository implements ModelCatalogRepository {
     @Override
     public List<ModelTarget> findAllTargets() {
         return mapper.findAllTargets();
+    }
+
+    @Override
+    public List<ModelProductGroup> findGroupsByProduct(UUID productId) {
+        return mapper.findGroupsByProduct(productId);
     }
 }

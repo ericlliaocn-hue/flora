@@ -10,7 +10,6 @@ import art.pilipala.worker.gateway.newapi.NewApiVideoClient;
 import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.PollingAttempt;
 import art.pilipala.worker.job.domain.WorkerErrorCodes;
-import art.pilipala.worker.job.domain.WorkerTarget;
 import art.pilipala.worker.storage.TosObjectStorage;
 import org.springframework.stereotype.Service;
 
@@ -34,12 +33,13 @@ public class NewApiVideoTaskGateway implements VideoTaskGateway {
     }
 
     @Override
-    public NewApiSubmitResult submit(ClaimedAttempt attempt, WorkerTarget target) {
-        return client.submit(NewApiVideoRequests.build(attempt.paramsJson(), target, attempt, mapper));
+    public NewApiSubmitResult submit(ClaimedAttempt attempt) {
+        return client.submit(NewApiVideoRequests.build(attempt.paramsJson(), attempt.gatewayModel(),
+                attempt.gatewayTimeoutSeconds(), attempt, mapper));
     }
 
     @Override
-    public NewApiTaskStatus query(PollingAttempt attempt, WorkerTarget target) {
+    public NewApiTaskStatus query(PollingAttempt attempt) {
         return client.query(attempt.upstreamTaskId());
     }
 

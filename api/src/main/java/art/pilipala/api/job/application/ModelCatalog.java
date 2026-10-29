@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.job.infra.JobException;
@@ -68,5 +69,17 @@ public class ModelCatalog {
     }
 
     public record ResolvedTarget(ModelTarget target, int priority, BigDecimal maxCostAmount) {
+    }
+
+    /** Phase 2：产品 → NewAPI group/model；缺省按 priority 取第一个 enabled。 */
+    public ResolvedGroup resolveGroup(ModelProduct product) {
+        return repository.findGroupsByProduct(product.id()).stream()
+                .filter(ModelProductGroup::enabled)
+                .min(Comparator.comparingInt(ModelProductGroup::priority))
+                .map(ResolvedGroup::new)
+                .orElseThrow(JobException::noAvailableChannel);
+    }
+
+    public record ResolvedGroup(ModelProductGroup group) {
     }
 }

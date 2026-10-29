@@ -15,7 +15,10 @@ import java.util.UUID;
  * @param capability        如 image.generate
  * @param model             pilipala 内部模型名；WP21 起可为产品 code
  * @param productId         WP21 产品 SKU；老 job 为空
- * @param targetId          WP21 当前 / 最后 target
+ * @param targetId          WP21 Phase 1 旧 target；Phase 2 起可为空
+ * @param gatewayGroup      Phase 2 NewAPI group；旧 job 为空
+ * @param gatewayModel      Phase 2 NewAPI model；旧 job 为空
+ * @param gatewayTimeoutSeconds Phase 2 task deadline 秒数；旧 job 为空
  * @param quotedPrice       WP21 冻结时的产品价快照（credits）
  * @param pricingVersion    WP21 定价版本
  * @param paramsJson        已物化参数（JSON 文本）
@@ -35,6 +38,9 @@ public record Job(
         String model,
         UUID productId,
         UUID targetId,
+        String gatewayGroup,
+        String gatewayModel,
+        Integer gatewayTimeoutSeconds,
         Long quotedPrice,
         String pricingVersion,
         String paramsJson,

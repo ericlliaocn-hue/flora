@@ -82,6 +82,9 @@ public class SubmitJob {
         long cost;
         UUID productId = null;
         UUID targetId = null;
+        String gatewayGroup = null;
+        String gatewayModel = null;
+        Integer gatewayTimeoutSeconds = null;
         Long quotedPrice = null;
         String pricingVersion = null;
         if (product.isPresent()) {
@@ -92,8 +95,12 @@ public class SubmitJob {
                 throw JobException.validation();
             }
             ModelCatalog.ResolvedProduct route = catalog.resolve(resolvedProduct);
+            ModelCatalog.ResolvedGroup group = catalog.resolveGroup(resolvedProduct);
             productId = resolvedProduct.id();
             targetId = route.primary().target().id();
+            gatewayGroup = group.group().groupCode();
+            gatewayModel = group.group().modelCode();
+            gatewayTimeoutSeconds = group.group().timeoutSeconds();
             quotedPrice = resolvedProduct.priceCredits();
             pricingVersion = PRICING_VERSION;
             cost = resolvedProduct.priceCredits();
@@ -104,7 +111,8 @@ public class SubmitJob {
         WalletHold hold = wallets.freeze(userId, cost);
 
         Optional<Job> created = jobs.insertIfAbsent(userId, capabilityText, modelText, productId, targetId,
-                quotedPrice, pricingVersion, params.toString(), key, hold.id());
+                gatewayGroup, gatewayModel, gatewayTimeoutSeconds, quotedPrice, pricingVersion, params.toString(),
+                key, hold.id());
         if (created.isEmpty()) {
             // 并发同键：另一个事务已经写好 job 与幂等记录。
             // 本次冻结要退回（冻结单 + release 流水），再重放对方的结果。

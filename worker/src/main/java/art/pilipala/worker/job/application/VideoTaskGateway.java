@@ -5,7 +5,6 @@ import art.pilipala.worker.gateway.newapi.NewApiSubmitResult;
 import art.pilipala.worker.gateway.newapi.NewApiTaskStatus;
 import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.PollingAttempt;
-import art.pilipala.worker.job.domain.WorkerTarget;
 
 /**
  * 视频 target 的三段操作：submit / query / store。
@@ -14,9 +13,9 @@ import art.pilipala.worker.job.domain.WorkerTarget;
  */
 public interface VideoTaskGateway {
 
-    NewApiSubmitResult submit(ClaimedAttempt attempt, WorkerTarget target);
+    NewApiSubmitResult submit(ClaimedAttempt attempt);
 
-    NewApiTaskStatus query(PollingAttempt attempt, WorkerTarget target);
+    NewApiTaskStatus query(PollingAttempt attempt);
 
     AnytokenAttemptResult store(PollingAttempt attempt, NewApiTaskStatus status);
 }

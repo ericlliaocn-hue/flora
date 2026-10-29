@@ -22,10 +22,12 @@ public class MybatisJobRepository implements JobRepository {
 
     @Override
     public Optional<Job> insertIfAbsent(
-            UUID userId, String capability, String model, UUID productId, UUID targetId, Long quotedPrice,
-            String pricingVersion, String paramsJson, String idempotencyKey, UUID holdId) {
-        return Optional.ofNullable(mapper.insertIfAbsent(userId, capability, model, productId, targetId, quotedPrice,
-                pricingVersion, paramsJson, idempotencyKey, holdId));
+            UUID userId, String capability, String model, UUID productId, UUID targetId, String gatewayGroup,
+            String gatewayModel, Integer gatewayTimeoutSeconds, Long quotedPrice, String pricingVersion,
+            String paramsJson, String idempotencyKey, UUID holdId) {
+        return Optional.ofNullable(mapper.insertIfAbsent(userId, capability, model, productId, targetId,
+                gatewayGroup, gatewayModel, gatewayTimeoutSeconds, quotedPrice, pricingVersion, paramsJson,
+                idempotencyKey, holdId));
     }
 
     @Override

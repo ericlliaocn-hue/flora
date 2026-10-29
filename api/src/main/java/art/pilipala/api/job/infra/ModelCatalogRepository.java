@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 
@@ -24,4 +25,6 @@ public interface ModelCatalogRepository {
     Optional<ModelTarget> findTargetById(UUID targetId);
 
     List<ModelTarget> findAllTargets();
+
+    List<ModelProductGroup> findGroupsByProduct(UUID productId);
 }

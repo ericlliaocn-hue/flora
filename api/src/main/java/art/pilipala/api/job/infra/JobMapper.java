@@ -13,15 +13,17 @@ import art.pilipala.api.job.domain.Job;
 @Mapper
 public interface JobMapper {
 
-    String COLS = "id, user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
+    String COLS = "id, user_id, status, capability, model, product_id, target_id, gateway_group, gateway_model, "
+            + "gateway_timeout_seconds, quoted_price, pricing_version, "
             + "params::text AS params_json, attempt, max_attempts, "
             + "hold_id, idempotency_key, cancel_requested_at, error_code, "
             + "result_object_keys::text AS result_object_keys_json, created_at, updated_at";
 
-    @Select("INSERT INTO job (user_id, status, capability, model, product_id, target_id, quoted_price, pricing_version, "
-            + "params, idempotency_key, hold_id) "
+    @Select("INSERT INTO job (user_id, status, capability, model, product_id, target_id, gateway_group, gateway_model, "
+            + "gateway_timeout_seconds, quoted_price, pricing_version, params, idempotency_key, hold_id) "
             + "VALUES (#{userId}, 'created', #{capability}, #{model}, #{productId,jdbcType=OTHER}, "
-            + "#{targetId,jdbcType=OTHER}, #{quotedPrice,jdbcType=BIGINT}, #{pricingVersion,jdbcType=VARCHAR}, "
+            + "#{targetId,jdbcType=OTHER}, #{gatewayGroup,jdbcType=VARCHAR}, #{gatewayModel,jdbcType=VARCHAR}, "
+            + "#{gatewayTimeoutSeconds,jdbcType=INTEGER}, #{quotedPrice,jdbcType=BIGINT}, #{pricingVersion,jdbcType=VARCHAR}, "
             + "#{paramsJson,jdbcType=VARCHAR}::jsonb, #{idempotencyKey}, #{holdId,jdbcType=OTHER}) "
             + "ON CONFLICT (user_id, idempotency_key) DO NOTHING RETURNING " + COLS)
     Job insertIfAbsent(
@@ -30,6 +32,9 @@ public interface JobMapper {
             @Param("model") String model,
             @Param("productId") UUID productId,
             @Param("targetId") UUID targetId,
+            @Param("gatewayGroup") String gatewayGroup,
+            @Param("gatewayModel") String gatewayModel,
+            @Param("gatewayTimeoutSeconds") Integer gatewayTimeoutSeconds,
             @Param("quotedPrice") Long quotedPrice,
             @Param("pricingVersion") String pricingVersion,
             @Param("paramsJson") String paramsJson,

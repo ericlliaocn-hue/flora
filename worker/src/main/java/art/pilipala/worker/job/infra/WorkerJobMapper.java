@@ -12,7 +12,8 @@ import art.pilipala.worker.job.domain.WorkerJob;
 @Mapper
 public interface WorkerJobMapper {
 
-    String COLS = "id, status, capability, model, product_id, target_id, params::text AS params_json, attempt, max_attempts, "
+    String COLS = "id, status, capability, model, product_id, target_id, gateway_group, gateway_model, "
+            + "gateway_timeout_seconds, params::text AS params_json, attempt, max_attempts, "
             + "cancel_requested_at, error_code, updated_at";
 
     @Select("SELECT " + COLS + " FROM job WHERE id = #{jobId}")

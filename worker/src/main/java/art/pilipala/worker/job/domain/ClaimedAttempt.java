@@ -16,5 +16,8 @@ public record ClaimedAttempt(
         String model,
         UUID productId,
         UUID targetId,
+        String gatewayGroup,
+        String gatewayModel,
+        Integer gatewayTimeoutSeconds,
         String paramsJson) {
 }

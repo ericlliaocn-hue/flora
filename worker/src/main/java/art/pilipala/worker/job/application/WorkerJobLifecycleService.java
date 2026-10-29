@@ -79,7 +79,8 @@ public class WorkerJobLifecycleService {
         WorkerJob running = claimed.get();
         UUID stepId = steps.start(running.id(), running.attempt(), running.targetId());
         return Optional.of(new ClaimedAttempt(running.id(), stepId, running.attempt(), running.maxAttempts(),
-                running.capability(), running.model(), running.productId(), running.targetId(), running.paramsJson()));
+                running.capability(), running.model(), running.productId(), running.targetId(), running.gatewayGroup(),
+                running.gatewayModel(), running.gatewayTimeoutSeconds(), running.paramsJson()));
     }
 
     /** submit 成功：写 polling 行，job/step 保持 running。 */

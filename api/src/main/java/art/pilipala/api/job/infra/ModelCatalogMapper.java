@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import art.pilipala.api.job.domain.ModelProduct;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.domain.ModelRoute;
 import art.pilipala.api.job.domain.ModelTarget;
 
@@ -37,4 +38,10 @@ public interface ModelCatalogMapper {
 
     @Select("SELECT " + TARGET_COLS + " FROM model_target ORDER BY code ASC")
     List<ModelTarget> findAllTargets();
+
+    String GROUP_COLS = "id, product_id, group_code, model_code, priority, timeout_seconds, max_cost_amount, enabled";
+
+    @Select("SELECT " + GROUP_COLS + " FROM model_product_group "
+            + "WHERE product_id = #{productId} AND enabled = true ORDER BY priority ASC")
+    List<ModelProductGroup> findGroupsByProduct(@Param("productId") UUID productId);
 }
