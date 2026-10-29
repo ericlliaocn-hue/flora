@@ -49,7 +49,8 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **product→group**：V19 `model_product_group`（commit `978d1ae`）；job 增加 `gateway_group/gateway_model/gateway_timeout_seconds`；SubmitJob 从 group 写 gateway 字段；worker 用 gateway_model/timeout 调 NewAPI，不再读 target；ProviderPollScheduler 改为 join `job.gateway_model`，不再依赖 `target_id`。
 - **全链路 product group smoke**：job `934ec4a8-…` → group `default` / model `sd-2-c4` / timeout 900 → NewAPI channel3 `FAILED` → channel1 fallback；job SUCCESS、NewAPI `fallback_attempts=1`、`fallback_channels=[3]`；TOS + wallet 正常。
 - **NewAPI billing 边界**：NewAPI DB 只有 root service user + 一个 unlimited service token，没有 C 端用户/钱包表；token 的 `used_quota` 是内部成本观测，不是用户余额。pilipala wallet 仍是唯一用户账本；C 端不创建 NewAPI token，不暴露 NewAPI quota。
-- **未做**：真实 meaicc channel/Key；旧 `model_target/model_route`/`VideoFallbackScheduler` 清理（保留回滚）；C 端产品入口 UI。
+- **target 写入清理**：`SubmitJob` 产品路径只解析 group，不再写 `job.target_id`；旧 `model_target/model_route`/`VideoFallbackScheduler` 保留只读回滚，worker/poll scheduler 已不依赖 target。
+- **未做**：真实 meaicc channel/Key；C 端产品入口 UI。
 
 
 
