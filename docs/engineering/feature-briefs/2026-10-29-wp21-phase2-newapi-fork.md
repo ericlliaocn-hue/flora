@@ -53,7 +53,8 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **service user quota**：NewAPI 的 service user quota 也参与 task 预扣，默认 100M 会被用尽并返回 `insufficient_user_quota`；本地已把 root service user quota 提到 int64 max，并清理 Redis DB1 的 user-quota cache。它是内部成本观测，不是用户余额。
 - **真实 meaicc smoke**：NewAPI channel4 `meaicc-real-c4`（type-61，base `https://api.meaicc.com`，model `sd-2-c4`）；product job `cc932748-…` 约 130s 完成，job SUCCESS；NewAPI task 走 channel4 SUCCESS、无 fallback；TOS 1.0MB；wallet 960/0、hold confirmed；`target_id=null`。
 - **key hygiene**：真实 key 只存在 NewAPI channel 记录；临时 key 文件已删除；pilipala/NewAPI 源码目录扫描无 key。key 已在聊天中出现，建议 smoke 后轮换。
-- **未做**：C 端产品入口 UI；旧 target/route/fallback 代码删除（当前仅保留回滚）。
+- **C 端视频 product 对齐**：web 托管视频列表只保留 `seedance-2-720p-stable`，移除未落库的 `seedance2/2.5/fast/mini`；旧持久化模型回落到该 product code，避免落到 legacy 价格/Anytoken 路径。前端 worktree 没有 node_modules，未跑 typecheck/build。
+- **未做**：C 端产品入口 UI 的完整验收；旧 target/route/fallback 代码删除（当前仅保留回滚）。
 
 
 
