@@ -9,7 +9,7 @@
 - 入口：[docs/engineering/README.md](docs/engineering/README.md)
 - 大改动（新表、新 API、新进程、改任务/计费/品牌/错误合同、改栈）**必须先写** [feature brief](docs/engineering/feature-briefs/_TEMPLATE.md)，再实现、再开 PR；禁止直接开写或只凭聊天记录扩范围。
 - PR 对照 brief 验收，并遵守 [CONTRIBUTING.md](docs/engineering/CONTRIBUTING.md) 清单。
-- 硬约束：模型网关走受控网关层（Anytoken 存量 + NewAPI 视频/多渠道，见 [ADR 0008](docs/engineering/adr/0008-gateway-layer-video-multi-channel.md)）；不 fork NewAPI 做业务后端、不做双账本；Worker 保持瘦（MQ 只有 `job_id`）；C 端错误友好且带稳定 `error_code`；Admin 在 C 端最小闭环之后，且只做运维/配置。
+- 硬约束：模型网关走受控网关层（Anytoken 存量 + fork NewAPI 独立视频网关，见 ADR 0008/0009）；网关不得拥有用户/额度/定价、不做双账本；Worker 保持瘦（MQ 只有 `job_id`）；C 端错误友好且带稳定 `error_code`；Admin 在 C 端最小闭环之后，且只做运维/配置。
 - **不要**把工程文档写进 `docs/content/`，也 **不要** 掏空或重写 Fumadocs 公开文档站（`docs/app/`、`docs/Dockerfile` 等），除非任务明确要求。
 
 ## 基本原则

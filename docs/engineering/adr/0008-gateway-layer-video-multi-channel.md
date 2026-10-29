@@ -2,7 +2,7 @@
 
 - 状态：Accepted
 - 日期：2026-10-29
-- 修订：ADR 0001（“只用 Anytoken，不 fork NewAPI”）由本 ADR 修订
+- 修订：ADR 0001（“只用 Anytoken，不 fork NewAPI”）由本 ADR 修订；本 ADR 第 2/3/6 条由 ADR 0009 修订（fork NewAPI 独立视频网关）
 
 ## 背景（Context）
 
