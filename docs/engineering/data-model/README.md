@@ -23,7 +23,7 @@
 | `error_code` | 错误 | — | [errors.md](./errors.md) | **不是表**，是错误码注册表（见该页） |
 | `canvas_project` / `user_asset` | C 端数据 | WP10 已落地（`V6`） | [projects.md](./projects.md) | 画布快照与用户素材，绑定 `user_id` |
 | 模型展示配置 `model_display_config` | 运营 | WP11 已落地（`V7`） | [下方字段](#model_display_configwp11-已落地) | 只管前端展示与上下架，**不是**渠道密钥表、**不是**额度账本 |
-| `model_product` / `model_target` / `model_route` | 视频路由 | WP21 待实现（`V18`） | [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md) | 产品 SKU、target 参数/成本、路由链；**不是**渠道密钥表、**不是**额度账本 |
+| `model_product` / `model_product_group` | 视频路由 | WP21 Phase 2（`V19`/`V20`/`V21`） | [WP21 Phase 2 brief](../feature-briefs/2026-10-29-wp21-phase2-newapi-fork.md) | 产品 SKU 与 NewAPI group/model；**不是**渠道密钥表、**不是**额度账本 |
 
 > **WP21**：`job` / `job_step` / `provider_task` 的增量列先以 [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md) 为准；实现 PR 先更新 `jobs.md`，再写 Flyway。
 

@@ -155,9 +155,9 @@ dispatcher 只负责投递。重试间隔与失败处理由实现 WP 再定。�
 
 C 端 `query` / `result` **不** 包含 `raw_body`。原文只进日志与本表，仅 M4 / WP11 admin 可见。
 
-## 视频路由三表（WP21）
+## 视频路由两表（WP21 Phase 2）
 
-`model_product` / `model_target` / `model_route` 的字段级定义见 [WP21 brief](../feature-briefs/2026-10-29-wp21-video-multi-channel-gateway.md)。它们不存渠道 Key、不是额度账本；产品价只在 `model_product`，上游成本只做毛利分析。
+`model_product` / `model_product_group` 的字段级定义见 [WP21 Phase 2 brief](../feature-briefs/2026-10-29-wp21-phase2-newapi-fork.md)。`model_target` / `model_route` 已由 `V21` 删除；`job` / `provider_task` 上遗留的 `target_id` 只作审计列，运行时不读写。它们不存渠道 Key、不是额度账本；产品价只在 `model_product`，上游成本只做毛利分析。
 
 ## MQ 消息体
 
