@@ -15,7 +15,6 @@ import art.pilipala.worker.gateway.newapi.NewApiVideoClient;
 import art.pilipala.worker.gateway.newapi.NewApiVideoRequest;
 import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.PollingAttempt;
-import art.pilipala.worker.job.domain.WorkerTarget;
 import art.pilipala.worker.storage.TosObjectStorage;
 import org.junit.jupiter.api.Test;
 
@@ -111,9 +110,6 @@ class NewApiVideoTaskGatewayTest {
                 UUID.randomUUID(), "task-1", 0, "{\"prompt\":\"hi\"}");
     }
 
-    private WorkerTarget target() {
-        return new WorkerTarget(targetId, "newapi/sd-2-c4", "newapi", "sd-2-c4", 5, true);
-    }
 
     private static final class FakeClient implements NewApiVideoClient {
         private NewApiSubmitResult submitResult;

@@ -116,8 +116,6 @@ export PILIPALA_NEWAPI_POLL_INTERVAL_MS=2000  # 查询间隔 / provider_task nex
 export PILIPALA_PROVIDER_POLL_LEASE_SECONDS=30 # 到期扫描租期；worker 租约只覆盖单次 submit/query
 export PILIPALA_PROVIDER_POLL_SCAN_MS=2000    # provider_task 到期扫描间隔
 export PILIPALA_PROVIDER_POLL_BATCH_SIZE=50   # 单轮最多扫描多少条
-export PILIPALA_VIDEO_FALLBACK_SCAN_MS=5000   # 产品级 fallback 扫描间隔
-export PILIPALA_VIDEO_FALLBACK_BATCH_SIZE=50  # 单轮最多处理多少条
 
 # WP6：预付费钱包
 export PILIPALA_BILLING_DEFAULT_JOB_COST=10    # 单次任务冻结 credit 数（正整数）

@@ -27,8 +27,6 @@ import art.pilipala.api.job.domain.Job;
 import art.pilipala.api.job.domain.JobStatus;
 import art.pilipala.api.job.domain.ModelProduct;
 import art.pilipala.api.job.domain.ModelProductGroup;
-import art.pilipala.api.job.domain.ModelRoute;
-import art.pilipala.api.job.domain.ModelTarget;
 import art.pilipala.api.storage.TosProperties;
 import art.pilipala.api.storage.TosUrlSigner;
 import art.pilipala.api.job.infra.JobException;
@@ -376,9 +374,8 @@ class JobLifecycleTest {
     @Test
     void productSubmitUsesProductPriceAndGatewayGroup() {
         ModelProduct product = product("video-stable", 30, true);
-        ModelTarget target = target("newapi/sd-2-c4");
         catalogRepository.product(product)
-                .group(new ModelProductGroup(UUID.randomUUID(), product.id(), "default", target.upstreamModel(),
+                .group(new ModelProductGroup(UUID.randomUUID(), product.id(), "default", "sd-2-c4",
                         10, 900, new BigDecimal("2.0"), true));
 
         SubmitJobView view = submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null);
@@ -387,7 +384,7 @@ class JobLifecycleTest {
         assertThat(job.productId()).isEqualTo(product.id());
         assertThat(job.targetId()).isNull();
         assertThat(job.gatewayGroup()).isEqualTo("default");
-        assertThat(job.gatewayModel()).isEqualTo(target.upstreamModel());
+        assertThat(job.gatewayModel()).isEqualTo("sd-2-c4");
         assertThat(job.gatewayTimeoutSeconds()).isEqualTo(900);
         assertThat(job.quotedPrice()).isEqualTo(30);
         assertThat(job.pricingVersion()).isEqualTo("wp21-v1");
@@ -400,9 +397,7 @@ class JobLifecycleTest {
     @Test
     void disabledProductDoesNotFallBackToLegacyPricing() {
         ModelProduct product = product("video-disabled", 30, false);
-        ModelTarget target = target("newapi/sd-2-c4");
-        catalogRepository.product(product).target(target)
-                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, BigDecimal.ONE, true));
+        catalogRepository.product(product);
 
         assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(), params("hi"), null))
                 .isInstanceOf(JobException.class)
@@ -428,9 +423,7 @@ class JobLifecycleTest {
     @Test
     void productSubmitWithoutPromptIsValidationError() {
         ModelProduct product = product("video-no-prompt", 30, true);
-        ModelTarget target = target("newapi/sd-2-c4");
-        catalogRepository.product(product).target(target)
-                .route(new ModelRoute(UUID.randomUUID(), product.id(), target.id(), 10, BigDecimal.ONE, true));
+        catalogRepository.product(product);
 
         assertThatThrownBy(() -> submitJob.submit(USER, "video-k", "video.generate", product.code(),
                 mapper.createObjectNode(), null))
@@ -439,22 +432,17 @@ class JobLifecycleTest {
         assertThat(store.allJobs()).isEmpty();
     }
 
-    private ModelProduct product(String code, long price, boolean enabled) {
-        return new ModelProduct(UUID.randomUUID(), code, "video.generate", "Video", "test", price, "{}", enabled, 10);
-    }
-
-    private ModelTarget target(String code) {
-        return new ModelTarget(UUID.randomUUID(), code, "newapi", "sd-2-c4", "{}", "per_call",
-                new BigDecimal("1.8"), "USD", 900, true);
-    }
-
     private UUID submit(String key) {
         return UUID.fromString(submitJob.submit(USER, key, "image.generate", "demo", params("hi"), null).jobId());
     }
 
-    private JsonNode params(String prompt) {
-        ObjectNode node = mapper.createObjectNode();
-        node.put("prompt", prompt);
-        return node;
+    private com.fasterxml.jackson.databind.JsonNode params(String prompt) {
+        return mapper.createObjectNode().put("prompt", prompt);
     }
+
+    private ModelProduct product(String code, long price, boolean enabled) {
+        return new ModelProduct(UUID.randomUUID(), code, "video.generate", "Video", "test", price, "{}", enabled, 10);
+    }
+
+
 }

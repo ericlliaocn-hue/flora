@@ -8,8 +8,6 @@ import org.springframework.stereotype.Repository;
 
 import art.pilipala.api.job.domain.ModelProduct;
 import art.pilipala.api.job.domain.ModelProductGroup;
-import art.pilipala.api.job.domain.ModelRoute;
-import art.pilipala.api.job.domain.ModelTarget;
 
 @Repository
 public class MybatisModelCatalogRepository implements ModelCatalogRepository {
@@ -31,22 +29,12 @@ public class MybatisModelCatalogRepository implements ModelCatalogRepository {
     }
 
     @Override
-    public List<ModelRoute> findRoutesByProduct(UUID productId) {
-        return mapper.findRoutesByProduct(productId);
-    }
-
-    @Override
-    public Optional<ModelTarget> findTargetById(UUID targetId) {
-        return Optional.ofNullable(mapper.findTargetById(targetId));
-    }
-
-    @Override
-    public List<ModelTarget> findAllTargets() {
-        return mapper.findAllTargets();
-    }
-
-    @Override
     public List<ModelProductGroup> findGroupsByProduct(UUID productId) {
         return mapper.findGroupsByProduct(productId);
+    }
+
+    @Override
+    public List<ModelProductGroup> findAllGroups() {
+        return mapper.findAllGroups();
     }
 }

@@ -6,8 +6,6 @@ import java.util.UUID;
 
 import art.pilipala.api.job.domain.ModelProduct;
 import art.pilipala.api.job.domain.ModelProductGroup;
-import art.pilipala.api.job.domain.ModelRoute;
-import art.pilipala.api.job.domain.ModelTarget;
 
 /**
  * 视频产品 / target / 路由的读取契约。
@@ -20,11 +18,7 @@ public interface ModelCatalogRepository {
 
     List<ModelProduct> findAllProducts();
 
-    List<ModelRoute> findRoutesByProduct(UUID productId);
-
-    Optional<ModelTarget> findTargetById(UUID targetId);
-
-    List<ModelTarget> findAllTargets();
-
     List<ModelProductGroup> findGroupsByProduct(UUID productId);
+
+    List<ModelProductGroup> findAllGroups();
 }

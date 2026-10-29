@@ -37,7 +37,7 @@ import art.pilipala.api.auth.infra.SaTokenConfig;
 import art.pilipala.api.auth.infra.UserRepository;
 import art.pilipala.api.billing.application.WalletView;
 import art.pilipala.api.job.domain.ModelProduct;
-import art.pilipala.api.job.domain.ModelTarget;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.infra.JobException;
 import art.pilipala.api.job.infra.ModelCatalogRepository;
 import org.junit.jupiter.api.Test;
@@ -307,25 +307,26 @@ class AdminControllerSliceTest {
     // ----- 视频产品 / target 只读 -----
 
     @Test
-    void anAdminCanReadVideoProductsAndTargets() throws Exception {
+    void anAdminCanReadVideoProductsAndGroups() throws Exception {
         loginAs("admin");
         ModelProduct product = new ModelProduct(UUID.randomUUID(), "video-stable", "video.generate",
                 "Video", "test", 30, "{}", true, 10);
-        ModelTarget target = new ModelTarget(UUID.randomUUID(), "newapi/sd-2-c4", "newapi", "sd-2-c4",
-                "{}", "per_call", new BigDecimal("1.8"), "USD", 900, true);
+        ModelProductGroup group = new ModelProductGroup(UUID.randomUUID(), product.id(), "default", "sd-2-c4",
+                10, 900, new BigDecimal("2.0"), true);
         when(modelCatalogRepository.findAllProducts()).thenReturn(List.of(product));
-        when(modelCatalogRepository.findAllTargets()).thenReturn(List.of(target));
+        when(modelCatalogRepository.findAllGroups()).thenReturn(List.of(group));
 
         mockMvc.perform(get("/api/v1/admin/video/products"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true))
                 .andExpect(jsonPath("$.data[0].code").value("video-stable"))
                 .andExpect(jsonPath("$.data[0].price_credits").value(30));
-        mockMvc.perform(get("/api/v1/admin/video/targets"))
+        mockMvc.perform(get("/api/v1/admin/video/groups"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ok").value(true))
-                .andExpect(jsonPath("$.data[0].upstream_model").value("sd-2-c4"))
-                .andExpect(jsonPath("$.data[0].cost_amount").value(1.8));
+                .andExpect(jsonPath("$.data[0].group_code").value("default"))
+                .andExpect(jsonPath("$.data[0].model_code").value("sd-2-c4"))
+                .andExpect(jsonPath("$.data[0].timeout_seconds").value(900));
     }
 
     @Test

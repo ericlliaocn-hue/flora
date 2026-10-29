@@ -5,14 +5,14 @@ import java.util.List;
 import art.pilipala.api.admin.application.AdminGuard;
 import art.pilipala.api.common.ApiResponse;
 import art.pilipala.api.job.domain.ModelProduct;
-import art.pilipala.api.job.domain.ModelTarget;
+import art.pilipala.api.job.domain.ModelProductGroup;
 import art.pilipala.api.job.infra.ModelCatalogRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 运维后台：视频产品 / target 只读视图。
+ * 运维后台：视频产品 / group 只读视图。
  *
  * <p>不暴露渠道 Key、不做上下架（本期只读）；provider_task 原文仍走
  * {@code GET /api/v1/admin/jobs} 的任务详情。
@@ -35,9 +35,9 @@ public class AdminVideoController {
         return ApiResponse.ok(catalog.findAllProducts());
     }
 
-    @GetMapping("/targets")
-    public ApiResponse<List<ModelTarget>> targets() {
+    @GetMapping("/groups")
+    public ApiResponse<List<ModelProductGroup>> groups() {
         guard.requireAdmin();
-        return ApiResponse.ok(catalog.findAllTargets());
+        return ApiResponse.ok(catalog.findAllGroups());
     }
 }

@@ -49,7 +49,7 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **product→group**：V19 `model_product_group`（commit `978d1ae`）；job 增加 `gateway_group/gateway_model/gateway_timeout_seconds`；SubmitJob 从 group 写 gateway 字段；worker 用 gateway_model/timeout 调 NewAPI，不再读 target；ProviderPollScheduler 改为 join `job.gateway_model`，不再依赖 `target_id`。
 - **全链路 product group smoke**：job `934ec4a8-…` → group `default` / model `sd-2-c4` / timeout 900 → NewAPI channel3 `FAILED` → channel1 fallback；job SUCCESS、NewAPI `fallback_attempts=1`、`fallback_channels=[3]`；TOS + wallet 正常。
 - **NewAPI billing 边界**：NewAPI DB 只有 root service user + 一个 unlimited service token，没有 C 端用户/钱包表；token 的 `used_quota` 是内部成本观测，不是用户余额。pilipala wallet 仍是唯一用户账本；C 端不创建 NewAPI token，不暴露 NewAPI quota。
-- **target 写入清理**：`SubmitJob` 产品路径只解析 group，不再写 `job.target_id`；旧 `model_target/model_route`/`VideoFallbackScheduler` 保留只读回滚，worker/poll scheduler 已不依赖 target。cleanup smoke job `e49415fd-…`：`target_id=null`、`gateway_group=default`、`gateway_model=sd-2-c4`，job SUCCESS。
+- **target/route/fallback 代码清理**：`VideoFallbackScheduler`、`VideoFallback*`、worker `WorkerTarget*`、`ModelTarget/ModelRoute`/Admin `/targets` 全部删除；Admin 改为 `GET /api/v1/admin/video/groups`；V21 删除 `model_route`/`model_target` 表。SubmitJob 只解析 group，job.target_id 保持 null。
 - **service user quota**：NewAPI 的 service user quota 也参与 task 预扣，默认 100M 会被用尽并返回 `insufficient_user_quota`；本地已把 root service user quota 提到 int64 max，并清理 Redis DB1 的 user-quota cache。它是内部成本观测，不是用户余额。
 - **真实 meaicc smoke**：NewAPI channel4 `meaicc-real-c4`（type-61，base `https://api.meaicc.com`，model `sd-2-c4`）；product job `cc932748-…` 约 130s 完成，job SUCCESS；NewAPI task 走 channel4 SUCCESS、无 fallback；TOS 1.0MB；wallet 960/0、hold confirmed；`target_id=null`。
 - **key hygiene**：真实 key 只存在 NewAPI channel 记录；临时 key 文件已删除；pilipala/NewAPI 源码目录扫描无 key。key 已在聊天中出现，建议 smoke 后轮换。
@@ -80,7 +80,7 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
   - `api`：`model_product_group`、内部网关客户端、错误/i18n 映射、job 状态、Admin 只读/迁移；
   - `worker`：删除 NewAPI polling/fallback；保留通用 job/TOS 能力；
   - `docs/engineering`：ADR 0009、本 brief、runbook。
-- 数据库：`model_product_group`（新）；`provider_task` 停止新 polling；`model_target`/`model_route` 降级为 legacy/回滚。
+- 数据库：`model_product_group`（唯一路由）；V21 已删除 `model_target`/`model_route`。
 - NewAPI 配置：`SQL_DSN`、`REDIS_CONN_STRING`、`PORT=13000`、`SESSION_SECRET`、`TASK_TIMEOUT_MINUTES`、`TASK_POLL_MAX_FAILURES`、`TASK_PLUGIN_ENABLED`。
 
 ## 非范围
@@ -120,7 +120,7 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 ### 降级/停止
 
 - `provider_task`：保留历史；不再由 pilipala 写入 polling 行；NewAPI task 日志为准。
-- `model_target` / `model_route`：保留只读用于 Phase 1 回滚；Phase 3 再删。
+- `model_target` / `model_route`：V21 已删除；旧 target 字段只留 DB 列作审计。
 - `wallet_hold` / `wallet_ledger` / `i18n_message`：结构不变；补错误码种子。
 
 ## API
