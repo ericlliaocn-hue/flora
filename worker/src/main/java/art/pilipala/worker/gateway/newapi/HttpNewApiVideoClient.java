@@ -19,18 +19,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * NewAPI 视频网关的 HTTP 客户端。
+ * NewAPI 视频网关的 HTTP 客户端（WP21 Phase 2：OpenAI video 协议）。
  *
- * <p>只负责提交 / 查询与把上游形状归一成 {@link NewApiSubmitResult} / {@link NewApiTaskStatus}；
- * 不写 TOS、不改 job 状态、不做 fallback。密钥只从 {@link NewApiProperties} 读，不写日志。
+ * <p>只负责 submit/query/content 与把上游形状归一成 {@link NewApiSubmitResult} /
+ * {@link NewApiTaskStatus}；不写 TOS、不改 job 状态、不做 fallback。密钥只从
+ * {@link NewApiProperties} 读，不写日志。
  *
- * <p>WP21 实测的关键协议：
+ * <p>Phase 2 协议：
  * <ul>
- *   <li>提交：{@code POST /v1/video/generations}，body 至少 model/prompt/duration/size；</li>
- *   <li>查询：{@code GET /v1/video/generations/{id}}，成功态 {@code SUCCEEDED}，成片 URL 在 {@code object}；</li>
- *   <li>失败态是 {@code FAILED: <message>}，不是精确的 FAILED；</li>
- *   <li>不存在的 task 返回 400 {@code task_not_exist}；</li>
- *   <li>{@code /content} 端点 404，不要依赖。</li>
+ *   <li>提交：{@code POST /v1/videos}，body 至少 model/prompt/seconds；</li>
+ *   <li>查询：{@code GET /v1/videos/{id}}，状态 queued/in_progress/completed/failed；</li>
+ *   <li>内容：{@code GET /v1/videos/{id}/content}，需要 service token；</li>
+ *   <li>NewAPI 内部完成 channel fallback，客户端只看到最终 task 状态。</li>
  * </ul>
  */
 @Service
@@ -59,12 +59,18 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
         }
         HttpRequest httpRequest;
         try {
-            httpRequest = HttpRequest.newBuilder(URI.create(properties.generateUrl()))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(properties.videosUrl()))
                     .timeout(Duration.ofMillis(properties.timeoutMs()))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + properties.apiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(submitBody(request)))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(submitBody(request)));
+            if (request.requestId() != null && !request.requestId().isBlank()) {
+                builder.header("X-Pilipala-Request-Id", request.requestId());
+            }
+            if (request.deadlineAtEpochMs() > 0) {
+                builder.header("X-Pilipala-Deadline-At", String.valueOf(request.deadlineAtEpochMs()));
+            }
+            httpRequest = builder.build();
         } catch (IllegalArgumentException e) {
             return NewApiSubmitResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, false, "CONFIG",
                     "invalid newapi base url");
@@ -84,18 +90,18 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
     @Override
     public NewApiTaskStatus query(String taskId) {
         if (!properties.configured()) {
-            return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.PROVIDER_UNAVAILABLE,
+            return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
                     "newapi not configured", "CONFIG", "");
         }
         HttpRequest httpRequest;
         try {
-            httpRequest = HttpRequest.newBuilder(URI.create(properties.statusUrl(taskId)))
+            httpRequest = HttpRequest.newBuilder(URI.create(properties.taskUrl(taskId)))
                     .timeout(Duration.ofMillis(properties.timeoutMs()))
                     .header("Authorization", "Bearer " + properties.apiKey())
                     .GET()
                     .build();
         } catch (IllegalArgumentException e) {
-            return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.PROVIDER_UNAVAILABLE,
+            return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
                     "invalid newapi base url", "CONFIG", "");
         }
         try {
@@ -110,12 +116,40 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
         }
     }
 
+    @Override
+    public byte[] content(String taskId) throws IOException {
+        if (!properties.configured()) {
+            throw new IOException("newapi not configured");
+        }
+        HttpRequest httpRequest;
+        try {
+            httpRequest = HttpRequest.newBuilder(URI.create(properties.contentUrl(taskId)))
+                    .timeout(Duration.ofMillis(properties.timeoutMs()))
+                    .header("Authorization", "Bearer " + properties.apiKey())
+                    .GET()
+                    .build();
+        } catch (IllegalArgumentException e) {
+            throw new IOException("invalid newapi base url", e);
+        }
+        HttpResponse<byte[]> response;
+        try {
+            response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted", e);
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOException("newapi content http " + response.statusCode());
+        }
+        return response.body();
+    }
+
     private String submitBody(NewApiVideoRequest request) {
         ObjectNode body = mapper.createObjectNode();
         body.put("model", request.model());
         body.put("prompt", request.prompt());
         if (request.durationSeconds() > 0) {
-            body.put("duration", request.durationSeconds());
+            body.put("seconds", request.durationSeconds());
         }
         if (request.size() != null && !request.size().isBlank()) {
             body.put("size", request.size());
@@ -142,12 +176,8 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
             log.warn("newapi submit transient failure httpStatus={}", httpStatus);
             return NewApiSubmitResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, true, rawStatus, rawBody);
         }
-        if (httpStatus == 401 || httpStatus == 403) {
-            log.warn("newapi submit auth failure httpStatus={}", httpStatus);
-            return NewApiSubmitResult.failure(WorkerErrorCodes.PROVIDER_UNAVAILABLE, false, rawStatus, rawBody);
-        }
         log.warn("newapi submit rejected httpStatus={}", httpStatus);
-        return NewApiSubmitResult.failure(WorkerErrorCodes.JOB_FAILED, false, rawStatus, rawBody);
+        return NewApiSubmitResult.failure(WorkerErrorCodes.NO_AVAILABLE_CHANNEL, false, rawStatus, rawBody);
     }
 
     private NewApiTaskStatus parseQuery(String taskId, HttpResponse<String> response) {
@@ -157,33 +187,24 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
         if (httpStatus >= 200 && httpStatus < 300) {
             JsonNode node = parse(rawBody);
             if (node == null) {
-                return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.GATEWAY_INVALID_RESPONSE,
+                return NewApiTaskStatus.failed(taskId, null, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
                         "invalid json", rawStatus, rawBody);
             }
-            String status = text(node, "status");
-            if (status == null) {
-                status = text(node.path("data"), "status");
-            }
-            String outputUrl = outputUrl(node);
+            JsonNode payload = node.hasNonNull("data") && node.path("data").isObject() ? node.path("data") : node;
+            String status = text(payload, "status");
             String normalized = status == null ? "" : status.toUpperCase(Locale.ROOT);
+            if (normalized.startsWith("COMPLETED") || normalized.startsWith("SUCCEEDED")
+                    || normalized.startsWith("SUCCESS")) {
+                return NewApiTaskStatus.succeeded(taskId, status, null, rawStatus, rawBody);
+            }
             if (normalized.startsWith("FAILED") || normalized.startsWith("FAILURE")
                     || normalized.startsWith("ERROR") || normalized.startsWith("CANCELLED")) {
-                return NewApiTaskStatus.failed(taskId, status, WorkerErrorCodes.UPSTREAM_VIDEO_FAILED,
-                        status, rawStatus, rawBody);
+                return NewApiTaskStatus.failed(taskId, status, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
+                        failureMessage(payload, status), rawStatus, rawBody);
             }
-            if (normalized.startsWith("SUCCEEDED") || normalized.startsWith("SUCCESS")
-                    || normalized.startsWith("COMPLETED")) {
-                if (outputUrl == null) {
-                    return NewApiTaskStatus.failed(taskId, status, WorkerErrorCodes.GATEWAY_INVALID_RESPONSE,
-                            "success without output url", rawStatus, rawBody);
-                }
-                return NewApiTaskStatus.succeeded(taskId, status, outputUrl, rawStatus, rawBody);
-            }
-            if (normalized.isEmpty() && outputUrl != null) {
-                return NewApiTaskStatus.succeeded(taskId, status, outputUrl, rawStatus, rawBody);
-            }
-            if (normalized.startsWith("RUNNING") || normalized.startsWith("QUEUED")
-                    || normalized.startsWith("PENDING") || normalized.startsWith("PROCESSING")) {
+            if (normalized.startsWith("QUEUED") || normalized.startsWith("RUNNING")
+                    || normalized.startsWith("IN_PROGRESS") || normalized.startsWith("PROCESSING")
+                    || normalized.startsWith("PENDING") || normalized.startsWith("SUBMITTED")) {
                 return NewApiTaskStatus.running(taskId, status, rawStatus, rawBody);
             }
             log.warn("newapi query unknown status taskId={} status={}", taskId, status);
@@ -192,16 +213,21 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
         if (httpStatus == 429 || httpStatus >= 500) {
             return NewApiTaskStatus.transientFailure(taskId, rawStatus, "upstream unavailable", rawStatus, rawBody);
         }
-        if (httpStatus == 401 || httpStatus == 403) {
-            return NewApiTaskStatus.failed(taskId, rawStatus, WorkerErrorCodes.PROVIDER_UNAVAILABLE,
-                    "auth failure", rawStatus, rawBody);
+        if (httpStatus == 404) {
+            return NewApiTaskStatus.failed(taskId, rawStatus, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
+                    "task not found", rawStatus, rawBody);
         }
-        if (httpStatus == 400 && rawBody.contains("task_not_exist")) {
-            return NewApiTaskStatus.failed(taskId, rawStatus, WorkerErrorCodes.GATEWAY_INVALID_RESPONSE,
-                    "task not exist", rawStatus, rawBody);
-        }
-        return NewApiTaskStatus.failed(taskId, rawStatus, WorkerErrorCodes.JOB_FAILED,
+        return NewApiTaskStatus.failed(taskId, rawStatus, WorkerErrorCodes.NO_AVAILABLE_CHANNEL,
                 "newapi query failed", rawStatus, rawBody);
+    }
+
+    private static String failureMessage(JsonNode node, String fallback) {
+        String message = text(node.path("error"), "message");
+        if (message != null) {
+            return message;
+        }
+        message = text(node, "message", "fail_reason");
+        return message == null ? fallback : message;
     }
 
     private JsonNode parse(String body) {
@@ -221,18 +247,6 @@ public class HttpNewApiVideoClient implements NewApiVideoClient {
         }
         for (String field : fields) {
             JsonNode value = node.path(field);
-            if (value.isTextual() && !value.asText().isBlank()) {
-                return value.asText().trim();
-            }
-        }
-        return null;
-    }
-
-    private static String outputUrl(JsonNode node) {
-        String[] pointers = {"/object", "/result/url", "/result/video_url", "/url", "/video_url",
-                "/data/url", "/data/0/url", "/output/video_url", "/content_url"};
-        for (String pointer : pointers) {
-            JsonNode value = node.at(pointer);
             if (value.isTextual() && !value.asText().isBlank()) {
                 return value.asText().trim();
             }

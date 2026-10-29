@@ -28,7 +28,7 @@ class NewApiPropertiesBindingTest {
                     assertThat(properties.apiKey()).isEqualTo("test-key");
                     assertThat(properties.timeoutMs()).isEqualTo(15000L);
                     assertThat(properties.configured()).isTrue();
-                    assertThat(properties.generateUrl()).isEqualTo("https://api.example.com/v1/video/generations");
+                    assertThat(properties.videosUrl()).isEqualTo("https://api.example.com/v1/videos");
                 });
     }
 

@@ -18,6 +18,8 @@ public final class WorkerErrorCodes {
     public static final String GATEWAY_INVALID_RESPONSE = "GATEWAY_INVALID_RESPONSE";
     /** WP12：上游视频任务进入失败终态（不可重试）。 */
     public static final String UPSTREAM_VIDEO_FAILED = "UPSTREAM_VIDEO_FAILED";
+    /** WP21 Phase 2：NewAPI 已完成自身 fallback，仍没有可用产物（不可重试）。 */
+    public static final String NO_AVAILABLE_CHANNEL = "NO_AVAILABLE_CHANNEL";
 
     private WorkerErrorCodes() {
     }

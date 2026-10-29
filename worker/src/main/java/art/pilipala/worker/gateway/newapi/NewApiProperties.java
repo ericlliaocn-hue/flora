@@ -25,13 +25,17 @@ public record NewApiProperties(String baseUrl, String apiKey, long timeoutMs) {
         return baseUrl != null && !baseUrl.isBlank() && apiKey != null && !apiKey.isBlank();
     }
 
-    public String generateUrl() {
-        return baseUrl + "/v1/video/generations";
+    public String videosUrl() {
+        return baseUrl + "/v1/videos";
     }
 
-    public String statusUrl(String taskId) {
+    public String taskUrl(String taskId) {
         String encoded = URLEncoder.encode(taskId, StandardCharsets.UTF_8).replace("+", "%20");
-        return generateUrl() + "/" + encoded;
+        return videosUrl() + "/" + encoded;
+    }
+
+    public String contentUrl(String taskId) {
+        return taskUrl(taskId) + "/content";
     }
 
     private static String normalizeBaseUrl(String raw) {

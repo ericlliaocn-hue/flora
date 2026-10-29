@@ -9,5 +9,7 @@ public record NewApiVideoRequest(
         String prompt,
         int durationSeconds,
         String size,
-        String paramsJson) {
+        String paramsJson,
+        String requestId,
+        long deadlineAtEpochMs) {
 }

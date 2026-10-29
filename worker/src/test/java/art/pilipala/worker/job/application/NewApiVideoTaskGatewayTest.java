@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import art.pilipala.worker.gateway.AnytokenAttemptResult;
-import art.pilipala.worker.gateway.MediaDownloader;
 import art.pilipala.worker.gateway.newapi.NewApiSubmitResult;
 import art.pilipala.worker.gateway.newapi.NewApiTaskStatus;
 import art.pilipala.worker.gateway.newapi.NewApiVideoClient;
@@ -26,7 +25,6 @@ class NewApiVideoTaskGatewayTest {
     private final UUID stepId = UUID.randomUUID();
     private final UUID targetId = UUID.randomUUID();
     private final FakeClient client = new FakeClient();
-    private final FakeDownloader downloader = new FakeDownloader();
     private final FakeTos tos = new FakeTos();
 
     @Test
@@ -73,7 +71,7 @@ class NewApiVideoTaskGatewayTest {
 
         assertThat(result.succeeded()).isTrue();
         assertThat(result.outputObjectKeys()).containsExactly("newapi/vid/" + jobId + "/1.mp4");
-        assertThat(downloader.urls).containsExactly("https://cdn/v.mp4");
+        assertThat(client.contentCalls).isEqualTo(1);
         assertThat(tos.keys).containsExactly("newapi/vid/" + jobId + "/1.mp4");
         assertThat(tos.contentTypes).containsExactly("video/mp4");
         assertThat(tos.bytes).hasSize(1);
@@ -81,7 +79,7 @@ class NewApiVideoTaskGatewayTest {
 
     @Test
     void storeDownloadFailureIsRetryableAndDoesNotWriteTos() {
-        downloader.failure = new IOException("download failed");
+        client.contentFailure = new IOException("download failed");
         NewApiTaskStatus status = NewApiTaskStatus.succeeded("task-1", "SUCCEEDED", "https://cdn/v.mp4", "200", "{}");
 
         AnytokenAttemptResult result = gateway().store(polling(), status);
@@ -101,7 +99,7 @@ class NewApiVideoTaskGatewayTest {
     }
 
     private NewApiVideoTaskGateway gateway() {
-        return new NewApiVideoTaskGateway(client, downloader, tos, new ObjectMapper());
+        return new NewApiVideoTaskGateway(client, tos, new ObjectMapper());
     }
 
     private ClaimedAttempt claimed(String paramsJson) {
@@ -123,6 +121,8 @@ class NewApiVideoTaskGatewayTest {
         private NewApiTaskStatus queryStatus;
         private NewApiVideoRequest lastRequest;
         private String lastTaskId;
+        private int contentCalls;
+        private IOException contentFailure;
 
         @Override
         public NewApiSubmitResult submit(NewApiVideoRequest request) {
@@ -135,17 +135,12 @@ class NewApiVideoTaskGatewayTest {
             lastTaskId = taskId;
             return queryStatus;
         }
-    }
-
-    private static final class FakeDownloader implements MediaDownloader {
-        private final List<String> urls = new ArrayList<>();
-        private IOException failure;
 
         @Override
-        public byte[] download(String url) throws IOException {
-            urls.add(url);
-            if (failure != null) {
-                throw failure;
+        public byte[] content(String taskId) throws IOException {
+            contentCalls++;
+            if (contentFailure != null) {
+                throw contentFailure;
             }
             return "mp4-bytes".getBytes();
         }

@@ -1,9 +1,12 @@
 package art.pilipala.worker.job.application;
 
+import java.time.Instant;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import art.pilipala.worker.gateway.newapi.NewApiVideoRequest;
+import art.pilipala.worker.job.domain.ClaimedAttempt;
 import art.pilipala.worker.job.domain.WorkerTarget;
 
 /** canonical 参数 → NewAPI 提交体的最小映射；不按 model 名写分支。 */
@@ -12,7 +15,8 @@ final class NewApiVideoRequests {
     private NewApiVideoRequests() {
     }
 
-    static NewApiVideoRequest build(String paramsJson, WorkerTarget target, ObjectMapper mapper) {
+    static NewApiVideoRequest build(String paramsJson, WorkerTarget target, ClaimedAttempt attempt,
+            ObjectMapper mapper) {
         JsonNode params = read(paramsJson, mapper);
         String prompt = params.path("prompt").asText("");
         int duration = params.path("duration").asInt(params.path("duration_s").asInt(5));
@@ -20,7 +24,9 @@ final class NewApiVideoRequests {
         if (size.isBlank()) {
             size = sizeForRatio(params.path("aspect_ratio").asText(""));
         }
-        return new NewApiVideoRequest(target.upstreamModel(), prompt, duration, size, paramsJson);
+        long deadline = Instant.now().plusSeconds(Math.max(1, target.timeoutSeconds())).toEpochMilli();
+        String requestId = attempt.jobId() + ":" + attempt.attempt();
+        return new NewApiVideoRequest(target.upstreamModel(), prompt, duration, size, paramsJson, requestId, deadline);
     }
 
     static JsonNode read(String paramsJson, ObjectMapper mapper) {
