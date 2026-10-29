@@ -54,8 +54,9 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **真实 meaicc smoke**：NewAPI channel4 `meaicc-real-c4`（type-61，base `https://api.meaicc.com`，model `sd-2-c4`）；product job `cc932748-…` 约 130s 完成，job SUCCESS；NewAPI task 走 channel4 SUCCESS、无 fallback；TOS 1.0MB；wallet 960/0、hold confirmed；`target_id=null`。
 - **key hygiene**：真实 key 只存在 NewAPI channel 记录；临时 key 文件已删除；pilipala/NewAPI 源码目录扫描无 key。key 已在聊天中出现，建议 smoke 后轮换。
 - **C 端视频 product 对齐**：web 托管视频列表只保留 `seedance-2-720p-stable`，移除未落库的 `seedance2/2.5/fast/mini`；旧持久化模型回落到该 product code，避免落到 legacy 价格/Anytoken 路径。前端 worktree 没有 node_modules，未跑 typecheck/build。
-- **C 端价格/上架**：V20 将 `seedance-2-720p-stable` 设为 `5000 credits`、enabled=true（按 pack 有效积分价值约 ¥0.0044-0.0053/credit，c4 上游约 USD 1.8，保留约 40-50% 毛利）。fake channel C 端价格 smoke：job `824f0879-…`，wallet 10960→5960、hold 5000 confirmed、job SUCCESS；随后恢复真实 channel4。
-- **c7/c8 真实 channel**：channel5 `meaicc-real-c7`、channel6 `meaicc-real-c8`（type-61，真实 Key）；直接 `/v1/videos` smoke：c7 `task_Vfwj8u2X…` channel5 SUCCESS、content 2.0MB；c8 `task_sOq7pO8jE…` channel6 SUCCESS、content 1.6MB。产品仍以 c4 为主，c7/c8 尚未进入 C-end/product group。
+- **C 端价格/上架**：V20 将 `seedance-2-720p-stable` 设为 `5000 credits`、enabled=true；V22 增加 `seedance-2-720p-quality`（c7，7000）和 `seedance-2-720p-pro`（c8，9000），C 端 remote 视频三档。真实 c4 + 5000 验收：job `48b771b8-…`，约 150s，job SUCCESS、NewAPI channel4 SUCCESS、TOS 921KB、wallet 10960→5960、hold 5000 confirmed。c7/c8 产品路径用 fake channel 验收：c7 job `32d052c4-…` price 7000、c8 job `fe4a42e0-…` price 9000，均 SUCCESS；随后恢复真实 channel5/6。
+- **c7/c8 真实 channel**：channel5 `meaicc-real-c7`、channel6 `meaicc-real-c8`（type-61，真实 Key）；直接 `/v1/videos` smoke：c7 `task_Vfwj8u2X…` channel5 SUCCESS、content 2.0MB；c8 `task_sOq7pO8jE…` channel6 SUCCESS、content 1.6MB。V22 起 c7/c8 是独立的高质/旗舰 SKU，不是自动降级链。
+- **provider_task raw_body 修复**：NewAPI submit 失败时 worker `complete` 会插入空 raw_body；Mapper 改为 `COALESCE(NULLIF(raw_body,''),'{}')::jsonb`，避免失败路径回滚后 job 卡 running。
 - **未做**：C 端产品入口的浏览器/typecheck/build 验收（worktree 无 node_modules，Data 卷仅 753Mi）。旧 target/route/fallback 代码已删除（`71697c6` + `V21`）。
 
 

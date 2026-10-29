@@ -93,6 +93,8 @@ export const PILIPALA_REMOTE_IMAGE_MODELS: ChannelModel[] = [
 /** 托管云端模式内置的视频产品；只列 model_product 里真实存在的 SKU。 */
 export const PILIPALA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
     { name: "seedance-2-720p-stable", capability: "video" },
+    { name: "seedance-2-720p-quality", capability: "video" },
+    { name: "seedance-2-720p-pro", capability: "video" },
 ];
 
 /** 云端内置视频模型名（不带渠道前缀）。 */
