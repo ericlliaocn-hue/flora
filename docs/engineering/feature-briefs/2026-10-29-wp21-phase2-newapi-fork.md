@@ -46,7 +46,10 @@ ADR 0009 已接受“fork NewAPI 作为独立视频网关”。本 brief 定义 
 - **跨 target fallback**：fork `94f5830`；终态失败（非 auth/content/param/deadline）时选择同 group/model、同插件绑定的另一 channel，重放 bounded original body，更新同一 public task 的 channel/upstream/plugin_state/data，CAS 回 SUBMITTED；已验证 channel3 `FAILED` → channel1 `SUCCESS`，`fallback_attempts=1`、`fallback_channels=[3]`、content 1.1MB。
 - **Phase 2 第二段 A：worker 切 NewAPI /v1/videos**：commit `bc6e00f`；submit 带 `X-Pilipala-Request-Id` / `X-Pilipala-Deadline-At`，poll 公开 task id，content 带 service token 下载后写 TOS；NewAPI 内部负责 channel retry/fallback，worker 不再走 `/v1/video/generations` 或本地上游 fallback；最终失败映射 `NO_AVAILABLE_CHANNEL`。
 - **全链路 smoke**：product job `ea1c034b-…` → NewAPI task，channel3 `FAILED` → channel1 fallback；NewAPI `fallback_attempts=1`、`fallback_channels=[3]`；job succeeded、provider_task succeeded、TOS 1.1MB、wallet 990/0、hold confirmed。
-- **未做**：NewAPI billing 隔离；真实 meaicc channel/Key 未接；pilipala 的 product→group V19 / 内部 API / worker 旧 Phase 1 fallback 清理未开始；当前 service token 仍走 NewAPI 内部 quota（`billing_source=wallet, token_id=1`），pilipala 钱包仍是唯一用户账本。
+- **product→group**：V19 `model_product_group`（commit `978d1ae`）；job 增加 `gateway_group/gateway_model/gateway_timeout_seconds`；SubmitJob 从 group 写 gateway 字段；worker 用 gateway_model/timeout 调 NewAPI，不再读 target；ProviderPollScheduler 改为 join `job.gateway_model`，不再依赖 `target_id`。
+- **全链路 product group smoke**：job `934ec4a8-…` → group `default` / model `sd-2-c4` / timeout 900 → NewAPI channel3 `FAILED` → channel1 fallback；job SUCCESS、NewAPI `fallback_attempts=1`、`fallback_channels=[3]`；TOS + wallet 正常。
+- **NewAPI billing 边界**：NewAPI DB 只有 root service user + 一个 unlimited service token，没有 C 端用户/钱包表；token 的 `used_quota` 是内部成本观测，不是用户余额。pilipala wallet 仍是唯一用户账本；C 端不创建 NewAPI token，不暴露 NewAPI quota。
+- **未做**：真实 meaicc channel/Key；旧 `model_target/model_route`/`VideoFallbackScheduler` 清理（保留回滚）；C 端产品入口 UI。
 
 
 
