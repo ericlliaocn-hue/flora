@@ -2,6 +2,7 @@
 
 ## Unreleased
 
++ [修复] WP21：托管视频默认使用产品 SKU，旧 `seedance2` 自动回落；未登录先登录，C 端隐藏 BYOK 渠道配置，只有本地直连缺 Key 才打开配置。
 + [新增] WP21：Seedance 2 720p 视频三档上架——稳定 5000 / 高质 7000 / 旗舰 9000 credits，分别走 NewAPI c4/c7/c8 真实通道。
 + [修复] WP21：补齐 MyBatis 枚举 type-handler 扫描、JSONB 参数 cast 与 RETURNING UUID 映射，修复真实 Postgres 上冻结、建任务与 worker 步骤的运行时错误。
 + [调整] Studio「开通会员」改为独立全页 `/billing/membership`（LibTV 式顶栏促销+倒计时、周期胶囊、五列宽松卡片）；移除 `MembershipModal` 弹层，积分超市仍用顶栏同款弹层。
