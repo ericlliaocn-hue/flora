@@ -108,6 +108,7 @@ export default function VideoPage() {
     const model = effectiveConfig.videoModel || effectiveConfig.model;
     const canGenerate = Boolean(prompt.trim());
     const token = useAuthStore((state) => state.token);
+    const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
 
     useEffect(() => {
         if (!running || !startedAt) return;
@@ -248,6 +249,10 @@ export default function VideoPage() {
         const text = prompt.trim();
         if (!text) {
             message.error(t("videoWorkbench.promptRequired"));
+            return null;
+        }
+        if (!token && effectiveConfig.channelMode === "remote") {
+            setAuthModalOpen(true);
             return null;
         }
         if (!isAiConfigReady(effectiveConfig, model)) {

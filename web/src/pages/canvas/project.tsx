@@ -239,6 +239,7 @@ function InfiniteCanvasPage() {
     const cloudSyncStatus = useCanvasStore((state) => state.cloudSyncStatus);
     const cloudVersion = useCanvasStore((state) => state.cloudVersions[projectId]);
     const token = useAuthStore((state) => state.token);
+    const setAuthModalOpen = useAuthStore((state) => state.setAuthModalOpen);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
@@ -352,6 +353,10 @@ function InfiniteCanvasPage() {
             let controller: AbortController | undefined;
             try {
                 const generationConfig = buildGenerationConfig(effectiveConfig, node, "video");
+                if (!token && generationConfig.channelMode === "remote") {
+                    setAuthModalOpen(true);
+                    return;
+                }
                 if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                     if (silent) {
                         setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails: t("workbench.configFirst") } } : item)));
@@ -2392,6 +2397,10 @@ function InfiniteCanvasPage() {
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
+            if (!token && generationConfig.channelMode === "remote") {
+                setAuthModalOpen(true);
+                return;
+            }
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
@@ -2850,6 +2859,10 @@ function InfiniteCanvasPage() {
                           count: "1",
                       }
                     : { ...buildGenerationConfig(effectiveConfig, sourceNode, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image"), count: "1" };
+            if (!token && generationConfig.channelMode === "remote") {
+                setAuthModalOpen(true);
+                return;
+            }
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;

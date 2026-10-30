@@ -97,6 +97,11 @@ export const PILIPALA_REMOTE_VIDEO_MODELS: ChannelModel[] = [
     { name: "seedance-2-720p-pro", capability: "video" },
 ];
 
+/** 托管 C 端只展示托管能力；自部署构建用 VITE_PILIPALA_MANAGED_ONLY=false 保留 BYOK 配置。 */
+export const PILIPALA_MANAGED_ONLY = (import.meta.env.VITE_PILIPALA_MANAGED_ONLY ?? "true") !== "false";
+
+const LEGACY_REMOTE_VIDEO_MODELS = new Set(["seedance2", "seedance2.5", "seedance-fast", "seedance-mini"]);
+
 /** 云端内置视频模型名（不带渠道前缀）。 */
 export function isRemoteVideoModel(model: string | undefined): boolean {
     const trimmed = model?.trim();
@@ -135,7 +140,7 @@ export const defaultConfig: AiConfig = {
     ],
     model: "gpt-image-2",
     imageModel: "gpt-image-2",
-    videoModel: "seedance2",
+    videoModel: "seedance-2-720p-stable",
     textModel: "default::gpt-5.5",
     audioModel: "default::gpt-4o-mini-tts",
     audioVoice: "alloy",
@@ -291,7 +296,7 @@ function isAiConfigReady(config: AiConfig, model: string) {
         return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
     }
     // 托管云端模式：云端内置生图 / 视频模型不需要浏览器里配供应商 API Key。
-    if (config.channelMode === "remote" && (isRemoteImageModel(model) || isRemoteVideoModel(model))) return true;
+    if (config.channelMode === "remote" && (isRemoteImageModel(model) || isRemoteVideoModel(model) || LEGACY_REMOTE_VIDEO_MODELS.has(model.trim()))) return true;
     const match = findChannelModel(config, model);
     return Boolean(match && match.channel.baseUrl.trim() && match.channel.apiKey.trim());
 }
@@ -353,7 +358,7 @@ export const useConfigStore = create<ConfigStore>()(
                         models,
                         model: channelMode === "remote" ? remoteImageModel(config.model) : config.model,
                         imageModel: channelMode === "remote" ? remoteImageModel(config.imageModel || config.model) : normalizeModelOptionValue(config.imageModel || config.model, channels),
-                        videoModel: normalizeModelOptionValue(config.videoModel, channels),
+                        videoModel: channelMode === "remote" ? remoteVideoModel(config.videoModel) : normalizeModelOptionValue(config.videoModel, channels),
                         textModel: normalizeModelOptionValue(config.textModel || config.model, channels),
                         audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
                         audioVoice: config.audioVoice || defaultConfig.audioVoice,
