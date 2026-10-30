@@ -342,8 +342,8 @@ export const useConfigStore = create<ConfigStore>()(
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
                 const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
                 const config = { ...defaultConfig, ...persistedConfig };
-                // 保留用户已保存的渠道模式；没保存过就是托管云端模式。
-                const channelMode: AiConfig["channelMode"] = persistedConfig.channelMode === "local" ? "local" : "remote";
+                // 托管 C 端强制云端模式；开源自部署构建才保留用户保存的本地直连模式。
+                const channelMode: AiConfig["channelMode"] = PILIPALA_MANAGED_ONLY ? "remote" : persistedConfig.channelMode === "local" ? "local" : "remote";
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
